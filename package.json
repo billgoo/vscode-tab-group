@@ -31,7 +31,9 @@
 			"explorer": [
 				{
 					"id": "tabsTreeViewInExplorer",
-					"name": "Tabs"
+					"name": "Tabs",
+					"contextualTitle": "Tabs",
+					"visibility": "visible"
 				}
 			]
 		},
@@ -56,19 +58,19 @@
 			"view/item/context": [
 				{
 					"command": "tabsTreeView.tab.close",
-					"when": "view == tabsTreeView && viewItem == tab",
+					"when": "view == tabsTreeView && viewItem == tab || view == tabsTreeViewInExplorer && viewItem == tab",
 					"group": "inline"
 				},
 				{
 					"command": "tabsTreeView.tab.ungroup",
-					"when": "view == tabsTreeView && viewItem == tab",
+					"when": "view == tabsTreeView && viewItem == tab || view == tabsTreeViewInExplorer && viewItem == tab",
 					"group": "inline"
 				}
 			],
 			"view/title": [
 				{
 					"command": "tabsTreeView.UngroupAll",
-					"when": "view == tabsTreeView",
+					"when": "view == tabsTreeView || view == tabsTreeViewInExplorer",
 					"group": "navigation"
 				}
 			]

@@ -28,11 +28,18 @@ export class TabsView {
 			canSelectMany: true
 		});
 
+		const explorerView = vscode.window.createTreeView('tabsTreeViewInExplorer', {
+			treeDataProvider: this.treeDataProvider,
+			dragAndDropController: this.treeDataProvider,
+			canSelectMany: true
+		});
+
 		this.treeDataProvider.onDidChangeTreeData(() => {
 			this.saveState(this.treeDataProvider.getState());
 		});
 
 		context.subscriptions.push(view);
+		context.subscriptions.push(explorerView);
 
 		context.subscriptions.push(vscode.commands.registerCommand('tabsTreeView.tab.close', (tab: Tab) => {
 			vscode.window.tabGroups.close(tab.tab);
@@ -46,6 +53,11 @@ export class TabsView {
 			DataStore.setState([]);
 			const initialState = this.initializeState();
 			this.treeDataProvider.setState(initialState);
+		}));
+
+		context.subscriptions.push(vscode.window.tabGroups.onDidChangeTabs(e => {
+			this.treeDataProvider.removeTabs(e.closed);
+			this.treeDataProvider.appendTabs(e.opened);
 		}));
 
 	}
@@ -275,6 +287,36 @@ class TreeDataProvider implements vscode.TreeDataProvider<Tab | Group>, vscode.T
 		this._ungroup(tab);
 		this._onDidChangeTreeData.fire();
 	}
+
+	public removeTabs(originalTabs: readonly vscode.Tab[]) {
+		originalTabs.forEach((originalTab) => {
+			const inputId = getNormalizedInputId(originalTab);
+			const tab = this.tabMap[inputId];
+			if (tab.groupId) {
+				safeRemove(this.groupMap[tab.groupId].children, tab);
+			} else {
+				safeRemove(this.root, tab);
+			}
+			delete this.tabMap[inputId];
+		});
+
+		this._onDidChangeTreeData.fire();
+	}
+
+	public appendTabs(originalTabs: readonly vscode.Tab[]) {
+		originalTabs.forEach((originalTab) => {
+			const inputId = getNormalizedInputId(originalTab);
+			this.tabMap[inputId] = {
+				type: JSONLikeType.Tab,
+				groupId: null,
+				tab: originalTab,
+			};
+			this.root.push(this.tabMap[inputId]);
+		});
+
+		this._onDidChangeTreeData.fire();
+	}
+
 
 	async handleDrag(source: Array<Tab | Group>, treeDataTransfer: vscode.DataTransfer, token: vscode.CancellationToken): Promise<void> {
 		treeDataTransfer.set(TreeDataProvider.TabDropMimeType, new vscode.DataTransferItem(toJSONLikeState(source)));
