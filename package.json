@@ -1,7 +1,13 @@
 {
 	"name": "tab-group",
 	"description": "Tab Group",
+	"publisher": "microsoft-hackthon",
 	"version": "0.0.1",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/billgoo/vscode-tab-group"
+	},
 	"engines": {
 		"vscode": "^1.71.0"
 	},
