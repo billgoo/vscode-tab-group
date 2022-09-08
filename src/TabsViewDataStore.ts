@@ -8,6 +8,7 @@ export enum JSONLikeType {
 export type JSONLikeGroup = {
 	readonly type: JSONLikeType.Group;
 	readonly id: string;
+	colorId: string;
 	label: string;
 	children: JSONLikeTab[];
 };

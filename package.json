@@ -6,7 +6,7 @@
 		"vscode": "^1.71.0"
 	},
 	"activationEvents": [
-		"*"
+		"onStartupFinished"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
@@ -57,14 +57,14 @@
 		"menus": {
 			"view/item/context": [
 				{
-					"command": "tabsTreeView.tab.close",
-					"when": "view == tabsTreeView && viewItem == tab || view == tabsTreeViewInExplorer && viewItem == tab",
-					"group": "inline"
-				},
-				{
 					"command": "tabsTreeView.tab.ungroup",
 					"when": "view == tabsTreeView && viewItem == tab || view == tabsTreeViewInExplorer && viewItem == tab",
-					"group": "inline"
+					"group": "inline@0"
+				},
+				{
+					"command": "tabsTreeView.tab.close",
+					"when": "view == tabsTreeView && viewItem == tab || view == tabsTreeViewInExplorer && viewItem == tab",
+					"group": "inline@1"
 				}
 			],
 			"view/title": [

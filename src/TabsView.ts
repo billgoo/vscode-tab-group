@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import * as vscode from 'vscode';
 import { safeRemove } from './Arrays';
+import { getNextColorId } from './color';
 
 import { JSONLikeTab, JSONLikeGroup, JSONLikeType, DataStore } from './TabsViewDataStore';
 
@@ -119,8 +120,7 @@ function getNormalizedInputId(tab: vscode.Tab) {
 	if (input instanceof vscode.TabInputText) {
 		return input.uri.toString();
 	}
-	// todo: implement other input types
-	throw new UnimplementedError();
+	return (input as any).toString();
 }
 
 function toJsonLikeTab(tab: Tab): JSONLikeTab {
@@ -196,6 +196,7 @@ class TreeDataProvider implements vscode.TreeDataProvider<Tab | Group>, vscode.T
 		if (!this.treeItemMap[element.id]) {
 			const treeItem = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.Expanded);
 			treeItem.contextValue = 'group';
+			treeItem.iconPath = new vscode.ThemeIcon('layout-sidebar-left', new vscode.ThemeColor(element.colorId));
 			this.treeItemMap[element.id] = treeItem;
 		}
 		return this.treeItemMap[element.id]
@@ -232,6 +233,7 @@ class TreeDataProvider implements vscode.TreeDataProvider<Tab | Group>, vscode.T
 				const targetGroup: Group = {
 					type: JSONLikeType.Group,
 					id: randomUUID(),
+					colorId: getNextColorId(),
 					label: '',
 					children: [target]
 				};
