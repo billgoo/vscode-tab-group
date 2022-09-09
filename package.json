@@ -39,7 +39,8 @@
 					"id": "tabsTreeViewInExplorer",
 					"name": "Tabs",
 					"contextualTitle": "Tabs",
-					"visibility": "visible"
+					"visibility": "visible",
+					"size": 600
 				}
 			]
 		},

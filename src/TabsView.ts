@@ -17,6 +17,7 @@ class UnimplementedError extends Error { }
 
 export class TabsView {
 	private treeDataProvider: TreeDataProvider = new TreeDataProvider();
+	private tabChanging = false;
 
 	constructor(context: vscode.ExtensionContext) {
 		const initialState = this.initializeState();
@@ -32,7 +33,7 @@ export class TabsView {
 		const explorerView = vscode.window.createTreeView('tabsTreeViewInExplorer', {
 			treeDataProvider: this.treeDataProvider,
 			dragAndDropController: this.treeDataProvider,
-			canSelectMany: true
+			canSelectMany: true,
 		});
 
 		this.treeDataProvider.onDidChangeTreeData(() => {
@@ -59,8 +60,49 @@ export class TabsView {
 		context.subscriptions.push(vscode.window.tabGroups.onDidChangeTabs(e => {
 			this.treeDataProvider.removeTabs(e.closed);
 			this.treeDataProvider.appendTabs(e.opened);
+
+			if (e.changed[0] && e.changed[0].isActive) {
+				const tab = this.treeDataProvider.getTab(e.changed[0]);
+				if (tab) {
+					if (this.tabChanging) {
+						return;
+					}
+					this.tabChanging = true;
+					if (!view.visible) {
+						explorerView.reveal(tab, { select: true, expand: true }).then(() => { this.tabChanging = false }, () => { this.tabChanging = false });
+					}
+					if (view.visible) {
+						view.reveal(tab, { select: true, expand: true }).then(() => { this.tabChanging = false }, () => { this.tabChanging = false });
+					}
+				}
+			}
 		}));
 
+		context.subscriptions.push(view.onDidChangeSelection(e => {
+			if (e.selection.length > 0) {
+				const item = e.selection[e.selection.length - 1];
+				if (item.type === JSONLikeType.Tab) {
+					if (this.tabChanging) {
+						return;
+					}
+					this.tabChanging = true;
+					this.treeDataProvider.activate(item).then(() => { this.tabChanging = false }, () => { this.tabChanging = false });
+				}
+			}
+		}));
+
+		context.subscriptions.push(explorerView.onDidChangeSelection(e => {
+			if (e.selection.length > 0) {
+				const item = e.selection[e.selection.length - 1];
+				if (item.type === JSONLikeType.Tab) {
+					if (this.tabChanging) {
+						return;
+					}
+					this.tabChanging = true;
+					this.treeDataProvider.activate(item).then(() => { this.tabChanging = false }, () => { this.tabChanging = false });
+				}
+			}
+		}));
 	}
 
 	private initializeState(): Array<Tab | Group> {
@@ -202,6 +244,18 @@ class TreeDataProvider implements vscode.TreeDataProvider<Tab | Group>, vscode.T
 		return this.treeItemMap[element.id]
 	}
 
+	getParent(element: Tab | Group) {
+		if (element.type === JSONLikeType.Group) {
+			return undefined;
+		}
+		
+		if (element.groupId === null) {
+			return undefined;
+		}
+
+		return this.groupMap[element.groupId];
+	}
+
 	private createTabTreeItem(tab: Tab): vscode.TreeItem {
 		if (tab.tab.input instanceof vscode.TabInputText) {
 			const treeItem: vscode.TreeItem = new vscode.TreeItem(tab.tab.input.uri);
@@ -319,7 +373,6 @@ class TreeDataProvider implements vscode.TreeDataProvider<Tab | Group>, vscode.T
 		this._onDidChangeTreeData.fire();
 	}
 
-
 	async handleDrag(source: Array<Tab | Group>, treeDataTransfer: vscode.DataTransfer, token: vscode.CancellationToken): Promise<void> {
 		treeDataTransfer.set(TreeDataProvider.TabDropMimeType, new vscode.DataTransferItem(toJSONLikeState(source)));
 	}
@@ -340,5 +393,17 @@ class TreeDataProvider implements vscode.TreeDataProvider<Tab | Group>, vscode.T
 			}
 		}
 		this._onDidChangeTreeData.fire();
+	}
+
+	public async activate(tab: Tab): Promise<any> {
+		const input = tab.tab.input;
+		if (input instanceof vscode.TabInputText) {
+			return await vscode.window.showTextDocument(input.uri);
+		}
+	}
+
+	public getTab(originalTab: vscode.Tab): Tab | undefined {
+		const inputId = getNormalizedInputId(originalTab);
+		return this.tabMap[inputId];
 	}
 }
