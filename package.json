@@ -1,0 +1,95 @@
+{
+	"name": "tab-group",
+	"description": "Tab Group",
+	"publisher": "microsoft-hackthon",
+	"version": "0.0.1",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/billgoo/vscode-tab-group"
+	},
+	"engines": {
+		"vscode": "^1.71.0"
+	},
+	"activationEvents": [
+		"onStartupFinished"
+	],
+	"main": "./out/extension.js",
+	"contributes": {
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "tabs",
+					"title": "Tabs",
+					"icon": "media/dep.svg"
+				}
+			]
+		},
+		"views": {
+			"tabs": [
+				{
+					"id": "tabsTreeView",
+					"name": "Tabs",
+					"icon": "media/dep.svg",
+					"contextualTitle": "Tabs"
+				}
+			],
+			"explorer": [
+				{
+					"id": "tabsTreeViewInExplorer",
+					"name": "Tabs",
+					"contextualTitle": "Tabs",
+					"visibility": "visible"
+				}
+			]
+		},
+		"commands": [
+			{
+				"command": "tabsTreeView.tab.close",
+				"title": "Close",
+				"icon": "$(close)"
+			},
+			{
+				"command": "tabsTreeView.tab.ungroup",
+				"title": "Ungroup",
+				"icon": "$(array)"
+			},
+			{
+				"command": "tabsTreeView.UngroupAll",
+				"title": "Ungroup All",
+				"icon": "$(clear-all)"
+			}
+		],
+		"menus": {
+			"view/item/context": [
+				{
+					"command": "tabsTreeView.tab.ungroup",
+					"when": "view == tabsTreeView && viewItem == tab || view == tabsTreeViewInExplorer && viewItem == tab",
+					"group": "inline@0"
+				},
+				{
+					"command": "tabsTreeView.tab.close",
+					"when": "view == tabsTreeView && viewItem == tab || view == tabsTreeViewInExplorer && viewItem == tab",
+					"group": "inline@1"
+				}
+			],
+			"view/title": [
+				{
+					"command": "tabsTreeView.UngroupAll",
+					"when": "view == tabsTreeView || view == tabsTreeViewInExplorer",
+					"group": "navigation"
+				}
+			]
+		}
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -p ./",
+		"watch": "tsc -watch -p ./"
+	},
+	"devDependencies": {
+		"@types/node": "^18.7.15",
+		"@types/vscode": "^1.71.0",
+		"typescript": "^4.8.2"
+	}
+}
