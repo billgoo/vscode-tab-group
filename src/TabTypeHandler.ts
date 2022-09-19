@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
 
 type InputType = vscode.Tab["input"];
 type KnownInputType = Exclude<InputType, unknown>;
@@ -8,15 +7,21 @@ type TypedTab<T extends InputType> = vscode.Tab & {
 	input: T;
 };
 
-interface IInputHandler<T extends InputType> {
+interface TabTypeHandler<T extends InputType> {
 	readonly name: string;
+
 	is(tab: vscode.Tab): tab is TypedTab<T>;
+
+	/**
+	 * The unique id to bind an tree data with an actual tab or editor
+	 * @param tab 
+	 */
 	getNormalizedId(tab: TypedTab<T>): string;
 	createTreeItem(tab: TypedTab<T>): vscode.TreeItem;
 	openEditor(tab: TypedTab<T>): Promise<void>;
 }
 
-const handlers: IInputHandler<KnownInputType>[] = [];
+const handlers: TabTypeHandler<KnownInputType>[] = [];
 
 function getNormalizedIdForUnknownObject(input: Object): string {
 	const getNormalizedObject = (object: any, depth: number = 2) => {
@@ -39,7 +44,7 @@ function getNormalizedIdForUnknownObject(input: Object): string {
  * This class is a default for logic safety.
  * Unknown-typed tab won't be added to the tree data, because we cannot find the way to find a unique id which can bind tree data and actual tab.  
  */
-export class UnknownInputTypeHandler implements IInputHandler<unknown> {
+export class UnknownInputTypeHandler implements TabTypeHandler<unknown> {
 	name = 'unknownInputType';
 	is(tab: vscode.Tab): tab is TypedTab<unknown> {
 		return true;
@@ -63,7 +68,7 @@ export class UnknownInputTypeHandler implements IInputHandler<unknown> {
 
 export const unknownInputTypeHandler = new UnknownInputTypeHandler();
 
-export function getHandler(tab: vscode.Tab): IInputHandler<InputType> {
+export function getHandler(tab: vscode.Tab): TabTypeHandler<InputType> {
 	for (const handler of handlers) {
 		if (handler.is(tab)) {
 			return handler;
@@ -83,7 +88,7 @@ function Registered(ctor: Function) {
 }
 
 @Registered
-export class TabInputTextHandler implements IInputHandler<vscode.TabInputText> {
+export class TabInputTextHandler implements TabTypeHandler<vscode.TabInputText> {
 	name = "TabInputText";
 
 	is(tab: vscode.Tab): tab is TypedTab<vscode.TabInputText> {
@@ -105,7 +110,7 @@ export class TabInputTextHandler implements IInputHandler<vscode.TabInputText> {
 }
 
 @Registered
-export class TabInputTextDiffHandler implements IInputHandler<vscode.TabInputTextDiff> {
+export class TabInputTextDiffHandler implements TabTypeHandler<vscode.TabInputTextDiff> {
 	name = "TabInputTextDiff";
 
 	is(tab: vscode.Tab): tab is TypedTab<vscode.TabInputTextDiff> {
@@ -121,7 +126,7 @@ export class TabInputTextDiffHandler implements IInputHandler<vscode.TabInputTex
 
 	createTreeItem(tab: TypedTab<vscode.TabInputTextDiff>): vscode.TreeItem {
 		const treeItem = new vscode.TreeItem(tab.input.modified);
-		treeItem.label = `${path.basename(tab.input.original.fsPath)}(${this.getGitRef(tab.input.original)}) ⟷ ${path.basename(tab.input.modified.fsPath)}(${this.getGitRef(tab.input.modified)})`;
+		treeItem.label = tab.label;
 		return treeItem;
 	}
 
@@ -132,14 +137,10 @@ export class TabInputTextDiffHandler implements IInputHandler<vscode.TabInputTex
 		);
 		return;
 	}
-
-	private getGitRef(uri: vscode.Uri): string {
-		return JSON.parse(uri.query)["ref"] ?? "";
-	}
 }
 
 @Registered
-export class  TabInputCustomHandler implements IInputHandler<vscode.TabInputCustom> {
+export class  TabInputCustomHandler implements TabTypeHandler<vscode.TabInputCustom> {
 	name = "TabInputCustom";
 
 	is(tab: vscode.Tab): tab is TypedTab<vscode.TabInputCustom> {
@@ -148,7 +149,7 @@ export class  TabInputCustomHandler implements IInputHandler<vscode.TabInputCust
 	
 	getNormalizedId(tab: TypedTab<vscode.TabInputCustom>): string {
 		return JSON.stringify({
-			uri: tab.input.uri.toJSON(),
+			uri: tab.input.uri.path, // sometimes, the content in uri object changes although the resource is the same one.
 			viewType: tab.input.viewType,
 		});
 	}
@@ -158,13 +159,16 @@ export class  TabInputCustomHandler implements IInputHandler<vscode.TabInputCust
 	}
 
 	async openEditor(tab: TypedTab<vscode.TabInputCustom>): Promise<void> {
-		await vscode.commands.executeCommand("vscode.openWith", tab.input.uri, tab.input.viewType, { viewColumn: tab.group.viewColumn });
+		await vscode.commands.executeCommand("vscode.openWith", tab.input.uri, tab.input.viewType, { viewColumn: tab.group.viewColumn }).then(
+			undefined,
+			(e) => console.error(e)
+		);
 		return;
 	}
 }
 
 @Registered
-export class TabInputWebviewHandler implements IInputHandler<vscode.TabInputWebview> {
+export class TabInputWebviewHandler implements TabTypeHandler<vscode.TabInputWebview> {
 	name = "TabInputWebview";
 
 	is(tab: vscode.Tab): tab is TypedTab<vscode.TabInputWebview> {
