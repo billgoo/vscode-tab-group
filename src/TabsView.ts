@@ -269,7 +269,7 @@ class TreeDataProvider implements vscode.TreeDataProvider<Tab | Group>, vscode.T
 		const isTab = (item: JSONLikeGroup | JSONLikeTab): item is JSONLikeTab => { return item.type === JSONLikeType.Tab; }
 		const draggedTabs: Array<JSONLikeTab> = draggeds.filter<JSONLikeTab>(isTab).filter(dragged => {
 			// get rid of dropping the tab on itself
-			return !(target?.type === JSONLikeType.Tab && getNormalizedInputId(target.tab) !== dragged.inputId);
+			return !(target?.type === JSONLikeType.Tab && getNormalizedInputId(target.tab) === dragged.inputId);
 		});
 
 		draggedTabs.forEach(jsonTab => this.moveTab(this.tabMap[jsonTab.inputId], target));
