@@ -1,6 +1,7 @@
 {
 	"name": "tab-group",
-	"description": "Tab Group",
+	"displayName": "Tab Group",
+	"description": "Chrome/Edge Tab Group in VSCode",
 	"publisher": "microsoft-hackthon",
 	"version": "0.0.1",
 	"license": "MIT",
@@ -65,12 +66,12 @@
 			"view/item/context": [
 				{
 					"command": "tabsTreeView.tab.ungroup",
-					"when": "view == tabsTreeView && viewItem == tab || view == tabsTreeViewInExplorer && viewItem == tab",
+					"when": "view == tabsTreeView && viewItem == 'grouped-tab' || view == tabsTreeViewInExplorer && viewItem == 'grouped-tab'",
 					"group": "inline@0"
 				},
 				{
 					"command": "tabsTreeView.tab.close",
-					"when": "view == tabsTreeView && viewItem == tab || view == tabsTreeViewInExplorer && viewItem == tab",
+					"when": "view == tabsTreeView && viewItem =~ /tab/ || view == tabsTreeViewInExplorer && viewItem =~ /tab/",
 					"group": "inline@1"
 				}
 			],
