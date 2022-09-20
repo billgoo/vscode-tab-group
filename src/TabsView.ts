@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import * as vscode from 'vscode';
 import { safeRemove } from './Arrays';
 import { getNextColorId } from './color';
+import { getHandler, unknownInputTypeHandler } from './TabTypeHandler';
 
 import { JSONLikeTab, JSONLikeGroup, JSONLikeType, DataStore } from './TabsViewDataStore';
 
@@ -13,7 +14,11 @@ type Group = Omit<JSONLikeGroup, "children"> & {
 	children: Tab[];
 };
 
-class UnimplementedError extends Error { } 
+class UnimplementedError extends Error {
+	constructor(message?: string) {
+		super(message);
+	}
+}
 
 export class TabsView {
 	private treeDataProvider: TreeDataProvider = new TreeDataProvider();
@@ -149,20 +154,16 @@ export class TabsView {
 	}
 
 	private isCorrespondingTab(tab: vscode.Tab, jsonTab: JSONLikeTab): boolean {
-		try {
-			return jsonTab.inputId === getNormalizedInputId(tab);
-		} catch (_) {
-			return false;
-		}
+		return jsonTab.inputId === getNormalizedInputId(tab);
 	}	
 }
 
-function getNormalizedInputId(tab: vscode.Tab) {
-	const { input } = tab;
-	if (input instanceof vscode.TabInputText) {
-		return input.uri.toString();
+function getNormalizedInputId(tab: vscode.Tab): string {
+	const handler = getHandler(tab);
+	if (!handler) {
+		throw new UnimplementedError();
 	}
-	return (input as any).toString();
+	return handler.getNormalizedId(tab);
 }
 
 function toJsonLikeTab(tab: Tab): JSONLikeTab {
@@ -232,6 +233,7 @@ class TreeDataProvider implements vscode.TreeDataProvider<Tab | Group>, vscode.T
 			if (!this.treeItemMap[inputId]) {
 				this.treeItemMap[inputId] = this.createTabTreeItem(element);
 			}
+			this.treeItemMap[inputId].contextValue = element.groupId === null ? 'tab' : 'grouped-tab';
 			return this.treeItemMap[inputId];
 		}
 
@@ -257,19 +259,18 @@ class TreeDataProvider implements vscode.TreeDataProvider<Tab | Group>, vscode.T
 	}
 
 	private createTabTreeItem(tab: Tab): vscode.TreeItem {
-		if (tab.tab.input instanceof vscode.TabInputText) {
-			const treeItem: vscode.TreeItem = new vscode.TreeItem(tab.tab.input.uri);
-			treeItem.contextValue = 'tab';
-			return treeItem;
-		}
-		// todo: implement other input types
-		return {};
+		const handler = getHandler(tab.tab);
+		const treeItem = handler.createTreeItem(tab.tab);
+		return treeItem;
 	}
 
 	async handleDrop(target: Tab | Group | undefined, treeDataTransfer: vscode.DataTransfer, token: vscode.CancellationToken) {
 		const draggeds: Array<JSONLikeGroup | JSONLikeTab> = treeDataTransfer.get(TreeDataProvider.TabDropMimeType)?.value ?? [];
 		const isTab = (item: JSONLikeGroup | JSONLikeTab): item is JSONLikeTab => { return item.type === JSONLikeType.Tab; }
-		const draggedTabs: Array<JSONLikeTab> = draggeds.filter<JSONLikeTab>(isTab);
+		const draggedTabs: Array<JSONLikeTab> = draggeds.filter<JSONLikeTab>(isTab).filter(dragged => {
+			// get rid of dropping the tab on itself
+			return !(target?.type === JSONLikeType.Tab && getNormalizedInputId(target.tab) === dragged.inputId);
+		});
 
 		draggedTabs.forEach(jsonTab => this.moveTab(this.tabMap[jsonTab.inputId], target));
 	
@@ -361,7 +362,11 @@ class TreeDataProvider implements vscode.TreeDataProvider<Tab | Group>, vscode.T
 
 	public appendTabs(originalTabs: readonly vscode.Tab[]) {
 		originalTabs.forEach((originalTab) => {
-			const inputId = getNormalizedInputId(originalTab);
+			const handler = getHandler(originalTab);
+			if (!handler || handler === unknownInputTypeHandler) {
+				return;
+			}
+			const inputId = handler.getNormalizedId(originalTab);
 			this.tabMap[inputId] = {
 				type: JSONLikeType.Tab,
 				groupId: null,
@@ -381,6 +386,10 @@ class TreeDataProvider implements vscode.TreeDataProvider<Tab | Group>, vscode.T
 		return this.root;
 	}
 
+	/**
+	 * Set tree data state, will trigger rerendering
+	 * @param _state 
+	 */
 	public setState(_state: Array<Tab | Group>) {
 		this.root = _state;
 		this.tabMap = {};
@@ -396,10 +405,11 @@ class TreeDataProvider implements vscode.TreeDataProvider<Tab | Group>, vscode.T
 	}
 
 	public async activate(tab: Tab): Promise<any> {
-		const input = tab.tab.input;
-		if (input instanceof vscode.TabInputText) {
-			return await vscode.window.showTextDocument(input.uri);
+		const handler = getHandler(tab.tab);
+		if (!handler || handler === unknownInputTypeHandler) {
+			return Promise.resolve();
 		}
+		return handler.openEditor(tab.tab);
 	}
 
 	public getTab(originalTab: vscode.Tab): Tab | undefined {
