@@ -144,7 +144,10 @@ export class TabsView {
 			}
 		}
 
-		mergedTabs.push(...currentTabs.map<Tab>(tab => ({ type: JSONLikeType.Tab, groupId: null, tab })));
+		mergedTabs.push(...currentTabs.filter(tab => {
+			const handler = getHandler(tab);
+			return handler !== undefined && handler !== unknownInputTypeHandler;
+		}).map<Tab>(tab => ({ type: JSONLikeType.Tab, groupId: null, tab })));
 
 		return mergedTabs;
 	}
@@ -260,7 +263,7 @@ class TreeDataProvider implements vscode.TreeDataProvider<Tab | Group>, vscode.T
 
 	private createTabTreeItem(tab: Tab): vscode.TreeItem {
 		const handler = getHandler(tab.tab);
-		const treeItem = handler.createTreeItem(tab.tab);
+		const treeItem = handler!.createTreeItem(tab.tab);
 		return treeItem;
 	}
 

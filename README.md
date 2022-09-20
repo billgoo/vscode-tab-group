@@ -1,8 +1,9 @@
 # vscode-tab-group
+If you like Tab Group feature in Browser like Chrome or Edge, this extension is for you to use it in VSCode!
 
-Not creating project board yet (would create for further maintain), could just update TODOs in the README.
+## Feature
+- Group and Ungroup tabs in the TABS view
 
-# TODO
+## Demo
 
-- [ ] templete
-  - [x] templete
+![](./docs/demo.gif)
