@@ -54,6 +54,9 @@ export class UnknownInputTypeHandler implements TabTypeHandler<unknown> {
 		if (typeof tab.input === 'object' && tab.input !== null) {
 			return `${tab.label}:${getNormalizedIdForUnknownObject(tab.input)}`;
 		}
+		if (tab.input === undefined) {
+			return tab.label;
+		}
 		return `${tab.label}:${(tab.input as any).toString()}`;
 	}
 
