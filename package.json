@@ -22,7 +22,7 @@
 				{
 					"id": "tabs",
 					"title": "Tabs",
-					"icon": "media/dep.svg"
+					"icon": "$(layout-sidebar-left)"
 				}
 			]
 		},
@@ -31,7 +31,7 @@
 				{
 					"id": "tabsTreeView",
 					"name": "Tabs",
-					"icon": "media/dep.svg",
+					"icon": "$(layout-sidebar-left)",
 					"contextualTitle": "Tabs"
 				}
 			],
