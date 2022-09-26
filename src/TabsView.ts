@@ -237,6 +237,9 @@ class TreeDataProvider implements vscode.TreeDataProvider<Tab | Group>, vscode.T
 				this.treeItemMap[inputId] = this.createTabTreeItem(element);
 			}
 			this.treeItemMap[inputId].contextValue = element.groupId === null ? 'tab' : 'grouped-tab';
+			if (element.tab.group.viewColumn !== vscode.ViewColumn.One) {
+				this.treeItemMap[inputId].label = `${element.tab.label} @${element.tab.group.viewColumn}`;
+			}
 			return this.treeItemMap[inputId];
 		}
 

@@ -99,7 +99,10 @@ export class TabInputTextHandler implements TabTypeHandler<vscode.TabInputText> 
 	}
 
 	getNormalizedId(tab: TypedTab<vscode.TabInputText>): string {
-		return tab.input.uri.toString();
+		return JSON.stringify({
+			viewColumn: tab.group.viewColumn,
+			uri: tab.input.uri.toString()
+		});
 	}
 
 	createTreeItem(tab: TypedTab<vscode.TabInputText>): vscode.TreeItem {
@@ -107,7 +110,10 @@ export class TabInputTextHandler implements TabTypeHandler<vscode.TabInputText> 
 	}
 
 	async openEditor(tab: TypedTab<vscode.TabInputText>): Promise<void> {
-		await vscode.window.showTextDocument(tab.input.uri);
+		await vscode.commands.executeCommand("vscode.open", tab.input.uri, { viewColumn: tab.group.viewColumn }).then(
+			undefined,
+			(e) => console.error(e)
+		);
 		return;
 	}
 }
@@ -122,6 +128,7 @@ export class TabInputTextDiffHandler implements TabTypeHandler<vscode.TabInputTe
 
 	getNormalizedId(tab: TypedTab<vscode.TabInputTextDiff>): string {
 		return JSON.stringify({
+			viewColumn: tab.group.viewColumn,
 			original: tab.input.original.toJSON(),
 			modified: tab.input.modified.toJSON(),
 		});
@@ -152,6 +159,7 @@ export class  TabInputCustomHandler implements TabTypeHandler<vscode.TabInputCus
 	
 	getNormalizedId(tab: TypedTab<vscode.TabInputCustom>): string {
 		return JSON.stringify({
+			viewColumn: tab.group.viewColumn,
 			uri: tab.input.uri.path, // sometimes, the content in uri object changes although the resource is the same one.
 			viewType: tab.input.viewType,
 		});
@@ -179,7 +187,10 @@ export class TabInputWebviewHandler implements TabTypeHandler<vscode.TabInputWeb
 	}
 
 	getNormalizedId(tab: TypedTab<vscode.TabInputWebview>): string {
-		return tab.label;
+		return JSON.stringify({
+			viewColumn: tab.group.viewColumn,
+			vewiType: tab.input.viewType,
+		});
 	}
 
 	createTreeItem(tab: TypedTab<vscode.TabInputWebview>): vscode.TreeItem {
