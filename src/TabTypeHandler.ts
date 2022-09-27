@@ -1,13 +1,12 @@
 import * as vscode from 'vscode';
 
-type InputType = vscode.Tab["input"];
-type KnownInputType = Exclude<InputType, unknown>;
+export type InputType = vscode.Tab["input"];
 
 type TypedTab<T extends InputType> = vscode.Tab & {
 	input: T;
 };
 
-interface TabTypeHandler<T extends InputType> {
+export interface TabTypeHandler<T extends InputType> {
 	readonly name: string;
 
 	is(tab: vscode.Tab): tab is TypedTab<T>;
@@ -21,7 +20,7 @@ interface TabTypeHandler<T extends InputType> {
 	openEditor(tab: TypedTab<T>): Promise<void>;
 }
 
-const handlers: TabTypeHandler<KnownInputType>[] = [];
+const handlers: TabTypeHandler<InputType>[] = [];
 
 function getNormalizedIdForUnknownObject(input: Object): string {
 	const getNormalizedObject = (object: any, depth: number = 2) => {
@@ -71,14 +70,16 @@ export class UnknownInputTypeHandler implements TabTypeHandler<unknown> {
 
 export const unknownInputTypeHandler = new UnknownInputTypeHandler();
 
-export function getHandler(tab: vscode.Tab): TabTypeHandler<InputType> {
+export function getHandler(tab: vscode.Tab): TabTypeHandler<InputType> | undefined;
+export function getHandler(tab: vscode.Tab, useDefault: true): TabTypeHandler<InputType>;
+export function getHandler(tab: vscode.Tab, useDefault?: boolean): TabTypeHandler<InputType> | undefined {
 	for (const handler of handlers) {
 		if (handler.is(tab)) {
 			return handler;
 		}
 	}
 	
-	return unknownInputTypeHandler;
+	return useDefault ? unknownInputTypeHandler : undefined;
 }
 
 /**
@@ -99,10 +100,7 @@ export class TabInputTextHandler implements TabTypeHandler<vscode.TabInputText> 
 	}
 
 	getNormalizedId(tab: TypedTab<vscode.TabInputText>): string {
-		return JSON.stringify({
-			viewColumn: tab.group.viewColumn,
-			uri: tab.input.uri.toString()
-		});
+		return tab.input.uri.toString();
 	}
 
 	createTreeItem(tab: TypedTab<vscode.TabInputText>): vscode.TreeItem {
@@ -128,7 +126,6 @@ export class TabInputTextDiffHandler implements TabTypeHandler<vscode.TabInputTe
 
 	getNormalizedId(tab: TypedTab<vscode.TabInputTextDiff>): string {
 		return JSON.stringify({
-			viewColumn: tab.group.viewColumn,
 			original: tab.input.original.toJSON(),
 			modified: tab.input.modified.toJSON(),
 		});
@@ -159,7 +156,6 @@ export class  TabInputCustomHandler implements TabTypeHandler<vscode.TabInputCus
 	
 	getNormalizedId(tab: TypedTab<vscode.TabInputCustom>): string {
 		return JSON.stringify({
-			viewColumn: tab.group.viewColumn,
 			uri: tab.input.uri.path, // sometimes, the content in uri object changes although the resource is the same one.
 			viewType: tab.input.viewType,
 		});
@@ -187,10 +183,7 @@ export class TabInputWebviewHandler implements TabTypeHandler<vscode.TabInputWeb
 	}
 
 	getNormalizedId(tab: TypedTab<vscode.TabInputWebview>): string {
-		return JSON.stringify({
-			viewColumn: tab.group.viewColumn,
-			vewiType: tab.input.viewType,
-		});
+		return tab.input.viewType;
 	}
 
 	createTreeItem(tab: TypedTab<vscode.TabInputWebview>): vscode.TreeItem {
