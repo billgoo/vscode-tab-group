@@ -2,13 +2,13 @@ import { randomUUID } from 'crypto';
 import * as vscode from 'vscode';
 import { safeRemove } from './Arrays';
 import { getNextColorId } from './color';
-import { getHandler, unknownInputTypeHandler } from './TabTypeHandler';
+import { getHandler } from './TabTypeHandler';
 
 import { JSONLikeTab, JSONLikeGroup, JSONLikeType, DataStore } from './TabsViewDataStore';
+import { ExclusiveHandle } from './event';
+import { asPromise } from './async';
 
-type Tab = Omit<JSONLikeTab, "inputId"> & {
-	tab: vscode.Tab;
-};
+type Tab = JSONLikeTab;
 
 type Group = Omit<JSONLikeGroup, "children"> & {
 	children: Tab[];
@@ -22,7 +22,7 @@ class UnimplementedError extends Error {
 
 export class TabsView {
 	private treeDataProvider: TreeDataProvider = new TreeDataProvider();
-	private tabChanging = false;
+	private exclusiveHandle = new ExclusiveHandle();
 
 	constructor(context: vscode.ExtensionContext) {
 		const initialState = this.initializeState();
@@ -41,20 +41,14 @@ export class TabsView {
 			canSelectMany: true,
 		});
 
-		this.treeDataProvider.onDidChangeTreeData(() => {
-			this.saveState(this.treeDataProvider.getState());
-		});
+		this.treeDataProvider.onDidChangeTreeData(() => this.saveState(this.treeDataProvider.getState()));
 
 		context.subscriptions.push(view);
 		context.subscriptions.push(explorerView);
 
-		context.subscriptions.push(vscode.commands.registerCommand('tabsTreeView.tab.close', (tab: Tab) => {
-			vscode.window.tabGroups.close(tab.tab);
-		}));
+		context.subscriptions.push(vscode.commands.registerCommand('tabsTreeView.tab.close', (tab: Tab) => vscode.window.tabGroups.close(getNativeTabs(tab))));
 
-		context.subscriptions.push(vscode.commands.registerCommand('tabsTreeView.tab.ungroup', (tab: Tab) => {
-			this.treeDataProvider.ungroup(tab);
-		}));
+		context.subscriptions.push(vscode.commands.registerCommand('tabsTreeView.tab.ungroup', (tab: Tab) => this.treeDataProvider.ungroup(tab)));
 
 		context.subscriptions.push(vscode.commands.registerCommand('tabsTreeView.UngroupAll', () => {
 			DataStore.setState([]);
@@ -63,35 +57,27 @@ export class TabsView {
 		}));
 
 		context.subscriptions.push(vscode.window.tabGroups.onDidChangeTabs(e => {
-			this.treeDataProvider.removeTabs(e.closed);
 			this.treeDataProvider.appendTabs(e.opened);
+			this.treeDataProvider.removeTabs(e.closed);
 
 			if (e.changed[0] && e.changed[0].isActive) {
 				const tab = this.treeDataProvider.getTab(e.changed[0]);
 				if (tab) {
-					if (this.tabChanging) {
-						return;
-					}
-					this.tabChanging = true;
-					if (!view.visible) {
-						explorerView.reveal(tab, { select: true, expand: true }).then(() => { this.tabChanging = false }, () => { this.tabChanging = false });
-					}
-					if (view.visible) {
-						view.reveal(tab, { select: true, expand: true }).then(() => { this.tabChanging = false }, () => { this.tabChanging = false });
-					}
+					this.exclusiveHandle.run(() => {
+						const viewToReveal = view.visible ? view : explorerView;
+						return asPromise(viewToReveal.reveal(tab, { select: true, expand: true }));
+					});
 				}
 			}
+
+			this.treeDataProvider.triggerRerender();
 		}));
 
 		context.subscriptions.push(view.onDidChangeSelection(e => {
 			if (e.selection.length > 0) {
 				const item = e.selection[e.selection.length - 1];
 				if (item.type === JSONLikeType.Tab) {
-					if (this.tabChanging) {
-						return;
-					}
-					this.tabChanging = true;
-					this.treeDataProvider.activate(item).then(() => { this.tabChanging = false }, () => { this.tabChanging = false });
+					this.exclusiveHandle.run(() => asPromise(this.treeDataProvider.activate(item)));
 				}
 			}
 		}));
@@ -100,54 +86,58 @@ export class TabsView {
 			if (e.selection.length > 0) {
 				const item = e.selection[e.selection.length - 1];
 				if (item.type === JSONLikeType.Tab) {
-					if (this.tabChanging) {
-						return;
-					}
-					this.tabChanging = true;
-					this.treeDataProvider.activate(item).then(() => { this.tabChanging = false }, () => { this.tabChanging = false });
+					this.exclusiveHandle.run(() => asPromise(this.treeDataProvider.activate(item)));
 				}
 			}
 		}));
 	}
 
 	private initializeState(): Array<Tab | Group> {
-		const restoredItems = DataStore.getState() ?? [];
-		const currentTabs = vscode.window.tabGroups.all.flatMap(tabGroup => tabGroup.tabs);
-		return this.mergeState(restoredItems, currentTabs);
+		const jsonItems = DataStore.getState() ?? [];
+		const nativeTabs = vscode.window.tabGroups.all.flatMap(tabGroup => tabGroup.tabs);
+		return this.mergeState(jsonItems, nativeTabs);
 	}
 
-	private mergeState(restoredItems: Array<JSONLikeTab | JSONLikeGroup>, currentTabs: vscode.Tab[]): Array<Tab | Group> {
+	private mergeState(jsonItems: Array<JSONLikeTab | JSONLikeGroup>, nativeTabs: vscode.Tab[]): Array<Tab | Group> {
 		const mergedTabs: Array<Tab | Group> = [];
 
-		for (const restoredItem of restoredItems) {
-			if (restoredItem.type === JSONLikeType.Tab) {
-				const index = currentTabs.findIndex((currentTab) => this.isCorrespondingTab(currentTab, restoredItem));
+		for (const jsonItem of jsonItems) {
+			if (jsonItem.type === JSONLikeType.Tab) {
+				const correspondingTabs = nativeTabs.filter((nativeTab) => this.isCorrespondingTab(nativeTab, jsonItem));
 
-				if (index !== -1) {
-					mergedTabs.push({ ...restoredItem, tab: currentTabs[index] });
-					currentTabs.splice(index, 1);
+				if (correspondingTabs.length > 0) {
+					mergedTabs.push(jsonItem);
+					correspondingTabs.forEach(tab => safeRemove(nativeTabs, tab));
 				}
 			} else {
 				const children: Tab[] = [];
-				restoredItem.children.forEach(tab => {
-					const index = currentTabs.findIndex((currentTab) => this.isCorrespondingTab(currentTab, tab));
+				jsonItem.children.forEach(tab => {
+					const correspondingTabs = nativeTabs.filter((nativeTab) => this.isCorrespondingTab(nativeTab, tab));
 
-					if (index !== -1) {
-						children.push({ ...tab, tab: currentTabs[index]});
-						currentTabs.splice(index, 1);
+					if (correspondingTabs.length > 0) {
+						children.push(tab);
+						correspondingTabs.forEach(tab => safeRemove(nativeTabs, tab));
 					}
 				});
 
 				if (children.length > 0) {
-					mergedTabs.push({ ...restoredItem, children });
+					mergedTabs.push({ ...jsonItem, children });
 				}
 			}
 		}
 
-		mergedTabs.push(...currentTabs.filter(tab => {
-			const handler = getHandler(tab);
-			return handler !== undefined && handler !== unknownInputTypeHandler;
-		}).map<Tab>(tab => ({ type: JSONLikeType.Tab, groupId: null, tab })));
+		const tabMap: Record<string, Tab> = {};
+		nativeTabs.forEach(tab => {
+			try {
+				const id = getNormalizedInputId(tab);
+				if (!tabMap[id]) {
+					tabMap[id] = { type: JSONLikeType.Tab, groupId: null, inputId: getNormalizedInputId(tab) };
+					mergedTabs.push(tabMap[id]);
+				}
+			} catch {
+				// won't add unimplemented tab into tree
+			}
+		})
 
 		return mergedTabs;
 	}
@@ -157,7 +147,11 @@ export class TabsView {
 	}
 
 	private isCorrespondingTab(tab: vscode.Tab, jsonTab: JSONLikeTab): boolean {
-		return jsonTab.inputId === getNormalizedInputId(tab);
+		try {
+			return jsonTab.inputId === getNormalizedInputId(tab);
+		} catch {
+			return false;
+		}
 	}	
 }
 
@@ -173,14 +167,14 @@ function toJsonLikeTab(tab: Tab): JSONLikeTab {
 	return {
 		type: JSONLikeType.Tab,
 		groupId: null,
-		inputId: getNormalizedInputId(tab.tab),
+		inputId: tab.inputId,
 	};
 }
 
 function toJsonLikeGroup(group: Group): JSONLikeGroup {
 	return {
 		...group,
-		children: group.children.map(child => ({ type: JSONLikeType.Tab, groupId: group.id, inputId: getNormalizedInputId(child.tab) })),
+		children: group.children.map(child => ({ type: JSONLikeType.Tab, groupId: group.id, inputId: child.inputId })),
 	};
 }
 
@@ -191,6 +185,14 @@ function toJSONLikeState(state: Array<Tab | Group>): Array<JSONLikeTab | JSONLik
 		}
 
 		return toJsonLikeGroup(item);
+	});
+}
+
+function getNativeTabs(tab: Tab): vscode.Tab[] {
+	const currentNativeTabs = vscode.window.tabGroups.all.flatMap(tabGroup => tabGroup.tabs);
+	return currentNativeTabs.filter(nativeTab => {
+		const handler = getHandler(nativeTab);
+		return tab.inputId === handler?.getNormalizedId(nativeTab);
 	});
 }
 
@@ -232,7 +234,7 @@ class TreeDataProvider implements vscode.TreeDataProvider<Tab | Group>, vscode.T
 
 	getTreeItem(element: Tab | Group): vscode.TreeItem {
 		if (element.type === JSONLikeType.Tab) {
-			const inputId = getNormalizedInputId(element.tab);
+			const inputId = element.inputId;
 			if (!this.treeItemMap[inputId]) {
 				this.treeItemMap[inputId] = this.createTabTreeItem(element);
 			}
@@ -262,8 +264,13 @@ class TreeDataProvider implements vscode.TreeDataProvider<Tab | Group>, vscode.T
 	}
 
 	private createTabTreeItem(tab: Tab): vscode.TreeItem {
-		const handler = getHandler(tab.tab);
-		const treeItem = handler!.createTreeItem(tab.tab);
+		const nativeTabs = getNativeTabs(tab);
+		if (nativeTabs.length === 0) {
+			// todo: remove tab without any native Tab
+			return {};
+		}
+		const handler = getHandler(nativeTabs[0])!;
+		const treeItem = handler.createTreeItem(nativeTabs[0]);
 		return treeItem;
 	}
 
@@ -272,7 +279,7 @@ class TreeDataProvider implements vscode.TreeDataProvider<Tab | Group>, vscode.T
 		const isTab = (item: JSONLikeGroup | JSONLikeTab): item is JSONLikeTab => { return item.type === JSONLikeType.Tab; }
 		const draggedTabs: Array<JSONLikeTab> = draggeds.filter<JSONLikeTab>(isTab).filter(dragged => {
 			// get rid of dropping the tab on itself
-			return !(target?.type === JSONLikeType.Tab && getNormalizedInputId(target.tab) === dragged.inputId);
+			return !(target?.type === JSONLikeType.Tab && target.inputId === dragged.inputId);
 		});
 
 		draggedTabs.forEach(jsonTab => this.moveTab(this.tabMap[jsonTab.inputId], target));
@@ -348,37 +355,44 @@ class TreeDataProvider implements vscode.TreeDataProvider<Tab | Group>, vscode.T
 		this._onDidChangeTreeData.fire();
 	}
 
-	public removeTabs(originalTabs: readonly vscode.Tab[]) {
-		originalTabs.forEach((originalTab) => {
-			const inputId = getNormalizedInputId(originalTab);
-			const tab = this.tabMap[inputId];
-			if (tab.groupId) {
-				safeRemove(this.groupMap[tab.groupId].children, tab);
-			} else {
-				safeRemove(this.root, tab);
-			}
-			delete this.tabMap[inputId];
-		});
+	public removeTabs(nativeTabs: readonly vscode.Tab[]) {
+		nativeTabs.forEach((nativeTab) => {
+			try {
+				const inputId = getNormalizedInputId(nativeTab);
+				const tab = this.tabMap[inputId];
+				const nativeTabs = getNativeTabs(tab);
+				if (nativeTabs.length === 0) { // no more native Tabs for this ext Tab, delete it from ext tree
+					if (tab.groupId) {
+						safeRemove(this.groupMap[tab.groupId].children, tab);
+					} else {
+						safeRemove(this.root, tab);
+					}
+					delete this.tabMap[inputId];
+				}
 
-		this._onDidChangeTreeData.fire();
+			} catch {
+				// skip
+			}
+		});
 	}
 
-	public appendTabs(originalTabs: readonly vscode.Tab[]) {
-		originalTabs.forEach((originalTab) => {
-			const handler = getHandler(originalTab);
-			if (!handler || handler === unknownInputTypeHandler) {
-				return;
-			}
-			const inputId = handler.getNormalizedId(originalTab);
-			this.tabMap[inputId] = {
-				type: JSONLikeType.Tab,
-				groupId: null,
-				tab: originalTab,
-			};
-			this.root.push(this.tabMap[inputId]);
-		});
+	public appendTabs(nativeTabs: readonly vscode.Tab[]) {
+		nativeTabs.forEach((nativeTab) => {
+			try {
+				const inputId = getNormalizedInputId(nativeTab);
+				if (!this.tabMap[inputId]) {
+					this.tabMap[inputId] = {
+						type: JSONLikeType.Tab,
+						groupId: null,
+						inputId: inputId,
+					};
+					this.root.push(this.tabMap[inputId]);
+				}
 
-		this._onDidChangeTreeData.fire();
+			} catch {
+				// skip
+			}
+		});
 	}
 
 	async handleDrag(source: Array<Tab | Group>, treeDataTransfer: vscode.DataTransfer, token: vscode.CancellationToken): Promise<void> {
@@ -399,7 +413,7 @@ class TreeDataProvider implements vscode.TreeDataProvider<Tab | Group>, vscode.T
 		this.groupMap = {};
 		for (const item of this.root) {
 			if (item.type === JSONLikeType.Tab) {
-				this.tabMap[getNormalizedInputId(item.tab)] = item;
+				this.tabMap[item.inputId] = item;
 			} else {
 				this.groupMap[item.id] = item;
 			}
@@ -408,15 +422,17 @@ class TreeDataProvider implements vscode.TreeDataProvider<Tab | Group>, vscode.T
 	}
 
 	public async activate(tab: Tab): Promise<any> {
-		const handler = getHandler(tab.tab);
-		if (!handler || handler === unknownInputTypeHandler) {
-			return Promise.resolve();
-		}
-		return handler.openEditor(tab.tab);
+		const nativeTabs = getNativeTabs(tab);
+		const handler = getHandler(nativeTabs[0])!;
+		return handler.openEditor(nativeTabs[0]);
 	}
 
-	public getTab(originalTab: vscode.Tab): Tab | undefined {
-		const inputId = getNormalizedInputId(originalTab);
+	public getTab(nativeTab: vscode.Tab): Tab | undefined {
+		const inputId = getNormalizedInputId(nativeTab);
 		return this.tabMap[inputId];
+	}
+
+	public triggerRerender() {
+		this._onDidChangeTreeData.fire();
 	}
 }

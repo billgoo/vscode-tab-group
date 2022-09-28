@@ -1,13 +1,12 @@
 import * as vscode from 'vscode';
 
-type InputType = vscode.Tab["input"];
-type KnownInputType = Exclude<InputType, unknown>;
+export type InputType = vscode.Tab["input"];
 
 type TypedTab<T extends InputType> = vscode.Tab & {
 	input: T;
 };
 
-interface TabTypeHandler<T extends InputType> {
+export interface TabTypeHandler<T extends InputType> {
 	readonly name: string;
 
 	is(tab: vscode.Tab): tab is TypedTab<T>;
@@ -21,7 +20,7 @@ interface TabTypeHandler<T extends InputType> {
 	openEditor(tab: TypedTab<T>): Promise<void>;
 }
 
-const handlers: TabTypeHandler<KnownInputType>[] = [];
+const handlers: TabTypeHandler<InputType>[] = [];
 
 function getNormalizedIdForUnknownObject(input: Object): string {
 	const getNormalizedObject = (object: any, depth: number = 2) => {
@@ -71,14 +70,16 @@ export class UnknownInputTypeHandler implements TabTypeHandler<unknown> {
 
 export const unknownInputTypeHandler = new UnknownInputTypeHandler();
 
-export function getHandler(tab: vscode.Tab): TabTypeHandler<InputType> {
+export function getHandler(tab: vscode.Tab): TabTypeHandler<InputType> | undefined;
+export function getHandler(tab: vscode.Tab, useDefault: true): TabTypeHandler<InputType>;
+export function getHandler(tab: vscode.Tab, useDefault?: boolean): TabTypeHandler<InputType> | undefined {
 	for (const handler of handlers) {
 		if (handler.is(tab)) {
 			return handler;
 		}
 	}
 	
-	return unknownInputTypeHandler;
+	return useDefault ? unknownInputTypeHandler : undefined;
 }
 
 /**
@@ -107,7 +108,10 @@ export class TabInputTextHandler implements TabTypeHandler<vscode.TabInputText> 
 	}
 
 	async openEditor(tab: TypedTab<vscode.TabInputText>): Promise<void> {
-		await vscode.window.showTextDocument(tab.input.uri);
+		await vscode.commands.executeCommand("vscode.open", tab.input.uri, { viewColumn: tab.group.viewColumn }).then(
+			undefined,
+			(e) => console.error(e)
+		);
 		return;
 	}
 }
@@ -179,7 +183,7 @@ export class TabInputWebviewHandler implements TabTypeHandler<vscode.TabInputWeb
 	}
 
 	getNormalizedId(tab: TypedTab<vscode.TabInputWebview>): string {
-		return tab.label;
+		return tab.input.viewType;
 	}
 
 	createTreeItem(tab: TypedTab<vscode.TabInputWebview>): vscode.TreeItem {

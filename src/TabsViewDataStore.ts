@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-export enum JSONLikeType {
+export const enum JSONLikeType {
 	Tab,
 	Group,
 };
