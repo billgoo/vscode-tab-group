@@ -1,9 +1,9 @@
 {
 	"name": "tab-group",
 	"displayName": "Tab Group",
-	"description": "Chrome/Edge Tab Group in VSCode",
+	"description": "Edge's vertical Tab Group in VSCode",
 	"publisher": "microsoft-hackthon",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
