@@ -3,12 +3,13 @@
 	"displayName": "Tab Group",
 	"description": "Edge's vertical Tab Group in VSCode",
 	"publisher": "microsoft-hackthon",
-	"version": "0.0.2",
+	"version": "1.0.0",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/billgoo/vscode-tab-group"
 	},
+	"icon": "media/icon.png",
 	"engines": {
 		"vscode": "^1.71.0"
 	},
@@ -22,7 +23,7 @@
 				{
 					"id": "tabs",
 					"title": "Tabs",
-					"icon": "$(layout-sidebar-left)"
+					"icon": "media/icon.svg"
 				}
 			]
 		},
