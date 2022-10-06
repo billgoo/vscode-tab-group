@@ -2,12 +2,25 @@
 	"name": "tab-group",
 	"displayName": "Tab Group",
 	"description": "Edge's vertical Tab Group in VSCode",
-	"publisher": "microsoft-hackthon",
+	"publisher": "jiapeiyao",
 	"version": "1.0.0",
 	"license": "MIT",
+	"contributors": [
+		{
+			"name": "Jiapei Yao",
+			"email": "charlesyjp@gmail.com"
+		},
+		{
+			"name": "Bill Goo",
+			"email": "billgoo0813@gmail.com"
+		}
+	],
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/billgoo/vscode-tab-group"
+	},
+	"bugs": {
+		"url": "https://github.com/billgoo/vscode-tab-group/issues"
 	},
 	"icon": "media/icon.png",
 	"engines": {
