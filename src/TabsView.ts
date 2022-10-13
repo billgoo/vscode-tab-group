@@ -64,7 +64,7 @@ export class TabsView {
 				const tab = this.treeDataProvider.getTab(e.changed[0]);
 				if (tab) {
 					this.exclusiveHandle.run(() => {
-						const viewToReveal = view.visible ? view : explorerView;
+						const viewToReveal = view.visible ? view : explorerView; // todo: only reveal when the view is visible
 						return asPromise(viewToReveal.reveal(tab, { select: true, expand: true }));
 					});
 				}
