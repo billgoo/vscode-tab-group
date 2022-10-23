@@ -1,23 +1,5 @@
 import * as vscode from 'vscode';
-
-export const enum JSONLikeType {
-	Tab,
-	Group,
-};
-
-export type JSONLikeGroup = {
-	readonly type: JSONLikeType.Group;
-	readonly id: string;
-	colorId: string;
-	label: string;
-	children: JSONLikeTab[];
-};
-
-export type JSONLikeTab = {
-	readonly type: JSONLikeType.Tab;
-	groupId: string | null;
-	inputId: string;
-};
+import { Group, Tab } from './types';
 
 export class DataStore {
 	private static readonly workspaceStateKey = 'tabs.workspace.state.key';
@@ -27,7 +9,7 @@ export class DataStore {
 		DataStore.context = context;
 	}
 
-	static getState(): Array<JSONLikeTab | JSONLikeGroup> | undefined {
+	static getState(): Array<Tab | Group> | undefined {
 		return DataStore.context.workspaceState.get(DataStore.workspaceStateKey);
 	}
 
@@ -35,7 +17,7 @@ export class DataStore {
 	 * 
 	 * @param state state information that can be "JSON.stringify"ed 
 	 */
-	static setState(state: Array<JSONLikeTab | JSONLikeGroup> | undefined) {
+	static setState(state: Array<Tab | Group> | undefined) {
 		DataStore.context.workspaceState.update(DataStore.workspaceStateKey, state);
 	}
 }

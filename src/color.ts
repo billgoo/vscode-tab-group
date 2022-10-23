@@ -1,4 +1,4 @@
-import * as vscode from 'vscode';
+
 let index = 0;
 
 const colorIds = [
@@ -12,9 +12,7 @@ const colorIds = [
 	"charts.purple",
 ];
 
-export const themeColors = colorIds.map(colorId => new vscode.ThemeColor(colorId));
-
 export function getNextColorId(): string {
-	index = (index + 1) % themeColors.length;
+	index = (index + 1) % colorIds.length;
 	return colorIds[index];
 }
