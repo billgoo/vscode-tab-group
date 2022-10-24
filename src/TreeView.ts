@@ -125,7 +125,7 @@ export class TabsView extends Disposable {
 			try {
 				const id = getNormalizedTabId(tab);
 				if (!tabMap[id]) {
-					tabMap[id] = { type: TreeItemType.Tab, groupId: null, id: getNormalizedTabId(tab) };
+					tabMap[id] = { type: TreeItemType.Tab, groupId: null, id };
 					mergedTabs.push(tabMap[id]);
 				}
 			} catch {

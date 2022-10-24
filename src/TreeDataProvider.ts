@@ -132,8 +132,12 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 	}
 
 	public getTab(nativeTab: vscode.Tab): Tab | undefined {
-		const tabId = getNormalizedTabId(nativeTab);
-		return this.treeData.getTab(tabId);
+		try {
+			const tabId = getNormalizedTabId(nativeTab);
+			return this.treeData.getTab(tabId);
+		} catch {
+			return undefined;
+		}
 	}
 
 	public getState(): Array<Tab | Group> {
