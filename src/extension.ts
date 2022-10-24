@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
-import { DataStore } from './TabsViewDataStore';
+import { WorkspaceState } from './WorkspaceState';
 import { TabsView } from './TreeView';
 
 function activate(context: vscode.ExtensionContext) {
-	DataStore.use(context);
+	WorkspaceState.use(context);
 	context.subscriptions.push(new TabsView());
 }
 

@@ -46,6 +46,10 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 			treeItem.contextValue = 'group';
 			treeItem.iconPath = new vscode.ThemeIcon('layout-sidebar-left', new vscode.ThemeColor(element.colorId));
 			this.treeItemMap[element.id] = treeItem;
+		} else {
+			const treeItem = this.treeItemMap[element.id];
+			treeItem.label = element.label;
+			treeItem.iconPath = new vscode.ThemeIcon('layout-sidebar-left', new vscode.ThemeColor(element.colorId));
 		}
 		return this.treeItemMap[element.id]
 	}
@@ -138,6 +142,16 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 
 	public ungroup(tab: Tab) {
 		this.treeData.ungroup([tab]);
+		this.triggerRerender();
+	}
+
+	public renameGroup(group: Group, input: string): void {
+		this.treeData.renameGroup(group, input);
+		this.triggerRerender();
+	}
+
+	public ungroupEntireGroup(group: Group): void {
+		this.treeData.ungroupEntireGroup(group);
 		this.triggerRerender();
 	}
 }

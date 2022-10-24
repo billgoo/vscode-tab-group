@@ -1,9 +1,7 @@
-import { randomUUID } from 'crypto';
+
 import * as vscode from 'vscode';
-import { safeRemove } from './Arrays';
-import { getNextColorId } from './color';
-import { getHandler, getNormalizedTabId } from './TabTypeHandler';
-import { DataStore } from './TabsViewDataStore';
+import { getNormalizedTabId } from './TabTypeHandler';
+import { WorkspaceState } from './WorkspaceState';
 import { ExclusiveHandle } from './event';
 import { asPromise } from './async';
 import { Group, Tab, TreeItemType } from './types';
@@ -40,11 +38,17 @@ export class TabsView extends Disposable {
 
 		this._register(vscode.commands.registerCommand('tabsTreeView.tab.ungroup', (tab: Tab) => this.treeDataProvider.ungroup(tab)));
 
-		this._register(vscode.commands.registerCommand('tabsTreeView.UngroupAll', () => {
-			DataStore.setState([]);
+		this._register(vscode.commands.registerCommand('tabsTreeView.Reset', () => {
+			WorkspaceState.setState([]);
 			const initialState = this.initializeState();
 			this.treeDataProvider.setState(initialState);
 		}));
+
+		this._register(vscode.commands.registerCommand('tabsTreeView.group.rename', (group: Group) => {
+			vscode.window.showInputBox().then(input => this.treeDataProvider.renameGroup(group, input ?? ''))
+		}));
+
+		this._register(vscode.commands.registerCommand('tabsTreeView.group.ungroup', (group: Group) => this.treeDataProvider.ungroupEntireGroup(group)));
 
 		this._register(vscode.window.tabGroups.onDidChangeTabs(e => {
 			this.treeDataProvider.appendTabs(e.opened);
@@ -84,7 +88,7 @@ export class TabsView extends Disposable {
 	}
 
 	private initializeState(): Array<Tab | Group> {
-		const jsonItems = DataStore.getState() ?? [];
+		const jsonItems = WorkspaceState.getState() ?? [];
 		const nativeTabs = vscode.window.tabGroups.all.flatMap(tabGroup => tabGroup.tabs);
 		return this.mergeState(jsonItems, nativeTabs);
 	}
@@ -133,7 +137,7 @@ export class TabsView extends Disposable {
 	}
 
 	private saveState(state: Array<Tab | Group>): void {
-		DataStore.setState(state);
+		WorkspaceState.setState(state);
 	}
 
 	private isCorrespondingTab(tab: vscode.Tab, jsonTab: Tab): boolean {

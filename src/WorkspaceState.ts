@@ -1,16 +1,16 @@
 import * as vscode from 'vscode';
 import { Group, Tab } from './types';
 
-export class DataStore {
+export class WorkspaceState {
 	private static readonly workspaceStateKey = 'tabs.workspace.state.key';
 	private static context: vscode.ExtensionContext;
 
 	static use(context: vscode.ExtensionContext) {
-		DataStore.context = context;
+		WorkspaceState.context = context;
 	}
 
 	static getState(): Array<Tab | Group> | undefined {
-		return DataStore.context.workspaceState.get(DataStore.workspaceStateKey);
+		return WorkspaceState.context.workspaceState.get(WorkspaceState.workspaceStateKey);
 	}
 
 	/**
@@ -18,6 +18,6 @@ export class DataStore {
 	 * @param state state information that can be "JSON.stringify"ed 
 	 */
 	static setState(state: Array<Tab | Group> | undefined) {
-		DataStore.context.workspaceState.update(DataStore.workspaceStateKey, state);
+		WorkspaceState.context.workspaceState.update(WorkspaceState.workspaceStateKey, state);
 	}
 }

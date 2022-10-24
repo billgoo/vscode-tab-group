@@ -147,4 +147,12 @@ export class TreeData {
 	public getTab(tabId: string): Tab | undefined {
 		return this.tabMap[tabId];
 	}
+
+	public renameGroup(group: Group, input: string): void {
+		group.label = input;
+	}
+
+	public ungroupEntireGroup(group: Group): void {
+		this.ungroup(group.children.slice(0).reverse());
+	}
 }
