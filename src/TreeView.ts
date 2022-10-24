@@ -45,7 +45,11 @@ export class TabsView extends Disposable {
 		}));
 
 		this._register(vscode.commands.registerCommand('tabsTreeView.group.rename', (group: Group) => {
-			vscode.window.showInputBox().then(input => this.treeDataProvider.renameGroup(group, input ?? ''))
+			vscode.window.showInputBox().then(input => {
+				if (input) {
+					this.treeDataProvider.renameGroup(group, input);
+				}
+			})
 		}));
 
 		this._register(vscode.commands.registerCommand('tabsTreeView.group.cancelGroup', (group: Group) => this.treeDataProvider.cancelGroup(group)));
