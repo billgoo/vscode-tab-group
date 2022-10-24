@@ -48,7 +48,7 @@ export class TabsView extends Disposable {
 			vscode.window.showInputBox().then(input => this.treeDataProvider.renameGroup(group, input ?? ''))
 		}));
 
-		this._register(vscode.commands.registerCommand('tabsTreeView.group.ungroup', (group: Group) => this.treeDataProvider.ungroupEntireGroup(group)));
+		this._register(vscode.commands.registerCommand('tabsTreeView.group.cancelGroup', (group: Group) => this.treeDataProvider.cancelGroup(group)));
 
 		this._register(vscode.window.tabGroups.onDidChangeTabs(e => {
 			this.treeDataProvider.appendTabs(e.opened);

@@ -84,8 +84,8 @@
 				"icon": "$(edit)"
 			},
 			{
-				"command": "tabsTreeView.group.ungroup",
-				"title": "Rename Group",
+				"command": "tabsTreeView.group.cancelGroup",
+				"title": "Cancel Group",
 				"icon": "$(array)"
 			}
 		],
@@ -107,7 +107,7 @@
 					"group": "inline@0"
 				},
 				{
-					"command": "tabsTreeView.group.ungroup",
+					"command": "tabsTreeView.group.cancelGroup",
 					"when": "view =~ /^tabsTreeView/ && viewItem == 'group'",
 					"group": "inline@1"
 				}

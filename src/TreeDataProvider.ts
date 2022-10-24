@@ -150,8 +150,8 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 		this.triggerRerender();
 	}
 
-	public ungroupEntireGroup(group: Group): void {
-		this.treeData.ungroupEntireGroup(group);
+	public cancelGroup(group: Group): void {
+		this.treeData.cancelGroup(group);
 		this.triggerRerender();
 	}
 }

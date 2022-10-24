@@ -152,7 +152,7 @@ export class TreeData {
 		group.label = input;
 	}
 
-	public ungroupEntireGroup(group: Group): void {
+	public cancelGroup(group: Group): void {
 		this.ungroup(group.children.slice(0).reverse());
 	}
 }
