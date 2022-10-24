@@ -1,11 +1,10 @@
 import * as vscode from 'vscode';
-import { TabsView } from './TabsView';
-import { DataStore } from './TabsViewDataStore';
+import { WorkspaceState } from './WorkspaceState';
+import { TabsView } from './TreeView';
 
 function activate(context: vscode.ExtensionContext) {
-	DataStore.use(context);
-
-	new TabsView(context);
+	WorkspaceState.use(context);
+	context.subscriptions.push(new TabsView());
 }
 
 // this method is called when your extension is deactivated

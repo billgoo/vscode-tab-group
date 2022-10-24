@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { Tab } from './types';
 
 export type InputType = vscode.Tab["input"];
 
@@ -193,4 +194,18 @@ export class TabInputWebviewHandler implements TabTypeHandler<vscode.TabInputWeb
 	async openEditor(tab: TypedTab<vscode.TabInputWebview>): Promise<void> {
 		return Promise.resolve();
 	}
+}
+
+class UnimplementedError extends Error {
+	constructor(message?: string) {
+		super(message);
+	}
+}
+
+export function getNormalizedTabId(tab: vscode.Tab): string {
+	const handler = getHandler(tab);
+	if (!handler) {
+		throw new UnimplementedError();
+	}
+	return handler.getNormalizedId(tab);
 }

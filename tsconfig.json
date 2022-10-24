@@ -7,7 +7,8 @@
 		"sourceMap": true,
 		"rootDir": "src",
 		"strict": true,
-		"experimentalDecorators": true
+		"experimentalDecorators": true,
+		"skipLibCheck": true
 	},
 	"exclude": [
 		"node_modules",

@@ -2,13 +2,30 @@
 	"name": "tab-group",
 	"displayName": "Tab Group",
 	"description": "Edge's vertical Tab Group in VSCode",
-	"publisher": "microsoft-hackthon",
-	"version": "0.0.2",
+	"publisher": "jiapeiyao",
+	"version": "2.0.0",
 	"license": "MIT",
+	"contributors": [
+		{
+			"name": "Jiapei Yao",
+			"email": "charlesyjp@gmail.com"
+		},
+		{
+			"name": "Bill Goo",
+			"email": "billgoo0813@gmail.com"
+		}
+	],
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/billgoo/vscode-tab-group"
 	},
+	"bugs": {
+		"url": "https://github.com/billgoo/vscode-tab-group/issues"
+	},
+	"categories": [
+		"Other"
+	],
+	"icon": "media/icon.png",
 	"engines": {
 		"vscode": "^1.71.0"
 	},
@@ -21,8 +38,8 @@
 			"activitybar": [
 				{
 					"id": "tabs",
-					"title": "Tabs",
-					"icon": "$(layout-sidebar-left)"
+					"title": "Tab Group",
+					"icon": "media/icon.svg"
 				}
 			]
 		},
@@ -31,7 +48,7 @@
 				{
 					"id": "tabsTreeView",
 					"name": "Tabs",
-					"icon": "$(layout-sidebar-left)",
+					"icon": "media/icon.svg",
 					"contextualTitle": "Tabs"
 				}
 			],
@@ -57,27 +74,47 @@
 				"icon": "$(array)"
 			},
 			{
-				"command": "tabsTreeView.UngroupAll",
-				"title": "Ungroup All",
+				"command": "tabsTreeView.Reset",
+				"title": "Reset All",
 				"icon": "$(clear-all)"
+			},
+			{
+				"command": "tabsTreeView.group.rename",
+				"title": "Rename Group",
+				"icon": "$(edit)"
+			},
+			{
+				"command": "tabsTreeView.group.cancelGroup",
+				"title": "Cancel Group",
+				"icon": "$(array)"
 			}
 		],
 		"menus": {
 			"view/item/context": [
 				{
 					"command": "tabsTreeView.tab.ungroup",
-					"when": "view == tabsTreeView && viewItem == 'grouped-tab' || view == tabsTreeViewInExplorer && viewItem == 'grouped-tab'",
+					"when": "view =~ /^tabsTreeView/ && viewItem == 'grouped-tab'",
 					"group": "inline@0"
 				},
 				{
 					"command": "tabsTreeView.tab.close",
-					"when": "view == tabsTreeView && viewItem =~ /tab/ || view == tabsTreeViewInExplorer && viewItem =~ /tab/",
+					"when": "view =~ /^tabsTreeView/ && viewItem =~ /tab/",
+					"group": "inline@1"
+				},
+				{
+					"command": "tabsTreeView.group.rename",
+					"when": "view =~ /^tabsTreeView/ && viewItem == 'group'",
+					"group": "inline@0"
+				},
+				{
+					"command": "tabsTreeView.group.cancelGroup",
+					"when": "view =~ /^tabsTreeView/ && viewItem == 'group'",
 					"group": "inline@1"
 				}
 			],
 			"view/title": [
 				{
-					"command": "tabsTreeView.UngroupAll",
+					"command": "tabsTreeView.Reset",
 					"when": "view == tabsTreeView || view == tabsTreeViewInExplorer",
 					"group": "navigation"
 				}
@@ -87,11 +124,15 @@
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
 		"compile": "tsc -p ./",
-		"watch": "tsc -watch -p ./"
+		"watch": "tsc -watch -p ./",
+		"test": "jest"
 	},
 	"devDependencies": {
+		"@types/jest": "^29.1.2",
 		"@types/node": "^18.7.15",
 		"@types/vscode": "^1.71.0",
+		"jest": "^29.1.2",
+		"ts-jest": "^29.0.3",
 		"typescript": "^4.8.2"
 	}
 }
