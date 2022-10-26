@@ -74,11 +74,6 @@
 				"icon": "$(array)"
 			},
 			{
-				"command": "tabsTreeView.Reset",
-				"title": "Reset All",
-				"icon": "$(clear-all)"
-			},
-			{
 				"command": "tabsTreeView.group.rename",
 				"title": "Rename Group",
 				"icon": "$(edit)"
@@ -87,6 +82,21 @@
 				"command": "tabsTreeView.group.cancelGroup",
 				"title": "Cancel Group",
 				"icon": "$(array)"
+			},
+			{
+				"command": "tabsTreeView.enableSortMode",
+				"title": "Sort Mode",
+				"icon": "$(selection)"
+			},
+			{
+				"command": "tabsTreeView.disableSortMode",
+				"title": "Done",
+				"icon": "$(check)"
+			},
+			{
+				"command": "tabsTreeView.reset",
+				"title": "Reset All",
+				"icon": "$(clear-all)"
 			}
 		],
 		"menus": {
@@ -114,9 +124,19 @@
 			],
 			"view/title": [
 				{
-					"command": "tabsTreeView.Reset",
-					"when": "view == tabsTreeView || view == tabsTreeViewInExplorer",
-					"group": "navigation"
+					"command": "tabsTreeView.enableSortMode",
+					"when": "view =~ /^tabsTreeView/ && !tabGroup.sortMode:enabled",
+					"group": "navigation@1"
+				},
+				{
+					"command": "tabsTreeView.disableSortMode",
+					"when": "view =~ /^tabsTreeView/ && tabGroup.sortMode:enabled",
+					"group": "navigation@1"
+				},
+				{
+					"command": "tabsTreeView.reset",
+					"when": "view =~ /^tabsTreeView/",
+					"group": "navigation@9"
 				}
 			]
 		}

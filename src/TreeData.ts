@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { safeRemove } from './Arrays';
 import { getNextColorId } from './color';
-import { Group, TreeItemType, Tab, isGroup } from './types';
+import { Group, TreeItemType, Tab, isGroup, isTab } from './types';
 
 export class TreeData {
 	private root: Array<Tab | Group> = [];
@@ -35,7 +35,13 @@ export class TreeData {
 	}
 
 	private removeEmptyGroups() {
-		this.root = this.root.filter(item => !(isGroup(item) && item.children.length === 0));
+		for (let i = this.root.length - 1; i >= 0; i--) {
+			const item = this.root[i];
+			if (isGroup(item) && item.children.length === 0) {
+				this.root.splice(i, 1);
+				delete this.groupMap[item.id];
+			}
+		}
 	}
 
 	getChildren(element?: Tab | Group): Array<Tab | Group> | null {
@@ -114,7 +120,7 @@ export class TreeData {
 	}
 
 
-	public ungroup(tabs: Tab[]) {
+	public ungroup(tabs: Tab[], pushBack: boolean = false) {
 		tabs.forEach(tab => {
 			if (tab.groupId === null) {
 				return;
@@ -123,7 +129,7 @@ export class TreeData {
 			const index = this.root.indexOf(group);
 			safeRemove(group.children, tab);
 			tab.groupId = null;
-			this._insertTabToRoot(tab, index + 1);
+			this._insertTabToRoot(tab, pushBack ? undefined : index + 1);
 		});
 	}
 
@@ -154,5 +160,44 @@ export class TreeData {
 
 	public cancelGroup(group: Group): void {
 		this.ungroup(group.children.slice(0).reverse());
+	}
+
+	public moveTo(target: Tab | Group, draggeds: Array<Tab | Group>) {
+		if (isTab(target) && target.groupId) {
+			const draggedTabs: Array<Tab> = draggeds.filter(isTab);
+			draggedTabs.forEach(tab => this._removeTab(tab));
+			const group = this.groupMap[target.groupId];
+			group.children.splice(group.children.indexOf(target), 0, ...draggedTabs);
+			draggedTabs.forEach(tab => tab.groupId = target.groupId);
+			return;
+		}
+
+		draggeds.forEach(dragged => {
+			if (isGroup(dragged)) {
+				safeRemove(this.root, dragged);
+			} else {
+				this._removeTab(dragged)
+			}
+		});
+		this.root.splice(this.root.indexOf(target), 0, ...draggeds);
+	}
+	
+	public pushBack(groupId: string | null, draggeds: (Tab | Group)[]) {
+		if (groupId) {
+			const draggedTabs: Array<Tab> = draggeds.filter(isTab);
+			draggedTabs.forEach(tab => this._removeTab(tab));
+			this.groupMap[groupId].children.push(...draggedTabs);
+			draggedTabs.forEach(tab => tab.groupId = groupId);
+			return;
+		}
+
+		draggeds.forEach(dragged => {
+			if (isGroup(dragged)) {
+				safeRemove(this.root, dragged);
+			} else {
+				this._removeTab(dragged)
+			}
+		});
+		this.root.push(...draggeds);
 	}
 }

@@ -7,6 +7,7 @@ import { asPromise } from './async';
 import { Group, Tab, TreeItemType } from './types';
 import { getNativeTabs, TreeDataProvider } from './TreeDataProvider';
 import { Disposable } from './lifecycle';
+import { ContextKeys, setContext } from './context';
 
 
 
@@ -37,13 +38,7 @@ export class TabsView extends Disposable {
 		this._register(vscode.commands.registerCommand('tabsTreeView.tab.close', (tab: Tab) => vscode.window.tabGroups.close(getNativeTabs(tab))));
 
 		this._register(vscode.commands.registerCommand('tabsTreeView.tab.ungroup', (tab: Tab) => this.treeDataProvider.ungroup(tab)));
-
-		this._register(vscode.commands.registerCommand('tabsTreeView.Reset', () => {
-			WorkspaceState.setState([]);
-			const initialState = this.initializeState();
-			this.treeDataProvider.setState(initialState);
-		}));
-
+		
 		this._register(vscode.commands.registerCommand('tabsTreeView.group.rename', (group: Group) => {
 			vscode.window.showInputBox().then(input => {
 				if (input) {
@@ -51,13 +46,31 @@ export class TabsView extends Disposable {
 				}
 			})
 		}));
-
+		
 		this._register(vscode.commands.registerCommand('tabsTreeView.group.cancelGroup', (group: Group) => this.treeDataProvider.cancelGroup(group)));
+		
+		this._register(vscode.commands.registerCommand('tabsTreeView.reset', () => {
+			WorkspaceState.setState([]);
+			const initialState = this.initializeState();
+			this.treeDataProvider.setState(initialState);
+		}));
+		
+		this._register(vscode.commands.registerCommand('tabsTreeView.enableSortMode', () => {
+			setContext(ContextKeys.SortMode, true);
+			view.title = (view.title ?? '') + ' (SORTING)';
+			this.treeDataProvider.toggleSortMode(true);
+		}));
 
+		this._register(vscode.commands.registerCommand('tabsTreeView.disableSortMode', () => {
+			setContext(ContextKeys.SortMode, false);
+			view.title = (view.title ?? '').replace(' (SORTING)', '');
+			this.treeDataProvider.toggleSortMode(false);
+		}));
+		
 		this._register(vscode.window.tabGroups.onDidChangeTabs(e => {
 			this.treeDataProvider.appendTabs(e.opened);
 			this.treeDataProvider.closeTabs(e.closed);
-
+			
 			if (e.changed[0] && e.changed[0].isActive) {
 				const tab = this.treeDataProvider.getTab(e.changed[0]);
 				if (tab) {
@@ -68,10 +81,10 @@ export class TabsView extends Disposable {
 					}
 				}
 			}
-
+			
 			this.treeDataProvider.triggerRerender();
 		}));
-
+		
 		this._register(view.onDidChangeSelection(e => {
 			if (e.selection.length > 0) {
 				const item = e.selection[e.selection.length - 1];
@@ -80,7 +93,7 @@ export class TabsView extends Disposable {
 				}
 			}
 		}));
-
+		
 		this._register(explorerView.onDidChangeSelection(e => {
 			if (e.selection.length > 0) {
 				const item = e.selection[e.selection.length - 1];
