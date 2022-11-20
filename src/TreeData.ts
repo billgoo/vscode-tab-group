@@ -25,6 +25,9 @@ export class TreeData {
 				this.tabMap[item.id] = item;
 			} else {
 				this.groupMap[item.id] = item;
+				for (const child of item.children) {
+					this.tabMap[child.id] = child;
+				}
 			}
 		}
 	}
