@@ -59,7 +59,7 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 		}
 
 		if (!this.treeItemMap[element.id]) {
-			const treeItem = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.Expanded);
+			const treeItem = new vscode.TreeItem(element.label, element.collapsed ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.Expanded);
 			treeItem.contextValue = 'group';
 			treeItem.iconPath = new vscode.ThemeIcon('layout-sidebar-left', new vscode.ThemeColor(element.colorId));
 			this.treeItemMap[element.id] = treeItem;
@@ -196,5 +196,14 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 	public toggleSortMode(sortMode: boolean) {
 		this.sortMode = sortMode;
 		this.triggerRerender();
+	}
+
+	public isAllCollapsed(): boolean {
+		return this.treeData.isAllCollapsed();
+	}
+
+	public setCollapsedState(group: Group, collapsed: boolean) {
+		this.treeData.setCollapsedState(group, collapsed);
+		// sync data from tree view, so rerendering is not needed
 	}
 }

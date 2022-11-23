@@ -3,7 +3,7 @@
 	"displayName": "Tab Group",
 	"description": "Edge's vertical Tab Group in VSCode",
 	"publisher": "jiapeiyao",
-	"version": "2.0.1",
+	"version": "2.0.2",
 	"license": "MIT",
 	"contributors": [
 		{
@@ -51,15 +51,6 @@
 					"icon": "media/icon.svg",
 					"contextualTitle": "Tabs"
 				}
-			],
-			"explorer": [
-				{
-					"id": "tabsTreeViewInExplorer",
-					"name": "Tabs",
-					"contextualTitle": "Tabs",
-					"visibility": "visible",
-					"size": 600
-				}
 			]
 		},
 		"commands": [
@@ -92,6 +83,16 @@
 				"command": "tabsTreeView.disableSortMode",
 				"title": "Done",
 				"icon": "$(check)"
+			},
+			{
+				"command": "tabsTreeView.collapseAll",
+				"title": "Collapse All",
+				"icon": "$(collapse-all)"
+			},
+			{
+				"command": "tabsTreeView.expandAll",
+				"title": "Expand All",
+				"icon": "$(expand-all)"
 			},
 			{
 				"command": "tabsTreeView.reset",
@@ -132,6 +133,16 @@
 					"command": "tabsTreeView.disableSortMode",
 					"when": "view =~ /^tabsTreeView/ && tabGroup.sortMode:enabled",
 					"group": "navigation@1"
+				},				
+				{
+					"command": "tabsTreeView.collapseAll",
+					"when": "view =~ /^tabsTreeView/ && !tabGroup.groups:allCollapsed",
+					"group": "navigation@8"
+				},
+				{
+					"command": "tabsTreeView.expandAll",
+					"when": "view =~ /^tabsTreeView/ && tabGroup.groups:allCollapsed",
+					"group": "navigation@8"
 				},
 				{
 					"command": "tabsTreeView.reset",

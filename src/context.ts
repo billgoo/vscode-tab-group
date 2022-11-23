@@ -2,7 +2,8 @@ import * as vscode from 'vscode';
 import { asPromise } from './async';
 
 export const enum ContextKeys {
-	SortMode ='tabGroup.sortMode:enabled',
+	SortMode = 'tabGroup.sortMode:enabled',
+	AllCollapsed = 'tabGroup.groups:allCollapsed',
 };
 
 const context: Record<string, any> = {};

@@ -109,6 +109,7 @@ export class TreeData {
 			id: randomUUID(),
 			label: '',
 			children: [],
+			collapsed: false,
 		};
 		this.groupMap[group.id] = group;
 		this.root.splice(this.root.indexOf(target), 1, group);
@@ -202,5 +203,18 @@ export class TreeData {
 			}
 		});
 		this.root.push(...draggeds);
+	}
+
+	public isAllCollapsed(): boolean {
+		for (const item of this.root) {
+			if (isGroup(item) && !item.collapsed) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	public setCollapsedState(group: Group, collapsed: boolean) {
+		this.groupMap[group.id].collapsed = collapsed;
 	}
 }

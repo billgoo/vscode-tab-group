@@ -10,6 +10,7 @@ export type Group = {
 	colorId: string;
 	label: string;
 	children: Tab[];
+	collapsed: boolean;
 };
 
 export type Tab = {
