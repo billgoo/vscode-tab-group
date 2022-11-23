@@ -120,7 +120,19 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 		if (target === undefined) {
 			this.treeData.ungroup(tabs, true);
 		} else {
+			const isCreatingNewGroup = isTab(target) && target.groupId === null && tabs.length > 0;
 			this.treeData.group(target, tabs);
+			
+			if (isCreatingNewGroup && tabs[0].groupId !== null) {
+				const group = this.treeData.getGroup(tabs[0].groupId);
+				if (group) {
+					vscode.window.showInputBox({ placeHolder: 'Name this Group' }).then(input => {
+						if (input) {
+							this.treeData.renameGroup(group, input);
+						}
+					});
+				}
+			}
 		}
 	}
 

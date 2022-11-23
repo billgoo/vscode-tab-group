@@ -116,6 +116,7 @@ export class TreeData {
 		this._insertTabToGroup(target, group);
 		
 		tabs.forEach(tab => this._group(group, tab));
+		return;
 	}
 
 	private _group(group: Group, tab: Tab, index?: number) {
@@ -156,6 +157,10 @@ export class TreeData {
 
 	public getTab(tabId: string): Tab | undefined {
 		return this.tabMap[tabId];
+	}
+
+	public getGroup(groupId: string): Group | undefined {
+		return this.groupMap[groupId];
 	}
 
 	public renameGroup(group: Group, input: string): void {
