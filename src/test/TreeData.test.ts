@@ -18,6 +18,7 @@ function createGroup(id: string): Group {
 		colorId: '',
 		id,
 		label: id,
+		collapsed: false,
 	};
 }
 

@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { Disposable } from './lifecycle';
 import { getHandler, getNormalizedTabId } from './TabTypeHandler';
 import { TreeData } from './TreeData';
-import { Group, TreeItemType, Tab, isTab } from './types';
+import { Group, TreeItemType, Tab, isTab, Slot, isGroup, isSlot } from './types';
 
 export function getNativeTabs(tab: Tab): vscode.Tab[] {
 	const currentNativeTabs = vscode.window.tabGroups.all.flatMap(tabGroup => tabGroup.tabs);
@@ -12,7 +12,7 @@ export function getNativeTabs(tab: Tab): vscode.Tab[] {
 	});
 }
 
-export class TreeDataProvider extends Disposable implements vscode.TreeDataProvider<Tab | Group>, vscode.TreeDragAndDropController<Tab | Group> {
+export class TreeDataProvider extends Disposable implements vscode.TreeDataProvider<Tab | Group | Slot>, vscode.TreeDragAndDropController<Tab | Group | Slot> {
 	private static TabDropMimeType = 'application/vnd.code.tree.tabstreeview';
 	private _onDidChangeTreeData = this._register(new vscode.EventEmitter<void>());
 	onDidChangeTreeData = this._onDidChangeTreeData.event;
@@ -24,14 +24,25 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 	 */
 	private treeItemMap: Record<string, vscode.TreeItem> = {};
 
+	private sortMode = false;
+
 	dropMimeTypes = [TreeDataProvider.TabDropMimeType];
 	dragMimeTypes = ['text/uri-list'];
 
-	getChildren(element?: Tab | Group): Array<Tab | Group> | null {
-		return this.treeData.getChildren(element);
+	getChildren(element?: Tab | Group): Array<Tab | Group | Slot> | null {
+		const children = this.treeData.getChildren(element);
+
+		if (this.sortMode && Array.isArray(children) && children.length > 0) {
+			let groupId = isGroup(children[0]) ? null : children[0].groupId;
+			const slottedChildren: Array<Tab | Group | Slot> = children.slice(0);
+			slottedChildren.push({ type: TreeItemType.Slot, index: children.length, groupId });
+			return slottedChildren;
+		}
+
+		return children;
 	}
 
-	getTreeItem(element: Tab | Group): vscode.TreeItem {
+	getTreeItem(element: Tab | Group | Slot): vscode.TreeItem {
 		if (element.type === TreeItemType.Tab) {
 			const tabId = element.id;
 			if (!this.treeItemMap[tabId]) {
@@ -41,8 +52,14 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 			return this.treeItemMap[tabId];
 		}
 
+		if (element.type === TreeItemType.Slot) {
+			const treeItem = new vscode.TreeItem('');
+			treeItem.iconPath = new vscode.ThemeIcon('indent');
+			return treeItem;
+		}
+
 		if (!this.treeItemMap[element.id]) {
-			const treeItem = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.Expanded);
+			const treeItem = new vscode.TreeItem(element.label, element.collapsed ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.Expanded);
 			treeItem.contextValue = 'group';
 			treeItem.iconPath = new vscode.ThemeIcon('layout-sidebar-left', new vscode.ThemeColor(element.colorId));
 			this.treeItemMap[element.id] = treeItem;
@@ -69,25 +86,53 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 		return treeItem;
 	}
 
-	async handleDrag(source: Array<Tab | Group>, treeDataTransfer: vscode.DataTransfer, token: vscode.CancellationToken): Promise<void> {
-		treeDataTransfer.set(TreeDataProvider.TabDropMimeType, new vscode.DataTransferItem(source));
+	async handleDrag(source: Array<Tab | Group | Slot>, treeDataTransfer: vscode.DataTransfer, token: vscode.CancellationToken): Promise<void> {
+		treeDataTransfer.set(TreeDataProvider.TabDropMimeType, new vscode.DataTransferItem(source.filter(item => !isSlot(item))));
 	}
 
-	async handleDrop(target: Tab | Group | undefined, treeDataTransfer: vscode.DataTransfer, token: vscode.CancellationToken) {
-		const draggeds: Array<Group | Tab> = treeDataTransfer.get(TreeDataProvider.TabDropMimeType)?.value ?? [];
-		const isTab = (item: Group | Tab): item is Tab => { return item.type === TreeItemType.Tab; }
-		const draggedTabs: Array<Tab> = draggeds.filter<Tab>(isTab);
+	async handleDrop(target: Tab | Group | Slot | undefined, treeDataTransfer: vscode.DataTransfer, token: vscode.CancellationToken) {
+		const draggeds: Array<Group | Tab> = (treeDataTransfer.get(TreeDataProvider.TabDropMimeType)?.value ?? []).filter((tab: any) => tab !== target);
 
-		this.doHandleGrouping(target, draggedTabs.filter(tab => tab !== target));
-	
+		if (this.sortMode) {
+			this.doHandleSorting(target, draggeds);
+		} else {
+			if (target && isSlot(target)) {
+				return; // should not have slot in group mode
+			}
+			
+			this.doHandleGrouping(target, draggeds.filter<Tab>(isTab));	
+		}
+
 		this._onDidChangeTreeData.fire();
+	}
+
+	private doHandleSorting(target: Tab | Group | Slot | undefined, draggeds: Array<Tab | Group>) {
+		if (target === undefined) {
+			this.treeData.pushBack(null, draggeds);
+		} else if (isSlot(target)) {
+			this.treeData.pushBack(target.groupId, draggeds);
+		} else {
+			this.treeData.moveTo(target, draggeds);
+		}
 	}
 
 	private doHandleGrouping(target: Tab | Group | undefined, tabs: Tab[]) {
 		if (target === undefined) {
-			this.treeData.ungroup(tabs);
+			this.treeData.ungroup(tabs, true);
 		} else {
+			const isCreatingNewGroup = isTab(target) && target.groupId === null && tabs.length > 0;
 			this.treeData.group(target, tabs);
+			
+			if (isCreatingNewGroup && tabs[0].groupId !== null) {
+				const group = this.treeData.getGroup(tabs[0].groupId);
+				if (group) {
+					vscode.window.showInputBox({ placeHolder: 'Name this Group' }).then(input => {
+						if (input) {
+							this.treeData.renameGroup(group, input);
+						}
+					});
+				}
+			}
 		}
 	}
 
@@ -132,8 +177,12 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 	}
 
 	public getTab(nativeTab: vscode.Tab): Tab | undefined {
-		const tabId = getNormalizedTabId(nativeTab);
-		return this.treeData.getTab(tabId);
+		try {
+			const tabId = getNormalizedTabId(nativeTab);
+			return this.treeData.getTab(tabId);
+		} catch {
+			return undefined;
+		}
 	}
 
 	public getState(): Array<Tab | Group> {
@@ -153,5 +202,20 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 	public cancelGroup(group: Group): void {
 		this.treeData.cancelGroup(group);
 		this.triggerRerender();
+	}
+
+	
+	public toggleSortMode(sortMode: boolean) {
+		this.sortMode = sortMode;
+		this.triggerRerender();
+	}
+
+	public isAllCollapsed(): boolean {
+		return this.treeData.isAllCollapsed();
+	}
+
+	public setCollapsedState(group: Group, collapsed: boolean) {
+		this.treeData.setCollapsedState(group, collapsed);
+		// sync data from tree view, so rerendering is not needed
 	}
 }

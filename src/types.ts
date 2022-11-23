@@ -10,6 +10,7 @@ export type Group = {
 	colorId: string;
 	label: string;
 	children: Tab[];
+	collapsed: boolean;
 };
 
 export type Tab = {
@@ -21,7 +22,7 @@ export type Tab = {
 export type Slot = {
 	type: TreeItemType.Slot;
 	index: number;
-	group: string;
+	groupId: string | null;
 };
 
 export function isTab(item: Tab | Group | Slot): item is Tab {

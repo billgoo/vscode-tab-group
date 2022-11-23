@@ -3,7 +3,7 @@
 	"displayName": "Tab Group",
 	"description": "Edge's vertical Tab Group in VSCode",
 	"publisher": "jiapeiyao",
-	"version": "2.0.0",
+	"version": "2.0.2",
 	"license": "MIT",
 	"contributors": [
 		{
@@ -51,15 +51,6 @@
 					"icon": "media/icon.svg",
 					"contextualTitle": "Tabs"
 				}
-			],
-			"explorer": [
-				{
-					"id": "tabsTreeViewInExplorer",
-					"name": "Tabs",
-					"contextualTitle": "Tabs",
-					"visibility": "visible",
-					"size": 600
-				}
 			]
 		},
 		"commands": [
@@ -74,11 +65,6 @@
 				"icon": "$(array)"
 			},
 			{
-				"command": "tabsTreeView.Reset",
-				"title": "Reset All",
-				"icon": "$(clear-all)"
-			},
-			{
 				"command": "tabsTreeView.group.rename",
 				"title": "Rename Group",
 				"icon": "$(edit)"
@@ -87,6 +73,31 @@
 				"command": "tabsTreeView.group.cancelGroup",
 				"title": "Cancel Group",
 				"icon": "$(array)"
+			},
+			{
+				"command": "tabsTreeView.enableSortMode",
+				"title": "Sort Mode",
+				"icon": "$(selection)"
+			},
+			{
+				"command": "tabsTreeView.disableSortMode",
+				"title": "Done",
+				"icon": "$(check)"
+			},
+			{
+				"command": "tabsTreeView.collapseAll",
+				"title": "Collapse All",
+				"icon": "$(collapse-all)"
+			},
+			{
+				"command": "tabsTreeView.expandAll",
+				"title": "Expand All",
+				"icon": "$(expand-all)"
+			},
+			{
+				"command": "tabsTreeView.reset",
+				"title": "Reset All",
+				"icon": "$(clear-all)"
 			}
 		],
 		"menus": {
@@ -114,15 +125,35 @@
 			],
 			"view/title": [
 				{
-					"command": "tabsTreeView.Reset",
-					"when": "view == tabsTreeView || view == tabsTreeViewInExplorer",
-					"group": "navigation"
+					"command": "tabsTreeView.enableSortMode",
+					"when": "view =~ /^tabsTreeView/ && !tabGroup.sortMode:enabled",
+					"group": "navigation@1"
+				},
+				{
+					"command": "tabsTreeView.disableSortMode",
+					"when": "view =~ /^tabsTreeView/ && tabGroup.sortMode:enabled",
+					"group": "navigation@1"
+				},				
+				{
+					"command": "tabsTreeView.collapseAll",
+					"when": "view =~ /^tabsTreeView/ && !tabGroup.groups:allCollapsed",
+					"group": "navigation@8"
+				},
+				{
+					"command": "tabsTreeView.expandAll",
+					"when": "view =~ /^tabsTreeView/ && tabGroup.groups:allCollapsed",
+					"group": "navigation@8"
+				},
+				{
+					"command": "tabsTreeView.reset",
+					"when": "view =~ /^tabsTreeView/",
+					"group": "navigation@9"
 				}
 			]
 		}
 	},
 	"scripts": {
-		"vscode:prepublish": "npm run compile",
+		"vscode:prepublish": "tsc -p ./ --sourceMap false",
 		"compile": "tsc -p ./",
 		"watch": "tsc -watch -p ./",
 		"test": "jest"
