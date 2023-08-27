@@ -3,6 +3,7 @@ import { Disposable } from './lifecycle';
 import { getHandler, getNormalizedTabId } from './TabTypeHandler';
 import { TreeData } from './TreeData';
 import { Group, TreeItemType, Tab, isTab, Slot, isGroup, isSlot } from './types';
+import { openFileByPath } from './utils';
 
 export function getNativeTabs(tab: Tab): vscode.Tab[] {
 	const currentNativeTabs = vscode.window.tabGroups.all.flatMap(tabGroup => tabGroup.tabs);
@@ -15,10 +16,18 @@ export function getNativeTabs(tab: Tab): vscode.Tab[] {
 export class TreeDataProvider extends Disposable implements vscode.TreeDataProvider<Tab | Group | Slot>, vscode.TreeDragAndDropController<Tab | Group | Slot> {
 	private static TabDropMimeType = 'application/vnd.code.tree.tabstreeview';
 	private _onDidChangeTreeData = this._register(new vscode.EventEmitter<void>());
+
+	private isTreeEditable = false;
+
 	onDidChangeTreeData = this._onDidChangeTreeData.event;
 
 	private treeData: TreeData = new TreeData();
 
+	constructor(viewType?: boolean) {
+		super();
+
+		this.isTreeEditable = !!viewType
+	}
 	/**
 	 * To reuse tree item object
 	 */
@@ -61,12 +70,13 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 		if (!this.treeItemMap[element.id]) {
 			const treeItem = new vscode.TreeItem(element.label, element.collapsed ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.Expanded);
 			treeItem.contextValue = 'group';
-			treeItem.iconPath = new vscode.ThemeIcon('layout-sidebar-left', new vscode.ThemeColor(element.colorId));
+			// TODO: ADD ICONS if Needed
+			// treeItem.iconPath = new vscode.ThemeIcon('layout-sidebar-left', new vscode.ThemeColor(element.colorId));
 			this.treeItemMap[element.id] = treeItem;
 		} else {
 			const treeItem = this.treeItemMap[element.id];
 			treeItem.label = element.label;
-			treeItem.iconPath = new vscode.ThemeIcon('layout-sidebar-left', new vscode.ThemeColor(element.colorId));
+			// treeItem.iconPath = new vscode.ThemeIcon('layout-sidebar-left', new vscode.ThemeColor(element.colorId));
 		}
 		return this.treeItemMap[element.id]
 	}
@@ -76,14 +86,10 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 	}
 
 	private createTabTreeItem(tab: Tab): vscode.TreeItem {
-		const nativeTabs = getNativeTabs(tab);
-		if (nativeTabs.length === 0) {
-			// todo: remove tab without any native Tab
-			return {};
-		}
-		const handler = getHandler(nativeTabs[0])!;
-		const treeItem = handler.createTreeItem(nativeTabs[0]);
-		return treeItem;
+		return {
+            collapsibleState: vscode.TreeItemCollapsibleState.None,
+            resourceUri: vscode.Uri.file(tab.id)
+        };
 	}
 
 	async handleDrag(source: Array<Tab | Group | Slot>, treeDataTransfer: vscode.DataTransfer, token: vscode.CancellationToken): Promise<void> {
@@ -147,14 +153,19 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 
 	public async activate(tab: Tab): Promise<any> {
 		const nativeTabs = getNativeTabs(tab);
-		const handler = getHandler(nativeTabs[0])!;
-		return handler.openEditor(nativeTabs[0]);
+		if (nativeTabs.length) {
+			const handler = getHandler(nativeTabs[0])!;
+			return handler.openEditor(nativeTabs[0]);	
+		} else {
+			openFileByPath(tab.id);
+		}
 	}
 
 	public appendTabs(nativeTabs: readonly vscode.Tab[]) {
 		nativeTabs.forEach((nativeTab) => {
 			try {
 				const tabId = getNormalizedTabId(nativeTab);
+				this.treeData.appendTab(tabId);
 				this.treeData.appendTab(tabId);
 			} catch {
 				// skip

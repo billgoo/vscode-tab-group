@@ -1,6 +1,6 @@
 {
 	"name": "tab-group",
-	"displayName": "Tab Group",
+	"displayName": "Tab Group Extended",
 	"description": "Edge's vertical Tab Group in VSCode",
 	"publisher": "jiapeiyao",
 	"version": "2.0.2",
@@ -38,7 +38,7 @@
 			"activitybar": [
 				{
 					"id": "tabs",
-					"title": "Tab Group",
+					"title": "Tab Group Extended",
 					"icon": "media/icon.svg"
 				}
 			]
@@ -46,7 +46,13 @@
 		"views": {
 			"tabs": [
 				{
-					"id": "tabsTreeView",
+					"id": "tabsTreeOpenView",
+					"name": "Opened Tabs",
+					"icon": "media/icon.svg",
+					"contextualTitle": "Tabs"
+				},
+				{
+					"id": "tabsTreeExplorerView",
 					"name": "Tabs",
 					"icon": "media/icon.svg",
 					"contextualTitle": "Tabs"
@@ -55,47 +61,57 @@
 		},
 		"commands": [
 			{
-				"command": "tabsTreeView.tab.close",
+				"command": "tabsTreeExplorerView.tab.close",
 				"title": "Close",
 				"icon": "$(close)"
 			},
 			{
-				"command": "tabsTreeView.tab.ungroup",
+				"command": "tabsTreeExplorerView.tab.ungroup",
 				"title": "Ungroup",
 				"icon": "$(array)"
 			},
 			{
-				"command": "tabsTreeView.group.rename",
+				"command": "tabsTreeExplorerView.group.rename",
 				"title": "Rename Group",
 				"icon": "$(edit)"
 			},
 			{
-				"command": "tabsTreeView.group.cancelGroup",
+				"command": "tabsTreeExplorerView.group.cancelGroup",
 				"title": "Cancel Group",
 				"icon": "$(array)"
 			},
 			{
-				"command": "tabsTreeView.enableSortMode",
+				"command": "tabsTreeExplorerView.saveToWorkspace",
+				"title": "Save to Workspace",
+				"icon": "$(save-all)"
+			},
+			{
+				"command": "tabsTreeExplorerView.deleteFromWorkspace",
+				"title": "Delete from Workspace",
+				"icon": "$(trash)"
+			},
+			{
+				"command": "tabsTreeExplorerView.enableSortMode",
 				"title": "Sort Mode",
 				"icon": "$(selection)"
 			},
 			{
-				"command": "tabsTreeView.disableSortMode",
+				"command": "tabsTreeExplorerView.disableSortMode",
 				"title": "Done",
 				"icon": "$(check)"
 			},
 			{
-				"command": "tabsTreeView.collapseAll",
+				"command": "tabsTreeExplorerView.collapseAll",
 				"title": "Collapse All",
 				"icon": "$(collapse-all)"
 			},
 			{
-				"command": "tabsTreeView.expandAll",
+				"command": "tabsTreeExplorerView.expandAll",
 				"title": "Expand All",
 				"icon": "$(expand-all)"
 			},
 			{
-				"command": "tabsTreeView.reset",
+				"command": "tabsTreeExplorerView.reset",
 				"title": "Reset All",
 				"icon": "$(clear-all)"
 			}
@@ -103,50 +119,50 @@
 		"menus": {
 			"view/item/context": [
 				{
-					"command": "tabsTreeView.tab.ungroup",
-					"when": "view =~ /^tabsTreeView/ && viewItem == 'grouped-tab'",
+					"command": "tabsTreeExplorerView.tab.ungroup",
+					"when": "view =~ /^tabsTreeExplorerView/ && viewItem == 'grouped-tab'",
 					"group": "inline@0"
 				},
 				{
-					"command": "tabsTreeView.tab.close",
-					"when": "view =~ /^tabsTreeView/ && viewItem =~ /tab/",
+					"command": "tabsTreeExplorerView.tab.close",
+					"when": "view =~ /^tabsTreeExplorerView/ && viewItem =~ /tab/",
 					"group": "inline@1"
 				},
 				{
-					"command": "tabsTreeView.group.rename",
-					"when": "view =~ /^tabsTreeView/ && viewItem == 'group'",
+					"command": "tabsTreeExplorerView.group.rename",
+					"when": "view =~ /^tabsTreeExplorerView/ && viewItem == 'group'",
 					"group": "inline@0"
 				},
 				{
-					"command": "tabsTreeView.group.cancelGroup",
-					"when": "view =~ /^tabsTreeView/ && viewItem == 'group'",
+					"command": "tabsTreeExplorerView.group.cancelGroup",
+					"when": "view =~ /^tabsTreeExplorerView/ && viewItem == 'group'",
 					"group": "inline@1"
 				}
 			],
 			"view/title": [
 				{
-					"command": "tabsTreeView.enableSortMode",
-					"when": "view =~ /^tabsTreeView/ && !tabGroup.sortMode:enabled",
+					"command": "tabsTreeExplorerView.saveToWorkspace",
+					"when": "view =~ /^tabsTreeExplorerView/ && tabGroup.groups:allCollapsed",
 					"group": "navigation@1"
 				},
 				{
-					"command": "tabsTreeView.disableSortMode",
-					"when": "view =~ /^tabsTreeView/ && tabGroup.sortMode:enabled",
+					"command": "tabsTreeExplorerView.deleteFromWorkspace",
+					"when": "view =~ /^tabsTreeExplorerView/ && tabGroup.groups:allCollapsed",
 					"group": "navigation@1"
-				},				
+				},
 				{
-					"command": "tabsTreeView.collapseAll",
-					"when": "view =~ /^tabsTreeView/ && !tabGroup.groups:allCollapsed",
+					"command": "tabsTreeExplorerView.collapseAll",
+					"when": "view =~ /^tabsTreeExplorerView/ && !tabGroup.groups:allCollapsed",
 					"group": "navigation@8"
 				},
 				{
-					"command": "tabsTreeView.expandAll",
-					"when": "view =~ /^tabsTreeView/ && tabGroup.groups:allCollapsed",
+					"command": "tabsTreeExplorerView.expandAll",
+					"when": "view =~ /^tabsTreeExplorerView/ && tabGroup.groups:allCollapsed",
 					"group": "navigation@8"
 				},
 				{
-					"command": "tabsTreeView.reset",
-					"when": "view =~ /^tabsTreeView/",
+					"command": "tabsTreeExplorerView.reset",
+					"when": "view =~ /^tabsTreeExplorerView/",
 					"group": "navigation@9"
 				}
 			]

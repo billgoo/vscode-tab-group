@@ -18,6 +18,12 @@
             "preLaunchTask": "npm: watch"
         },
         {
+            "command": "npm run watch",
+            "name": "Debug personal",
+            "request": "launch",
+            "type": "node-terminal"
+        },
+        {
             "type": "node",
             "request": "attach",
             "name": "Attach to Extension Host",
