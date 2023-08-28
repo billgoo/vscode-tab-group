@@ -15,21 +15,21 @@ export function getFilePathTree(dir: string): any {
 
     if (stats.isDirectory() && !ignoredFiles.includes(file)) {
       filePathTree.push({
-		type: 1,
-		collapsed: true,
-		colorId: 'charts.lines',
-		id: randomUUID(),
-		label: file,
-		groupId: file,
-		children: getFilePathTree(filePath),  // Recursively get file path tree for subdirectory
-	   })
+        type: 1,
+        collapsed: true,
+        id: randomUUID(),
+        filePath,
+        label: file,
+        groupId: file,
+        children: getFilePathTree(filePath),  // Recursively get file path tree for subdirectory
+      })
     } else {
       filePathTree.push({
-		type: 0,
-		groupId: null,
-		label: file,
-		id: filePath,
-	   })
+        type: 0,
+        groupId: null,
+        label: file,
+        id: filePath,
+      })
     }
   });
 
@@ -38,10 +38,14 @@ export function getFilePathTree(dir: string): any {
 
 
 export async function openFileByPath(filePath: string): Promise<void> {
-    try {
-        const document = await vscode.workspace.openTextDocument(filePath);
-        await vscode.window.showTextDocument(document);
-    } catch (error) {
-        console.error(`Failed to open file ${filePath}:`, error);
-    }
+  try {
+    const document = await vscode.workspace.openTextDocument(filePath);
+    await vscode.window.showTextDocument(document);
+  } catch (error) {
+    console.error(`Failed to open file ${filePath}:`, error);
+  }
+}
+
+export function asPromise<T>(thenable: Thenable<T>): Promise<T> {
+  return new Promise<T>((resolve, reject) => thenable.then(resolve, reject));
 }

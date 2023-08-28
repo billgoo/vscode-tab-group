@@ -1,28 +1,25 @@
 
 import * as vscode from 'vscode';
-import { asPromise } from './async';
-import { ContextKeys, setContext } from './context';
+import { asPromise } from './utils';
 import { ExclusiveHandle } from './event';
 import { Disposable } from './lifecycle';
 import { TreeDataProvider } from './TreeDataProvider';
-import { Group, isGroup, Tab, TreeItemType } from './types';
+import { File, Folder, isFolder, TreeItemType } from './types';
 import { WorkspaceState } from './WorkspaceState';
 import { getFilePathTree } from './utils';
 
 export class TabsView extends Disposable {
 	private treeExplorerDataProvider: TreeDataProvider = this._register(new TreeDataProvider());
-	private treeOpenedDataProvider: TreeDataProvider = this._register(new TreeDataProvider(true));
+	private treeOpenedDataProvider: TreeDataProvider = this._register(new TreeDataProvider());
 	private exclusiveHandle = new ExclusiveHandle();
 
 	constructor(private workspaceRoot: string | undefined) {
 		super();
-		let initialState: Array<Tab | Group> = [];
+		let initialState: Array<File | Folder> = [];
 
 		if (workspaceRoot) {
 			initialState = getFilePathTree(workspaceRoot);
 		}
-
-		// setContext(ContextKeys.AllCollapsed, this.treeOpenedDataProvider.isAllCollapsed());
 
 		// EXPLORER VIEW CREATION
 		this.treeExplorerDataProvider.setState(initialState);
@@ -48,7 +45,7 @@ export class TabsView extends Disposable {
 		// CLOSE
 		// this._register(vscode.commands.registerCommand('tabsTreeOpenView.tab.close', (tab: Tab) => vscode.window.tabGroups.close(getNativeTabs(tab))));
 		// RENAME
-		this._register(vscode.commands.registerCommand('tabsTreeOpenView.rename', (group: Group) => {
+		this._register(vscode.commands.registerCommand('tabsTreeOpenView.rename', (group: Folder) => {
 			vscode.window.showInputBox({ placeHolder: 'Name this Group' }).then(input => {
 				if (input) {
 					this.treeOpenedDataProvider.renameFolder(group, input);
@@ -57,66 +54,50 @@ export class TabsView extends Disposable {
 		}));
 
 		this._register(this.treeExplorerDataProvider)
-		
+
 		// CLICK TO DIFFERENT ELEMENT
 		this._register(openView.onDidChangeSelection(e => {
 			if (e.selection.length > 0) {
 				const item = e.selection[e.selection.length - 1];
-				if (item.type === TreeItemType.Tab) {
-					this.exclusiveHandle.run(() => asPromise(this.treeOpenedDataProvider.activate(item)));
+				if (item.type === TreeItemType.File) {
+					this.exclusiveHandle.run(() => asPromise(this.treeOpenedDataProvider.openFile(item)));
 				}
 			}
 		}));
 		this._register(explorerView.onDidChangeSelection(e => {
 			if (e.selection.length > 0) {
 				const item = e.selection[e.selection.length - 1];
-				if (item.type === TreeItemType.Tab) {
-					this.exclusiveHandle.run(() => asPromise(this.treeExplorerDataProvider.activate(item)));
+				if (item.type === TreeItemType.File) {
+					this.exclusiveHandle.run(() => asPromise(this.treeExplorerDataProvider.openFile(item)));
 				}
 			}
 		}));
-
-
-		// COLLAPSE / EXPAND
-		this._register(vscode.commands.registerCommand('tabsTreeExplorerView.collapseAll', () => vscode.commands.executeCommand('list.collapseAll')));
-		this._register(vscode.commands.registerCommand('tabsTreeExplorerView.expandAll', () => {
-			for (const item of this.treeOpenedDataProvider.getState()) {
-				if (isGroup(item) && item.children.length > 0) {
-					openView.reveal(item, { expand: true });
-				}
-			}
-		}));
-		this._register(openView.onDidExpandElement((element) => {
-			if (isGroup(element.element)) {
-				this.treeOpenedDataProvider.setCollapsedState(element.element, false);
-				this.saveState(this.treeOpenedDataProvider.getState());
-				setContext(ContextKeys.AllCollapsed, false);
-			}
-		}));
-		this._register(openView.onDidCollapseElement((element) => {
-			if (isGroup(element.element)) {
-				this.treeOpenedDataProvider.setCollapsedState(element.element, true);
-				this.saveState(this.treeOpenedDataProvider.getState());
-				setContext(ContextKeys.AllCollapsed, this.treeOpenedDataProvider.isAllCollapsed());
-			}
-		}));
-
-		// GROUPING
-		this._register(vscode.commands.registerCommand('tabsTreeOpenView.tab.ungroup', (tab: Tab) => this.treeOpenedDataProvider.ungroup(tab)));
-		this._register(vscode.commands.registerCommand('tabsTreeOpenView.group.cancelGroup', (group: Group) => this.treeOpenedDataProvider.cancelGroup(group)));
 
 		/* ********** CUSTOM GROUPS ********** */
 
 		// ADD TO OPEN
-		this._register(vscode.commands.registerCommand('tabsTreeExplorerView.addToOpen', (tab: Tab) => {
+		this._register(vscode.commands.registerCommand('tabsTreeExplorerView.addToOpen', (tab: File | Folder) => {
 			const currentState = this.treeOpenedDataProvider.getState();
-			this.treeOpenedDataProvider.setState([...currentState, tab]);
+			// const parsedElement = parseAddedTreeElements(tab);
+			// this.treeOpenedDataProvider.setState([...currentState, parsedElement]);
 		}));
 
-		this._register(vscode.commands.registerCommand('tabsTreeOpenView.close', (tab: Tab) => {
+		this._register(vscode.commands.registerCommand('tabsTreeOpenView.close', (element: File | Folder) => {
 			const currentState = this.treeOpenedDataProvider.getState();
-			const stateWithRemovedTab = currentState.filter(openedTab => openedTab.id !== tab.id);
-			this.treeOpenedDataProvider.setState(stateWithRemovedTab);
+
+			let stateWithRemovedTab;
+			// Check, does root folder contains current element
+			if (currentState.find(openedTab => openedTab.id === element.id)) {
+				stateWithRemovedTab = currentState.filter(openedTab => openedTab.id !== element.id);
+			} else {
+				// Remove by filepath
+				const searchingFolder = element.type === 0 ? element.id.split('/').slice(0, -1).join('/') : element.filePath;
+				console.log(searchingFolder);
+			}
+
+			if (stateWithRemovedTab) {
+				this.treeOpenedDataProvider.setState(stateWithRemovedTab);
+			}
 		}));
 
 		// RESET
@@ -128,7 +109,7 @@ export class TabsView extends Disposable {
 		/* ******** PACK OF REGISTRED EVENTS END ******** */
 	}
 
-	private initializeOpenedState(): Array<Tab | Group> {
+	private initializeOpenedState(): Array<File | Folder> {
 		const jsonItems = WorkspaceState.getState() ?? [];
 		// const nativeTabs = vscode.window.tabGroups.all.flatMap(tabGroup => tabGroup.tabs);
 
@@ -178,7 +159,7 @@ export class TabsView extends Disposable {
 	// 	return mergedTabs;
 	// }
 
-	private saveState(state: Array<Tab | Group>): void {
+	private saveState(state: Array<File | Folder>): void {
 		WorkspaceState.setState(state);
 	}
 

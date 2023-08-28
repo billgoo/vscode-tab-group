@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { Group, Tab } from './types';
+import { File, Folder } from './types';
 
 export class WorkspaceState {
 	private static readonly workspaceStateKey = 'tabs.workspace.state.key';
@@ -9,7 +9,7 @@ export class WorkspaceState {
 		WorkspaceState.context = context;
 	}
 
-	static getState(): Array<Tab | Group> | undefined {
+	static getState(): Array<File | Folder> | undefined {
 		return WorkspaceState.context.workspaceState.get(WorkspaceState.workspaceStateKey);
 	}
 
@@ -17,7 +17,7 @@ export class WorkspaceState {
 	 * 
 	 * @param state state information that can be "JSON.stringify"ed 
 	 */
-	static setState(state: Array<Tab | Group> | undefined) {
+	static setState(state: Array<File | Folder> | undefined) {
 		WorkspaceState.context.workspaceState.update(WorkspaceState.workspaceStateKey, state);
 	}
 }
