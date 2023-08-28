@@ -113,6 +113,12 @@ export class TabsView extends Disposable {
 			this.treeOpenedDataProvider.setState([...currentState, tab]);
 		}));
 
+		this._register(vscode.commands.registerCommand('tabsTreeOpenView.close', (tab: Tab) => {
+			const currentState = this.treeOpenedDataProvider.getState();
+			const stateWithRemovedTab = currentState.filter(openedTab => openedTab.id !== tab.id);
+			this.treeOpenedDataProvider.setState(stateWithRemovedTab);
+		}));
+
 		// RESET
 		this._register(vscode.commands.registerCommand('tabsTreeOpenView.reset', () => {
 			WorkspaceState.setState([]);

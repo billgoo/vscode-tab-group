@@ -70,6 +70,11 @@
 				"icon": "$(edit)"
 			},
 			{
+				"command": "tabsTreeOpenView.close",
+				"title": "Close",
+				"icon": "$(close)"
+			},
+			{
 				"command": "tabsTreeExplorerView.tab.close",
 				"title": "Close",
 				"icon": "$(close)"
@@ -129,6 +134,11 @@
 				},
 				{
 					"command": "tabsTreeOpenView.rename",
+					"when": "view == tabsTreeOpenView",
+					"group": "tabsTreeOpenView@0"
+				},
+				{
+					"command": "tabsTreeOpenView.close",
 					"when": "view == tabsTreeOpenView",
 					"group": "tabsTreeOpenView@0"
 				},
