@@ -163,7 +163,7 @@ export class TreeData {
 		return this.groupMap[groupId];
 	}
 
-	public renameGroup(group: Group, input: string): void {
+	public renameFolder(group: Group, input: string): void {
 		group.label = input;
 	}
 

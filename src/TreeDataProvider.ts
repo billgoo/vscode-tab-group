@@ -85,6 +85,25 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 		return this.treeData.getParent(element);
 	}
 
+	showContextMenu(): void {
+		const menuItems: vscode.QuickPickItem[] = [
+            {
+                label: 'My Menu Item',
+                description: 'Description of the menu item'
+            },
+            // Add more menu items as needed
+        ];
+
+        vscode.window.showQuickPick(menuItems).then((selectedItem) => {
+            if (selectedItem) {
+                // Handle the selected menu item here
+                if (selectedItem.label === 'My Menu Item') {
+                    // Perform action for 'My Menu Item'
+                }
+            }
+        });
+    }
+
 	private createTabTreeItem(tab: Tab): vscode.TreeItem {
 		return {
             collapsibleState: vscode.TreeItemCollapsibleState.None,
@@ -134,7 +153,7 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 				if (group) {
 					vscode.window.showInputBox({ placeHolder: 'Name this Group' }).then(input => {
 						if (input) {
-							this.treeData.renameGroup(group, input);
+							this.treeData.renameFolder(group, input);
 						}
 					});
 				}
@@ -165,7 +184,6 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 		nativeTabs.forEach((nativeTab) => {
 			try {
 				const tabId = getNormalizedTabId(nativeTab);
-				this.treeData.appendTab(tabId);
 				this.treeData.appendTab(tabId);
 			} catch {
 				// skip
@@ -205,8 +223,8 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 		this.triggerRerender();
 	}
 
-	public renameGroup(group: Group, input: string): void {
-		this.treeData.renameGroup(group, input);
+	public renameFolder(group: Group, input: string): void {
+		this.treeData.renameFolder(group, input);
 		this.triggerRerender();
 	}
 

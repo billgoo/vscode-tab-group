@@ -4,7 +4,7 @@ import { asPromise } from './async';
 import { ContextKeys, setContext } from './context';
 import { ExclusiveHandle } from './event';
 import { Disposable } from './lifecycle';
-import { getNativeTabs, TreeDataProvider } from './TreeDataProvider';
+import { TreeDataProvider } from './TreeDataProvider';
 import { Group, isGroup, Tab, TreeItemType } from './types';
 import { WorkspaceState } from './WorkspaceState';
 import { getFilePathTree } from './utils';
@@ -41,44 +41,22 @@ export class TabsView extends Disposable {
 			canSelectMany: true
 		}));
 
-		console.log(workspaceSavedState, initialState);
 		/* ******** PACK OF REGISTRED EVENTS START ******** */
-
-		// RESET
-		this._register(vscode.commands.registerCommand('tabsTreeOpenView.reset', () => {
-			WorkspaceState.setState([]);
-			this.treeOpenedDataProvider.setState(initialState);
-		}));
 
 		// EDIT
 		this._register(this.treeOpenedDataProvider.onDidChangeTreeData(() => this.saveState(this.treeOpenedDataProvider.getState())));
 		// CLOSE
-		this._register(vscode.commands.registerCommand('tabsTreeOpenView.tab.close', (tab: Tab) => vscode.window.tabGroups.close(getNativeTabs(tab))));
+		// this._register(vscode.commands.registerCommand('tabsTreeOpenView.tab.close', (tab: Tab) => vscode.window.tabGroups.close(getNativeTabs(tab))));
 		// RENAME
-		this._register(vscode.commands.registerCommand('tabsTreeOpenView.group.rename', (group: Group) => {
+		this._register(vscode.commands.registerCommand('tabsTreeOpenView.rename', (group: Group) => {
 			vscode.window.showInputBox({ placeHolder: 'Name this Group' }).then(input => {
 				if (input) {
-					this.treeOpenedDataProvider.renameGroup(group, input);
+					this.treeOpenedDataProvider.renameFolder(group, input);
 				}
 			})
 		}));
-		
-		// CHANGING FILE IN WINDOW
-		this._register(vscode.window.tabGroups.onDidChangeTabs(e => {
-			this.treeOpenedDataProvider.appendTabs(e.opened);
-			this.treeOpenedDataProvider.closeTabs(e.closed);
-			
-			if (e.changed[0] && e.changed[0].isActive) {
-				const tab = this.treeOpenedDataProvider.getTab(e.changed[0]);
-				if (tab) {
-					if (openView.visible) {
-						this.exclusiveHandle.run(() => asPromise(openView.reveal(tab, { select: true, expand: true })));
-					}
-				}
-			}
-			
-			this.treeOpenedDataProvider.triggerRerender();
-		}));
+
+		this._register(this.treeExplorerDataProvider)
 		
 		// CLICK TO DIFFERENT ELEMENT
 		this._register(openView.onDidChangeSelection(e => {
@@ -126,6 +104,20 @@ export class TabsView extends Disposable {
 		// GROUPING
 		this._register(vscode.commands.registerCommand('tabsTreeOpenView.tab.ungroup', (tab: Tab) => this.treeOpenedDataProvider.ungroup(tab)));
 		this._register(vscode.commands.registerCommand('tabsTreeOpenView.group.cancelGroup', (group: Group) => this.treeOpenedDataProvider.cancelGroup(group)));
+
+		/* ********** CUSTOM GROUPS ********** */
+
+		// ADD TO OPEN
+		this._register(vscode.commands.registerCommand('tabsTreeExplorerView.addToOpen', (tab: Tab) => {
+			const currentState = this.treeOpenedDataProvider.getState();
+			this.treeOpenedDataProvider.setState([...currentState, tab]);
+		}));
+
+		// RESET
+		this._register(vscode.commands.registerCommand('tabsTreeOpenView.reset', () => {
+			WorkspaceState.setState([]);
+			this.treeOpenedDataProvider.setState(initialState);
+		}));
 
 		/* ******** PACK OF REGISTRED EVENTS END ******** */
 	}

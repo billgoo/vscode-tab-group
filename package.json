@@ -61,6 +61,15 @@
 		},
 		"commands": [
 			{
+				"command": "tabsTreeExplorerView.addToOpen",
+				"title": "Add to Open"
+			},
+			{
+				"command": "tabsTreeOpenView.rename",
+				"title": "Rename",
+				"icon": "$(edit)"
+			},
+			{
 				"command": "tabsTreeExplorerView.tab.close",
 				"title": "Close",
 				"icon": "$(close)"
@@ -69,11 +78,6 @@
 				"command": "tabsTreeExplorerView.tab.ungroup",
 				"title": "Ungroup",
 				"icon": "$(array)"
-			},
-			{
-				"command": "tabsTreeExplorerView.group.rename",
-				"title": "Rename Group",
-				"icon": "$(edit)"
 			},
 			{
 				"command": "tabsTreeExplorerView.group.cancelGroup",
@@ -119,6 +123,16 @@
 		"menus": {
 			"view/item/context": [
 				{
+					"command": "tabsTreeExplorerView.addToOpen",
+					"when": "view == tabsTreeExplorerView",
+					"group": "tabsTreeExplorerView@0"
+				},
+				{
+					"command": "tabsTreeOpenView.rename",
+					"when": "view == tabsTreeOpenView",
+					"group": "tabsTreeOpenView@0"
+				},
+				{
 					"command": "tabsTreeExplorerView.tab.ungroup",
 					"when": "view =~ /^tabsTreeExplorerView/ && viewItem == 'grouped-tab'",
 					"group": "inline@0"
@@ -127,11 +141,6 @@
 					"command": "tabsTreeExplorerView.tab.close",
 					"when": "view =~ /^tabsTreeExplorerView/ && viewItem =~ /tab/",
 					"group": "inline@1"
-				},
-				{
-					"command": "tabsTreeExplorerView.group.rename",
-					"when": "view =~ /^tabsTreeExplorerView/ && viewItem == 'group'",
-					"group": "inline@0"
 				},
 				{
 					"command": "tabsTreeExplorerView.group.cancelGroup",
