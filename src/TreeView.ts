@@ -1,10 +1,10 @@
 
 import * as vscode from 'vscode';
-import { asPromise } from './utils';
+import { asPromise, updateIds } from './utils';
 import { ExclusiveHandle } from './event';
 import { Disposable } from './lifecycle';
 import { TreeDataProvider } from './TreeDataProvider';
-import { File, Folder, isFolder, TreeItemType } from './types';
+import { File, Folder, TreeItemType } from './types';
 import { WorkspaceState } from './WorkspaceState';
 import { getFilePathTree } from './utils';
 
@@ -42,13 +42,11 @@ export class TabsView extends Disposable {
 
 		// EDIT
 		this._register(this.treeOpenedDataProvider.onDidChangeTreeData(() => this.saveState(this.treeOpenedDataProvider.getState())));
-		// CLOSE
-		// this._register(vscode.commands.registerCommand('tabsTreeOpenView.tab.close', (tab: Tab) => vscode.window.tabGroups.close(getNativeTabs(tab))));
 		// RENAME
-		this._register(vscode.commands.registerCommand('tabsTreeOpenView.rename', (group: Folder) => {
-			vscode.window.showInputBox({ placeHolder: 'Name this Group' }).then(input => {
+		this._register(vscode.commands.registerCommand('tabsTreeOpenView.rename', (element: File | Folder ) => {
+			vscode.window.showInputBox({ placeHolder: 'Type name here', value: element.label }).then(input => {
 				if (input) {
-					this.treeOpenedDataProvider.renameFolder(group, input);
+					this.treeOpenedDataProvider.rename(element, input);
 				}
 			})
 		}));
@@ -76,28 +74,16 @@ export class TabsView extends Disposable {
 		/* ********** CUSTOM GROUPS ********** */
 
 		// ADD TO OPEN
-		this._register(vscode.commands.registerCommand('tabsTreeExplorerView.addToOpen', (tab: File | Folder) => {
+		this._register(vscode.commands.registerCommand('tabsTreeExplorerView.addToOpen', (element: File | Folder) => {
 			const currentState = this.treeOpenedDataProvider.getState();
-			// const parsedElement = parseAddedTreeElements(tab);
-			// this.treeOpenedDataProvider.setState([...currentState, parsedElement]);
+
+			// We have to update ID's if we need to keep different folder versions in one page
+			const elementWithCustomIds = updateIds(element);
+			this.treeOpenedDataProvider.setState([...currentState, elementWithCustomIds]);
 		}));
 
 		this._register(vscode.commands.registerCommand('tabsTreeOpenView.close', (element: File | Folder) => {
-			const currentState = this.treeOpenedDataProvider.getState();
-
-			let stateWithRemovedTab;
-			// Check, does root folder contains current element
-			if (currentState.find(openedTab => openedTab.id === element.id)) {
-				stateWithRemovedTab = currentState.filter(openedTab => openedTab.id !== element.id);
-			} else {
-				// Remove by filepath
-				const searchingFolder = element.type === 0 ? element.id.split('/').slice(0, -1).join('/') : element.filePath;
-				console.log(searchingFolder);
-			}
-
-			if (stateWithRemovedTab) {
-				this.treeOpenedDataProvider.setState(stateWithRemovedTab);
-			}
+			this.treeOpenedDataProvider.deleteById(element.id);
 		}));
 
 		// RESET
