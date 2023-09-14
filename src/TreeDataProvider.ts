@@ -129,6 +129,7 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 					vscode.window.showInputBox({ placeHolder: 'Name this Group' }).then(input => {
 						if (input) {
 							this.treeData.renameGroup(group, input);
+							this.triggerRerender();
 						}
 					});
 				}
