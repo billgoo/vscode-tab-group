@@ -33,7 +33,7 @@ export class TabsView extends Disposable {
 		this._register(vscode.commands.registerCommand('tabsTreeView.tab.ungroup', (tab: Tab) => this.treeDataProvider.ungroup(tab)));
 		
 		this._register(vscode.commands.registerCommand('tabsTreeView.group.rename', (group: Group) => {
-			vscode.window.showInputBox({ placeHolder: 'Name this Group' }).then(input => {
+			vscode.window.showInputBox({ placeHolder: 'Name this Group', value: group.label }).then(input => {
 				if (input) {
 					this.treeDataProvider.renameGroup(group, input);
 				}
