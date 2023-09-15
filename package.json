@@ -76,7 +76,7 @@
 			},
 			{
 				"command": "tabsTreeView.group.close",
-				"title": "Close all Tabs in this Group",
+				"title": "Close Grouped Tabs",
 				"icon": "$(close)"
 			},
 			{
