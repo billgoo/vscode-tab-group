@@ -75,6 +75,11 @@
 				"icon": "$(array)"
 			},
 			{
+				"command": "tabsTreeView.group.close",
+				"title": "Close all Tabs in this Group",
+				"icon": "$(close)"
+			},
+			{
 				"command": "tabsTreeView.enableSortMode",
 				"title": "Sort Mode",
 				"icon": "$(selection)"
@@ -121,6 +126,11 @@
 					"command": "tabsTreeView.group.cancelGroup",
 					"when": "view =~ /^tabsTreeView/ && viewItem == 'group'",
 					"group": "inline@1"
+				},
+				{
+					"command": "tabsTreeView.group.close",
+					"when": "view =~ /^tabsTreeView/ && viewItem == 'group'",
+					"group": "inline@2"
 				}
 			],
 			"view/title": [

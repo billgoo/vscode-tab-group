@@ -41,6 +41,10 @@ export class TabsView extends Disposable {
 		}));
 		
 		this._register(vscode.commands.registerCommand('tabsTreeView.group.cancelGroup', (group: Group) => this.treeDataProvider.cancelGroup(group)));
+
+		this._register(vscode.commands.registerCommand('tabsTreeView.group.close', (group: Group) => {
+			vscode.window.tabGroups.close(group.children.map((tab: Tab) => getNativeTabs(tab)).flat());
+		}));
 		
 		this._register(vscode.commands.registerCommand('tabsTreeView.reset', () => {
 			WorkspaceState.setState([]);
