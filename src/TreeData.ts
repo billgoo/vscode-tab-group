@@ -86,6 +86,10 @@ export class TreeData {
 		tab.groupId = null;
 	}
 
+	private _getUsedColorIds(): string[] {
+		return Object.values(this.groupMap).map(group => group.colorId)
+	};
+
 	public group(target: Tab | Group, tabs: Tab[]) {
 		if (tabs.length === 0) {
 			return;
@@ -105,7 +109,7 @@ export class TreeData {
 
 		const group: Group = {
 			type: TreeItemType.Group,
-			colorId: getNextColorId(),
+			colorId: getNextColorId(this._getUsedColorIds()),
 			id: randomUUID(),
 			label: '',
 			children: [],
