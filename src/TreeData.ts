@@ -62,7 +62,7 @@ export class TreeData {
 		if (element.type === TreeItemType.Group) {
 			return undefined;
 		}
-		
+
 		if (element.groupId === null) {
 			return undefined;
 		}
@@ -118,7 +118,7 @@ export class TreeData {
 		this.groupMap[group.id] = group;
 		this.root.splice(this.root.indexOf(target), 1, group);
 		this._insertTabToGroup(target, group);
-		
+
 		tabs.forEach(tab => this._group(group, tab));
 		return;
 	}
@@ -194,7 +194,7 @@ export class TreeData {
 		});
 		this.root.splice(this.root.indexOf(target), 0, ...draggeds);
 	}
-	
+
 	public pushBack(groupId: string | null, draggeds: (Tab | Group)[]) {
 		if (groupId) {
 			const draggedTabs: Array<Tab> = draggeds.filter(isTab);
