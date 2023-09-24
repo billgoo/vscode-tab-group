@@ -1,8 +1,9 @@
 import * as vscode from 'vscode';
+import { sep } from 'node:path';
 import { Disposable } from './lifecycle';
 import { getHandler, getNormalizedTabId } from './TabTypeHandler';
 import { TreeData } from './TreeData';
-import { Group, TreeItemType, Tab, isTab, Slot, isGroup, isSlot } from './types';
+import { Group, TreeItemType, Tab, isTab, Slot, isGroup, isSlot, FilePathNode } from './types';
 
 export function getNativeTabs(tab: Tab): vscode.Tab[] {
 	const currentNativeTabs = vscode.window.tabGroups.all.flatMap(tabGroup => tabGroup.tabs);
@@ -24,6 +25,11 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 	 */
 	private treeItemMap: Record<string, vscode.TreeItem> = {};
 
+	/**
+	 * Store file path of open tab with resourceUri as tree map to use for label if duplicated file name showing
+	 */
+	private filePathTree: Record<string, Record<string, FilePathNode>> = {};
+
 	private sortMode = false;
 
 	dropMimeTypes = [TreeDataProvider.TabDropMimeType];
@@ -44,9 +50,23 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 
 	getTreeItem(element: Tab | Group | Slot): vscode.TreeItem {
 		if (element.type === TreeItemType.Tab) {
+			var newTreeItem = this.createTabTreeItem(element);
 			const tabId = element.id;
 			if (!this.treeItemMap[tabId]) {
-				this.treeItemMap[tabId] = this.createTabTreeItem(element);
+				this.treeItemMap[tabId] = newTreeItem;
+			}
+
+			if (newTreeItem.resourceUri) {
+				// use to update tab label if duplicated file name showing
+				var filePathArray = tabId.split(sep);
+				if (filePathArray.length > 1) {
+					if (!this.filePathTree[filePathArray[-1]]) {
+						this.filePathTree[filePathArray[-1]] = {};
+					}
+					if (!this.filePathTree[filePathArray[-1]][tabId]) {
+						this.filePathTree[filePathArray[-1]][tabId] = { pathList: filePathArray, id: tabId };
+					}
+				}
 			}
 			this.treeItemMap[tabId].contextValue = element.groupId === null ? 'tab' : 'grouped-tab';
 			return this.treeItemMap[tabId];
@@ -99,8 +119,8 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 			if (target && isSlot(target)) {
 				return; // should not have slot in group mode
 			}
-			
-			this.doHandleGrouping(target, draggeds.filter<Tab>(isTab));	
+
+			this.doHandleGrouping(target, draggeds.filter<Tab>(isTab));
 		}
 
 		this._onDidChangeTreeData.fire();
@@ -122,7 +142,7 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 		} else {
 			const isCreatingNewGroup = isTab(target) && target.groupId === null && tabs.length > 0;
 			this.treeData.group(target, tabs);
-			
+
 			if (isCreatingNewGroup && tabs[0].groupId !== null) {
 				const group = this.treeData.getGroup(tabs[0].groupId);
 				if (group) {
@@ -205,7 +225,6 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 		this.triggerRerender();
 	}
 
-	
 	public toggleSortMode(sortMode: boolean) {
 		this.sortMode = sortMode;
 		this.triggerRerender();
@@ -218,5 +237,17 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 	public setCollapsedState(group: Group, collapsed: boolean) {
 		this.treeData.setCollapsedState(group, collapsed);
 		// sync data from tree view, so rerendering is not needed
+	}
+
+	private onChangeFilePathTree(fileName: string) {
+		if (this.filePathTree[fileName].length > 1) {
+			return;
+		}
+
+		// const tabId = treeItem.label;
+		// const tab = this.treeData.getTab(tabId);
+		// if (tab) {
+		// 	treeItem.label = tab.label;
+		// }
 	}
 }

@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import { Tab } from './types';
 
 export type InputType = vscode.Tab["input"];
 
