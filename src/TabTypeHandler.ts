@@ -85,7 +85,7 @@ export function getHandler(tab: vscode.Tab, useDefault?: boolean): TabTypeHandle
 /**
  * Register handler
  * Note: The order matters! Place more specifc handler before the general one. e.g. `TabInputReadmePreviewHandler`, then `TabInputWebviewHandler`
- * @param ctor 
+ * @param ctor
  */
 function Registered(ctor: Function) {
 	handlers.push(new (ctor as any)());
