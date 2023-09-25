@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { sep } from 'node:path';
 import { Disposable } from './lifecycle';
-import { getHandler, getNormalizedTabId } from './TabTypeHandler';
+import { TabInputTextHandler, getHandler, getNormalizedTabId } from './TabTypeHandler';
 import { TreeData } from './TreeData';
 import { Group, TreeItemType, Tab, isTab, Slot, isGroup, isSlot, FilePathNode } from './types';
 import path = require('node:path');
@@ -25,11 +25,6 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 	 * To reuse tree item object
 	 */
 	private treeItemMap: Record<string, vscode.TreeItem> = {};
-
-	/**
-	 * Store file path of open tab with resourceUri as tree map to use for label if duplicated file name showing
-	 */
-	private filePathTree: Record<string, Record<string, FilePathNode>> = {};
 
 	/**
 	 * Store file path of open tab with resourceUri as tree map to use for label if duplicated file name showing
@@ -254,7 +249,8 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 		this.getLeafNodes(this.treeData.getState()).forEach((leafNode: Tab) => {
 			const tabId = leafNode.id;
 			const leafItem = this.getTreeItem(leafNode);
-			if (leafItem.resourceUri) {
+			const nativeTabs = getNativeTabs(leafNode);
+			if (nativeTabs[0].input instanceof vscode.TabInputText && leafItem.resourceUri) {
 				// use to update tab label if duplicated file name showing
 				var filePathArray = leafItem.resourceUri.fsPath.split(path.sep);
 				if (filePathArray.length > 1) {
@@ -268,7 +264,6 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 					}
 				}
 			}
-			// TODO: billgoo: Add support for other tab types
 		});
 	}
 

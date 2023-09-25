@@ -1,4 +1,6 @@
+import path = require('node:path');
 import * as vscode from 'vscode';
+import { findLongestCommonFilePathPrefixIndex } from './TreeDataProvider';
 
 export type InputType = vscode.Tab["input"];
 
@@ -134,6 +136,18 @@ export class TabInputTextDiffHandler implements TabTypeHandler<vscode.TabInputTe
 	createTreeItem(tab: TypedTab<vscode.TabInputTextDiff>): vscode.TreeItem {
 		const treeItem = new vscode.TreeItem(tab.input.modified);
 		treeItem.label = tab.label;
+
+		// generate discription
+		var originalFilePathArray = tab.input.original.fsPath.split(path.sep);
+		var modifiedFilePathArray = tab.input.modified.fsPath.split(path.sep);
+		var filePathArray = new Array();
+		filePathArray.push(originalFilePathArray);
+		filePathArray.push(modifiedFilePathArray);
+		if (originalFilePathArray[originalFilePathArray.length - 1] == modifiedFilePathArray[modifiedFilePathArray.length - 1]) {
+			var commonAncestorDirIndex = findLongestCommonFilePathPrefixIndex(filePathArray);
+			treeItem.description = path.join(...originalFilePathArray.slice(commonAncestorDirIndex + 1, -1))
+				+ " - " + path.join(...modifiedFilePathArray.slice(commonAncestorDirIndex + 1, -1));
+		}
 		return treeItem;
 	}
 
