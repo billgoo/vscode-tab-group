@@ -1,8 +1,10 @@
 import * as vscode from 'vscode';
+import { sep } from 'node:path';
 import { Disposable } from './lifecycle';
-import { getHandler, getNormalizedTabId } from './TabTypeHandler';
+import { TabInputTextHandler, getHandler, getNormalizedTabId } from './TabTypeHandler';
 import { TreeData } from './TreeData';
-import { Group, TreeItemType, Tab, isTab, Slot, isGroup, isSlot } from './types';
+import { Group, TreeItemType, Tab, isTab, Slot, isGroup, isSlot, FilePathNode } from './types';
+import path = require('node:path');
 
 export function getNativeTabs(tab: Tab): vscode.Tab[] {
 	const currentNativeTabs = vscode.window.tabGroups.all.flatMap(tabGroup => tabGroup.tabs);
@@ -24,6 +26,11 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 	 */
 	private treeItemMap: Record<string, vscode.TreeItem> = {};
 
+	/**
+	 * Store file path of open tab with resourceUri as tree map to use for label if duplicated file name showing
+	 */
+	private filePathTree: Record<string, Record<string, FilePathNode>> = {};
+
 	private sortMode = false;
 
 	dropMimeTypes = [TreeDataProvider.TabDropMimeType];
@@ -44,9 +51,23 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 
 	getTreeItem(element: Tab | Group | Slot): vscode.TreeItem {
 		if (element.type === TreeItemType.Tab) {
+			var newTreeItem = this.createTabTreeItem(element);
 			const tabId = element.id;
 			if (!this.treeItemMap[tabId]) {
-				this.treeItemMap[tabId] = this.createTabTreeItem(element);
+				this.treeItemMap[tabId] = newTreeItem;
+			}
+
+			if (newTreeItem.resourceUri) {
+				// use to update tab label if duplicated file name showing
+				var filePathArray = tabId.split(sep);
+				if (filePathArray.length > 1) {
+					if (!this.filePathTree[filePathArray[-1]]) {
+						this.filePathTree[filePathArray[-1]] = {};
+					}
+					if (!this.filePathTree[filePathArray[-1]][tabId]) {
+						this.filePathTree[filePathArray[-1]][tabId] = { pathList: filePathArray, id: tabId };
+					}
+				}
 			}
 			this.treeItemMap[tabId].contextValue = element.groupId === null ? 'tab' : 'grouped-tab';
 			return this.treeItemMap[tabId];
@@ -99,8 +120,10 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 			if (target && isSlot(target)) {
 				return; // should not have slot in group mode
 			}
-			
-			this.doHandleGrouping(target, draggeds.filter<Tab>(isTab));	
+
+			this.doHandleGrouping(target, draggeds.filter<Tab>(isTab));
+
+			this.doHandleGrouping(target, draggeds.filter<Tab>(isTab));
 		}
 
 		this._onDidChangeTreeData.fire();
@@ -122,7 +145,8 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 		} else {
 			const isCreatingNewGroup = isTab(target) && target.groupId === null && tabs.length > 0;
 			this.treeData.group(target, tabs);
-			
+
+
 			if (isCreatingNewGroup && tabs[0].groupId !== null) {
 				const group = this.treeData.getGroup(tabs[0].groupId);
 				if (group) {
@@ -139,6 +163,7 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 
 	public triggerRerender() {
 		this._onDidChangeTreeData.fire();
+		this.refreshFilePathTree();
 	}
 
 	public setState(state: Array<Tab | Group>) {
@@ -205,7 +230,6 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 		this.triggerRerender();
 	}
 
-	
 	public toggleSortMode(sortMode: boolean) {
 		this.sortMode = sortMode;
 		this.triggerRerender();
@@ -219,4 +243,82 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 		this.treeData.setCollapsedState(group, collapsed);
 		// sync data from tree view, so rerendering is not needed
 	}
+
+	private refreshFilePathTree() {
+		this.filePathTree = {};
+		this.getLeafNodes(this.treeData.getState()).forEach((leafNode: Tab) => {
+			const tabId = leafNode.id;
+			const leafItem = this.getTreeItem(leafNode);
+			const nativeTabs = getNativeTabs(leafNode);
+			if (nativeTabs[0].input instanceof vscode.TabInputText && leafItem.resourceUri) {
+				// use to update tab label if duplicated file name showing
+				var filePathArray = leafItem.resourceUri.fsPath.split(path.sep);
+				if (filePathArray.length > 1) {
+					var fileName = filePathArray[filePathArray.length - 1];
+					if (!this.filePathTree[fileName]) {
+						this.filePathTree[fileName] = {};
+					}
+					if (!this.filePathTree[fileName][tabId]) {
+						this.filePathTree[fileName][tabId] = { pathList: filePathArray, id: tabId } as FilePathNode;
+						this.onChangeFilePathTree(fileName);
+					}
+				}
+			}
+		});
+	}
+
+	private getLeafNodes(root: Array<Tab | Group>): Array<Tab> {
+		const leafNodes: Array<Tab> = [];
+		root.forEach((item: Tab | Group) => {
+			if (isTab(item)) {
+				leafNodes.push(item);
+			} else {
+				leafNodes.push(...this.getLeafNodes(item.children));
+			}
+		});
+		return leafNodes;
+	}
+
+	private onChangeFilePathTree(fileName: string) {
+		let distinceNodeCount = Object.keys(this.filePathTree[fileName]).length;
+		if (distinceNodeCount > 1) {
+			var commonAncestorDirIndex = findLongestCommonFilePathPrefixIndex(Object.values(this.filePathTree[fileName]).map(node => node.pathList) as Array<Array<string>>);
+			// map back to treeItemMap to change the description
+			Object.values(this.filePathTree[fileName]).forEach((node: FilePathNode) => {
+				this.updateTreeItemDescription(node.id, node.pathList.slice(commonAncestorDirIndex + 1, -1));
+			});
+		} else if (distinceNodeCount === 1) {
+			var node = Object.values(this.filePathTree[fileName])[0];
+			this.updateTreeItemDescription(node.id);
+		}
+	}
+
+	private updateTreeItemDescription(tabId: string, pathSequence?: Array<string>) {
+		if (this.treeItemMap[tabId]) {
+			this.treeItemMap[tabId].description = pathSequence?.length ? path.join(...pathSequence) : undefined;
+		}
+	}
+}
+
+export function findLongestCommonFilePathPrefixIndex(filePathArrays: Array<Array<string>>): number {
+	const size = filePathArrays.length;
+
+	if (size === 0) {
+		return -1;
+	} else if (size === 1) {
+		return 0;
+	}
+
+	filePathArrays.sort((a, b) => a.length - b.length);
+
+	// find the minimum length from first and last array
+	const minLength = Math.min(filePathArrays[0].length, filePathArrays[size - 1].length);
+
+	// find the common prefix between the first and last array
+	let i = 0;
+	while (i < minLength && filePathArrays[0][i] === filePathArrays[size - 1][i]) {
+		i++;
+	}
+
+	return i - 1;
 }

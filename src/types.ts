@@ -38,3 +38,8 @@ export function isGroup(item: Tab | Group | Slot): item is Group {
 export function isSlot(item: Tab | Group | Slot): item is Slot {
 	return item.type === TreeItemType.Slot;
 }
+
+export type FilePathNode = {
+	pathList: Array<string>;
+	id: string;
+};

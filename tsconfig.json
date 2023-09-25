@@ -1,5 +1,6 @@
 {
 	"compilerOptions": {
+		"forceConsistentCasingInFileNames": true, // Added this option to avoid errors on case-sensitive file systems
 		"module": "commonjs",
 		"target": "es2020",
 		"lib": ["es2020"],
