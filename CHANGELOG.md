@@ -1,5 +1,10 @@
 # Change Log
 
+## 2.0.4
+
+- Enhancements:
+  - Show file path as normal tab to distinct file with same name for file type tabs.
+
 ## 2.0.3
 
 - Enhancements:
