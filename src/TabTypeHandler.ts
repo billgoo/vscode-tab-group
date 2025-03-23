@@ -209,6 +209,34 @@ export class TabInputWebviewHandler implements TabTypeHandler<vscode.TabInputWeb
 	}
 }
 
+@Registered
+export class TabInputNotebookHandler implements TabTypeHandler<vscode.TabInputNotebook> {
+	name = "TabInputNotebook";
+
+	is(tab: vscode.Tab): tab is TypedTab<vscode.TabInputNotebook> {
+		return tab.input instanceof vscode.TabInputNotebook;
+	}
+
+	getNormalizedId(tab: TypedTab<vscode.TabInputNotebook>): string {
+		return JSON.stringify({
+			uri: tab.input.uri.path,
+			notebookType: tab.input.notebookType,
+		});
+	}
+
+	createTreeItem(tab: TypedTab<vscode.TabInputNotebook>): vscode.TreeItem {
+		return new vscode.TreeItem(tab.input.uri);
+	}
+
+	async openEditor(tab: TypedTab<vscode.TabInputNotebook>): Promise<void> {
+		await vscode.commands.executeCommand("vscode.openWith", tab.input.uri, tab.input.notebookType, { viewColumn: tab.group.viewColumn }).then(
+			undefined,
+			(e) => console.error(e)
+		);
+		return;
+	}
+}
+
 class UnimplementedError extends Error {
 	constructor(message?: string) {
 		super(message);
