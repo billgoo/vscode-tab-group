@@ -127,9 +127,14 @@ export class TabInputTextDiffHandler implements TabTypeHandler<vscode.TabInputTe
 	}
 
 	getNormalizedId(tab: TypedTab<vscode.TabInputTextDiff>): string {
+		const serializeUri = (uri: vscode.Uri) => {
+			// Omit specific metadata keys not always present upon the original diff action
+			const { _sep, fsPath, ...json } = uri.toJSON();
+			return json;
+		};
 		return JSON.stringify({
-			original: tab.input.original.toJSON(),
-			modified: tab.input.modified.toJSON(),
+			original: serializeUri(tab.input.original),
+			modified: serializeUri(tab.input.modified),
 		});
 	}
 
