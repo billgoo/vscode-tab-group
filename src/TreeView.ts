@@ -8,6 +8,7 @@ import { Group, isGroup, Tab, TreeItemType } from './types';
 import { getNativeTabs, TreeDataProvider } from './TreeDataProvider';
 import { Disposable } from './lifecycle';
 import { ContextKeys, setContext } from './context';
+import { tabFileDecorationProvider } from './TabFileDecorationProvider';
 
 export class TabsView extends Disposable {
 	private treeDataProvider: TreeDataProvider = this._register(new TreeDataProvider());
@@ -27,6 +28,11 @@ export class TabsView extends Disposable {
 		}));
 
 		this._register(this.treeDataProvider.onDidChangeTreeData(() => this.saveState(this.treeDataProvider.getState())));
+
+		// Listen to decoration changes to refresh the tree view
+		this._register(tabFileDecorationProvider.onDidChangeFileDecorations(() => {
+			this.treeDataProvider.triggerRerender();
+		}));
 
 		this._register(vscode.commands.registerCommand('tabsTreeView.tab.close', (tab: Tab) => vscode.window.tabGroups.close(getNativeTabs(tab))));
 

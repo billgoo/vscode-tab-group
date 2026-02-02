@@ -1,6 +1,7 @@
 import path = require('node:path');
 import * as vscode from 'vscode';
 import { findLongestCommonFilePathPrefixIndex } from './TreeDataProvider';
+import { setTabDecoration } from './TabFileDecorationProvider';
 
 export type InputType = vscode.Tab["input"];
 
@@ -106,7 +107,12 @@ export class TabInputTextHandler implements TabTypeHandler<vscode.TabInputText> 
 	}
 
 	createTreeItem(tab: TypedTab<vscode.TabInputText>): vscode.TreeItem {
-		return new vscode.TreeItem(tab.input.uri);
+		const treeItem = new vscode.TreeItem(tab.input.uri);
+
+		treeItem.label = tab.label;
+		setTabDecoration(treeItem, tab.input.uri, 'file')
+
+		return treeItem
 	}
 
 	async openEditor(tab: TypedTab<vscode.TabInputText>): Promise<void> {
@@ -153,6 +159,9 @@ export class TabInputTextDiffHandler implements TabTypeHandler<vscode.TabInputTe
 			treeItem.description = path.join(...originalFilePathArray.slice(commonAncestorDirIndex + 1, -1))
 				+ " - " + path.join(...modifiedFilePathArray.slice(commonAncestorDirIndex + 1, -1));
 		}
+
+		setTabDecoration(treeItem, tab.input.modified, 'diff')
+
 		return treeItem;
 	}
 
