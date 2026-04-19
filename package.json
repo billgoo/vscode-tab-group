@@ -80,14 +80,44 @@
 				"icon": "$(close)"
 			},
 			{
-				"command": "tabsTreeView.enableSortMode",
-				"title": "Sort Mode",
-				"icon": "$(selection)"
+				"command": "tabsTreeView.groupByParentFolder",
+				"title": "Group by Parent Fodler",
+				"icon": "$(group-by-ref-type)"
 			},
 			{
-				"command": "tabsTreeView.disableSortMode",
-				"title": "Done",
-				"icon": "$(check)"
+				"command": "tabsTreeView.groupByParentFolder.active",
+				"title": "Group by Parent Fodler (Active — click to disable)",
+				"icon": "$(pass-filled)"
+			},
+			{
+				"command": "tabsTreeView.sortAlphabetically.all",
+				"title": "Sort All Alphabetically",
+				"icon": "$(sort-precedence)"
+			},
+			{
+				"command": "tabsTreeView.sortAlphabetically.all.active",
+				"title": "Sort All Alphabetically (Active — click to disable)",
+				"icon": "$(pass-filled)"
+			},
+			{
+				"command": "tabsTreeView.sortAlphabetically.groupsOnly",
+				"title": "Sort Groups Alphabetically",
+				"icon": "$(list-tree)"
+			},
+			{
+				"command": "tabsTreeView.sortAlphabetically.groupsOnly.active",
+				"title": "Sort Groups Alphabetically (Active — click to disable)",
+				"icon": "$(pass-filled)"
+			},
+			{
+				"command": "tabsTreeView.sortAlphabetically.tabsOnly",
+				"title": "Sort Tabs Alphabetically",
+				"icon": "$(list-unordered)"
+			},
+			{
+				"command": "tabsTreeView.sortAlphabetically.tabsOnly.active",
+				"title": "Sort Tabs Alphabetically (Active — click to disable)",
+				"icon": "$(pass-filled)"
 			},
 			{
 				"command": "tabsTreeView.collapseAll",
@@ -135,15 +165,45 @@
 			],
 			"view/title": [
 				{
-					"command": "tabsTreeView.enableSortMode",
-					"when": "view =~ /^tabsTreeView/ && !tabGroup.sortMode:enabled",
+					"command": "tabsTreeView.groupByParentFolder",
+					"when": "view =~ /^tabsTreeView/ && !tabGroup.groupByParent:active",
 					"group": "navigation@1"
 				},
 				{
-					"command": "tabsTreeView.disableSortMode",
-					"when": "view =~ /^tabsTreeView/ && tabGroup.sortMode:enabled",
+					"command": "tabsTreeView.groupByParentFolder.active",
+					"when": "view =~ /^tabsTreeView/ && tabGroup.groupByParent:active",
 					"group": "navigation@1"
-				},				
+				},
+				{
+					"command": "tabsTreeView.sortAlphabetically.all",
+					"when": "view =~ /^tabsTreeView/ && !tabGroup.sort.all:active",
+					"group": "navigation@2"
+				},
+				{
+					"command": "tabsTreeView.sortAlphabetically.all.active",
+					"when": "view =~ /^tabsTreeView/ && tabGroup.sort.all:active",
+					"group": "navigation@2"
+				},
+				{
+					"command": "tabsTreeView.sortAlphabetically.groupsOnly",
+					"when": "view =~ /^tabsTreeView/ && !tabGroup.sort.groupsOnly:active",
+					"group": "navigation@3"
+				},
+				{
+					"command": "tabsTreeView.sortAlphabetically.groupsOnly.active",
+					"when": "view =~ /^tabsTreeView/ && tabGroup.sort.groupsOnly:active",
+					"group": "navigation@3"
+				},
+				{
+					"command": "tabsTreeView.sortAlphabetically.tabsOnly",
+					"when": "view =~ /^tabsTreeView/ && !tabGroup.sort.tabsOnly:active",
+					"group": "navigation@4"
+				},
+				{
+					"command": "tabsTreeView.sortAlphabetically.tabsOnly.active",
+					"when": "view =~ /^tabsTreeView/ && tabGroup.sort.tabsOnly:active",
+					"group": "navigation@4"
+				},
 				{
 					"command": "tabsTreeView.collapseAll",
 					"when": "view =~ /^tabsTreeView/ && !tabGroup.groups:allCollapsed",
@@ -157,7 +217,7 @@
 				{
 					"command": "tabsTreeView.reset",
 					"when": "view =~ /^tabsTreeView/",
-					"group": "navigation@9"
+					"group": "navigation@99"
 				}
 			]
 		}

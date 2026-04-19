@@ -10,4 +10,5 @@
     "typescript.tsc.autoDetect": "off",
     "editor.insertSpaces": false,
     "svg.preview.background": "transparent",
+    "python.defaultInterpreterPath": "/usr/bin/python3",
 }

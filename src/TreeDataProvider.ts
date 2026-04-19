@@ -31,22 +31,17 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 	 */
 	private filePathTree: Record<string, Record<string, FilePathNode>> = {};
 
-	private sortMode = false;
-
 	dropMimeTypes = [TreeDataProvider.TabDropMimeType];
 	dragMimeTypes = ['text/uri-list'];
 
+	/**
+	 * Returns the children of the given element, always appending a trailing
+	 * {@link Slot} drop-target so that items can be reordered by drag-and-drop
+	 * at any time without entering a dedicated sort mode.
+	 * @param element - The parent element, or `undefined` for the root.
+	 */
 	getChildren(element?: Tab | Group): Array<Tab | Group | Slot> | null {
-		const children = this.treeData.getChildren(element);
-
-		if (this.sortMode && Array.isArray(children) && children.length > 0) {
-			let groupId = isGroup(children[0]) ? null : children[0].groupId;
-			const slottedChildren: Array<Tab | Group | Slot> = children.slice(0);
-			slottedChildren.push({ type: TreeItemType.Slot, index: children.length, groupId });
-			return slottedChildren;
-		}
-
-		return children;
+		return this.treeData.getChildren(element);
 	}
 
 	getTreeItem(element: Tab | Group | Slot): vscode.TreeItem {
@@ -74,9 +69,7 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 		}
 
 		if (element.type === TreeItemType.Slot) {
-			const treeItem = new vscode.TreeItem('');
-			treeItem.iconPath = new vscode.ThemeIcon('indent');
-			return treeItem;
+			return new vscode.TreeItem('');
 		}
 
 		if (!this.treeItemMap[element.id]) {
@@ -111,20 +104,19 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 		treeDataTransfer.set(TreeDataProvider.TabDropMimeType, new vscode.DataTransferItem(source.filter(item => !isSlot(item))));
 	}
 
+	/**
+	 * Handles items dropped onto the tree view.
+	 * Drag-and-drop always reorders items (sort behaviour). Dropping onto a
+	 * {@link Slot} inside a group adds tabs to that group without requiring a
+	 * dedicated sort-mode toggle.
+	 * @param target - The item the drag was released over, or `undefined` for the root.
+	 * @param treeDataTransfer - The VS Code data-transfer payload.
+	 * @param token - Cancellation token.
+	 */
 	async handleDrop(target: Tab | Group | Slot | undefined, treeDataTransfer: vscode.DataTransfer, token: vscode.CancellationToken) {
 		const draggeds: Array<Group | Tab> = (treeDataTransfer.get(TreeDataProvider.TabDropMimeType)?.value ?? []).filter((tab: any) => tab !== target);
 
-		if (this.sortMode) {
-			this.doHandleSorting(target, draggeds);
-		} else {
-			if (target && isSlot(target)) {
-				return; // should not have slot in group mode
-			}
-
-			this.doHandleGrouping(target, draggeds.filter<Tab>(isTab));
-
-			this.doHandleGrouping(target, draggeds.filter<Tab>(isTab));
-		}
+		this.doHandleSorting(target, draggeds);
 
 		this._onDidChangeTreeData.fire();
 	}
@@ -230,8 +222,25 @@ export class TreeDataProvider extends Disposable implements vscode.TreeDataProvi
 		this.triggerRerender();
 	}
 
-	public toggleSortMode(sortMode: boolean) {
-		this.sortMode = sortMode;
+	/**
+	 * Groups all ungrouped root-level tabs that share the same immediate parent
+	 * directory, labelling each group with the parent folder name.
+	 * Directories with only a single tab are left ungrouped.
+	 */
+	public groupByParentFolder(): void {
+		const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.toString();
+		this.treeData.groupByParentFolder(workspaceRoot);
+		this.triggerRerender();
+	}
+
+	/**
+	 * Sorts tabs and/or groups alphabetically.
+	 * @param scope - `'all'` sorts root items and group children;
+	 *               `'groupsOnly'` sorts root items only;
+	 *               `'tabsOnly'` sorts tabs within groups and ungrouped root tabs.
+	 */
+	public sortAlphabetically(scope: 'all' | 'groupsOnly' | 'tabsOnly'): void {
+		this.treeData.sortAlphabetically(scope);
 		this.triggerRerender();
 	}
 

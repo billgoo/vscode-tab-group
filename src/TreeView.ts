@@ -1,7 +1,7 @@
 
 import * as vscode from 'vscode';
 import { getNormalizedTabId } from './TabTypeHandler';
-import { WorkspaceState } from './WorkspaceState';
+import { WorkspaceState, ViewModeState } from './WorkspaceState';
 import { ExclusiveHandle } from './event';
 import { asPromise } from './async';
 import { Group, isGroup, Tab, TreeItemType } from './types';
@@ -13,12 +13,17 @@ import { tabFileDecorationProvider } from './TabFileDecorationProvider';
 export class TabsView extends Disposable {
 	private treeDataProvider: TreeDataProvider = this._register(new TreeDataProvider());
 	private exclusiveHandle = new ExclusiveHandle();
+	private viewMode: ViewModeState = { groupByParentActive: false, sortScope: null };
 
 	constructor() {
 		super();
 		const initialState = this.initializeState();
 		this.saveState(initialState);
 		this.treeDataProvider.setState(initialState);
+
+		// Restore persisted view modes and re-apply them to the initial state
+		this.viewMode = WorkspaceState.getViewMode();
+		this.applyViewMode();
 		setContext(ContextKeys.AllCollapsed, this.treeDataProvider.isAllCollapsed());
 
 		const view = this._register(vscode.window.createTreeView('tabsTreeView', {
@@ -54,25 +59,43 @@ export class TabsView extends Disposable {
 
 		this._register(vscode.commands.registerCommand('tabsTreeView.reset', () => {
 			WorkspaceState.setState([]);
+			this.viewMode = { groupByParentActive: false, sortScope: null };
+			WorkspaceState.setViewMode(this.viewMode);
 			const initialState = this.initializeState();
 			this.treeDataProvider.setState(initialState);
+			this.applyViewMode();
 		}));
 
-		this._register(vscode.commands.registerCommand('tabsTreeView.enableSortMode', () => {
-			setContext(ContextKeys.SortMode, true);
-			view.title = (view.title ?? '') + ' (Sorting)';
-			this.treeDataProvider.toggleSortMode(true);
-		}));
+		const toggleGroupByParent = () => {
+			this.viewMode.groupByParentActive = !this.viewMode.groupByParentActive;
+			WorkspaceState.setViewMode(this.viewMode);
+			this.applyViewMode();
+		};
+		const toggleSort = (scope: 'all' | 'groupsOnly' | 'tabsOnly') => () => {
+			this.viewMode.sortScope = this.viewMode.sortScope === scope ? null : scope;
+			WorkspaceState.setViewMode(this.viewMode);
+			this.applyViewMode();
+		};
 
-		this._register(vscode.commands.registerCommand('tabsTreeView.disableSortMode', () => {
-			setContext(ContextKeys.SortMode, false);
-			view.title = (view.title ?? '').replace(' (Sorting)', '');
-			this.treeDataProvider.toggleSortMode(false);
-		}));
+		this._register(vscode.commands.registerCommand('tabsTreeView.groupByParentFolder', toggleGroupByParent));
+		this._register(vscode.commands.registerCommand('tabsTreeView.groupByParentFolder.active', toggleGroupByParent));
+
+		this._register(vscode.commands.registerCommand('tabsTreeView.sortAlphabetically.all', toggleSort('all')));
+		this._register(vscode.commands.registerCommand('tabsTreeView.sortAlphabetically.all.active', toggleSort('all')));
+
+		this._register(vscode.commands.registerCommand('tabsTreeView.sortAlphabetically.groupsOnly', toggleSort('groupsOnly')));
+		this._register(vscode.commands.registerCommand('tabsTreeView.sortAlphabetically.groupsOnly.active', toggleSort('groupsOnly')));
+
+		this._register(vscode.commands.registerCommand('tabsTreeView.sortAlphabetically.tabsOnly', toggleSort('tabsOnly')));
+		this._register(vscode.commands.registerCommand('tabsTreeView.sortAlphabetically.tabsOnly.active', toggleSort('tabsOnly')));
 
 		this._register(vscode.window.tabGroups.onDidChangeTabs(e => {
 			this.treeDataProvider.appendTabs(e.opened);
 			this.treeDataProvider.closeTabs(e.closed);
+
+			if (e.opened.length > 0) {
+				this.applyViewMode();
+			}
 
 			if (e.changed[0] && e.changed[0].isActive) {
 				const tab = this.treeDataProvider.getTab(e.changed[0]);
@@ -173,6 +196,24 @@ export class TabsView extends Disposable {
 
 	private saveState(state: Array<Tab | Group>): void {
 		WorkspaceState.setState(state);
+	}
+
+	/**
+	 * Re-applies the currently active view modes (group by parent folder and/or sort)
+	 * to the tree data provider and triggers a re-render.
+	 */
+	private applyViewMode(): void {
+		if (this.viewMode.groupByParentActive) {
+			this.treeDataProvider.groupByParentFolder();
+		}
+		if (this.viewMode.sortScope !== null) {
+			this.treeDataProvider.sortAlphabetically(this.viewMode.sortScope);
+		}
+		setContext(ContextKeys.GroupByParentActive, this.viewMode.groupByParentActive);
+		setContext(ContextKeys.SortAllActive, this.viewMode.sortScope === 'all');
+		setContext(ContextKeys.SortGroupsOnlyActive, this.viewMode.sortScope === 'groupsOnly');
+		setContext(ContextKeys.SortTabsOnlyActive, this.viewMode.sortScope === 'tabsOnly');
+		this.treeDataProvider.triggerRerender();
 	}
 
 	private isCorrespondingTab(tab: vscode.Tab, jsonTab: Tab): boolean {
