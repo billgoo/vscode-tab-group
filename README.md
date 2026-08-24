@@ -1,20 +1,38 @@
-# vscode-tab-group
-If you like vertical Tab Group feature in Edge, this extension is for you to use it in VSCode!
+# Tab Group for VS Code
 
-## Feature
-- Drag and drop to group or ungroup tabs in the TABS view
-- Use "Sort Mode" to reorder the tabs and groups
-- Collapse/uncollapse all
+Organize editor tabs into persistent, named groups from the Tab Group activity-bar view. The extension is inspired by browser tab groups while respecting VS Code's native editor and tab behavior.
+
+![Grouping editor tabs](docs/demo.gif)
+
+## Features
+
+- Drag one or more tabs onto a tab or group to create and populate a named group.
+- Drag tabs to the view background to ungroup them.
+- Use Sort Mode to reorder tabs and groups without changing group membership.
+- Rename, close, ungroup, or dissolve a group from its context menu.
+- Collapse and expand all groups.
+- Preserve group membership, order, names, colors, and collapsed state in workspace state.
+- Show an unsaved-file decoration for text editors.
 
 ## Usage
-### Group and Ungroup
-![](./docs/demo.gif)
 
-### Sort with "Sort Mode"
-![](./docs/sort.gif)
+Open the **Tab Group** activity-bar view. Drag tabs directly to group them. When a new group is created, enter an optional name. Use the view title actions to enter Sort Mode and to collapse, expand, or reset all groups.
 
-Notice: if item A is dragged onto item B, it will be inserted right before item B.
+![Sorting grouped tabs](docs/sort.gif)
 
-If you have a better idea on sorting the tree view nodes, please tell me. :)
+Dropping an item onto another inserts it immediately before the target. In Sort Mode, dropping on the final slot appends it.
 
-**P.S. I am sorry that I may be late response because of some personal issues. Please just post issues or pull requests directly. Thank you!**
+## Development
+
+```bash
+npm ci
+npm run compile
+npm run test:unit
+npm run test:e2e
+```
+
+Use **Run Extension** in VS Code to launch an Extension Development Host. See [docs/development.md](docs/development.md) for the test, packaging, CI, and Marketplace release process.
+
+## Contributing and Support
+
+Please report defects and feature requests in the [issue tracker](https://github.com/billgoo/vscode-tab-group/issues). Read [SUPPORT.md](SUPPORT.md) for support expectations.
