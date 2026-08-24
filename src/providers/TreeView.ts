@@ -37,9 +37,10 @@ export class TabsView extends Disposable {
       ),
     );
 
-    // Listen to decoration changes to refresh the tree view
+    const tabFileDecorationProvider = this._register(getTabFileDecorationProvider());
+
     this._register(
-      getTabFileDecorationProvider().onDidChangeFileDecorations(() => {
+      tabFileDecorationProvider.onDidChangeFileDecorations(() => {
         this.treeDataProvider.triggerRerender();
       }),
     );

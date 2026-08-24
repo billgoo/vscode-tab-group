@@ -1,4 +1,4 @@
-import path = require('node:path');
+import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { findLongestCommonFilePathPrefixIndex } from './TreeDataProvider';
 import { setTabDecoration } from '../decorators/TabFileDecorationProvider';
@@ -25,7 +25,7 @@ export interface TabTypeHandler<T extends InputType> {
 
 const handlers: TabTypeHandler<InputType>[] = [];
 
-function getNormalizedIdForUnknownObject(input: Object): string {
+function getNormalizedIdForUnknownObject(input: object): string {
   const getNormalizedObject = (object: any, depth: number = 2) => {
     const result: Record<string, any> = {};
 
@@ -49,7 +49,7 @@ function getNormalizedIdForUnknownObject(input: Object): string {
  */
 export class UnknownInputTypeHandler implements TabTypeHandler<unknown> {
   name = 'unknownInputType';
-  is(tab: vscode.Tab): tab is TypedTab<unknown> {
+  is(_tab: vscode.Tab): _tab is TypedTab<unknown> {
     return true;
   }
 
@@ -67,7 +67,7 @@ export class UnknownInputTypeHandler implements TabTypeHandler<unknown> {
     return new vscode.TreeItem(tab.label);
   }
 
-  openEditor(tab: TypedTab<unknown>): Promise<void> {
+  openEditor(_tab: TypedTab<unknown>): Promise<void> {
     return Promise.resolve();
   }
 }
@@ -94,8 +94,8 @@ export function getHandler(
  * Note: The order matters! Place more specifc handler before the general one. e.g. `TabInputReadmePreviewHandler`, then `TabInputWebviewHandler`
  * @param ctor
  */
-function Registered(ctor: Function) {
-  handlers.push(new (ctor as any)());
+function Registered(ctor: new () => TabTypeHandler<InputType>) {
+  handlers.push(new ctor());
 }
 
 @Registered
@@ -138,8 +138,8 @@ export class TabInputTextDiffHandler implements TabTypeHandler<vscode.TabInputTe
   getNormalizedId(tab: TypedTab<vscode.TabInputTextDiff>): string {
     const serializeUri = (uri: vscode.Uri) => {
       // Omit specific metadata keys not always present upon the original diff action
-      const { _sep, fsPath, ...json } = uri.toJSON();
-      return json;
+      const { scheme, authority, path, query, fragment } = uri.toJSON();
+      return { scheme, authority, path, query, fragment };
     };
     return JSON.stringify({
       original: serializeUri(tab.input.original),
@@ -152,16 +152,16 @@ export class TabInputTextDiffHandler implements TabTypeHandler<vscode.TabInputTe
     treeItem.label = tab.label;
 
     // generate discription
-    var originalFilePathArray = tab.input.original.fsPath.split(path.sep);
-    var modifiedFilePathArray = tab.input.modified.fsPath.split(path.sep);
-    var filePathArray = new Array();
+    const originalFilePathArray = tab.input.original.fsPath.split(path.sep);
+    const modifiedFilePathArray = tab.input.modified.fsPath.split(path.sep);
+    const filePathArray = [];
     filePathArray.push(originalFilePathArray);
     filePathArray.push(modifiedFilePathArray);
     if (
       originalFilePathArray[originalFilePathArray.length - 1] ==
       modifiedFilePathArray[modifiedFilePathArray.length - 1]
     ) {
-      var commonAncestorDirIndex = findLongestCommonFilePathPrefixIndex(filePathArray);
+      const commonAncestorDirIndex = findLongestCommonFilePathPrefixIndex(filePathArray);
       treeItem.description =
         path.join(...originalFilePathArray.slice(commonAncestorDirIndex + 1, -1)) +
         ' - ' +
@@ -228,7 +228,7 @@ export class TabInputWebviewHandler implements TabTypeHandler<vscode.TabInputWeb
     return new vscode.TreeItem(tab.label);
   }
 
-  async openEditor(tab: TypedTab<vscode.TabInputWebview>): Promise<void> {
+  async openEditor(_tab: TypedTab<vscode.TabInputWebview>): Promise<void> {
     return Promise.resolve();
   }
 }

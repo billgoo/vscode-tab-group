@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { WorkspaceState } from '@src/models/WorkspaceState';
-import { TabsView } from '@src/providers/TreeView';
+import { WorkspaceState } from './models/WorkspaceState';
+import { TabsView } from './providers/TreeView';
 
 function activate(context: vscode.ExtensionContext) {
   try {

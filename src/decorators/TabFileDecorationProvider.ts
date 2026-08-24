@@ -1,25 +1,28 @@
 import * as vscode from 'vscode';
 
-export class TabFileDecorationProvider implements vscode.FileDecorationProvider {
+export class TabFileDecorationProvider implements vscode.FileDecorationProvider, vscode.Disposable {
   private readonly _onDidChangeFileDecorations = new vscode.EventEmitter<vscode.Uri[]>();
+  private readonly subscriptions: vscode.Disposable[];
   readonly onDidChangeFileDecorations = this._onDidChangeFileDecorations.event;
 
   constructor() {
-    // Listen to document changes to update decorations
-    vscode.workspace.onDidChangeTextDocument(e => {
-      if (e.document.isDirty) {
+    this.subscriptions = [
+      vscode.workspace.onDidChangeTextDocument(e => {
         this._onDidChangeFileDecorations.fire([e.document.uri]);
-      } else {
-        // When saved, remove decoration
-        this._onDidChangeFileDecorations.fire([e.document.uri]);
-      }
-    });
+      }),
+      vscode.window.tabGroups.onDidChangeTabs(() => {
+        this._onDidChangeFileDecorations.fire([]);
+      }),
+    ];
+  }
 
-    // Also listen to tab changes to refresh decorations
-    vscode.window.tabGroups.onDidChangeTabs(() => {
-      // Refresh all decorations
-      this._onDidChangeFileDecorations.fire([]);
-    });
+  dispose(): void {
+    this.subscriptions.forEach(subscription => subscription.dispose());
+    this._onDidChangeFileDecorations.dispose();
+
+    if (_tabFileDecorationProvider === this) {
+      _tabFileDecorationProvider = undefined;
+    }
   }
 
   provideFileDecoration(uri: vscode.Uri): vscode.ProviderResult<vscode.FileDecoration> {

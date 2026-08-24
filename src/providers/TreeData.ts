@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
-import { safeRemove } from '@src/utils/Arrays';
-import { getNextColorId } from '@src/utils/color';
-import { Group, TreeItemType, Tab, isGroup, isTab } from '@src/models/types';
+import { safeRemove } from '../utils/Arrays';
+import { getNextColorId } from '../utils/color';
+import { Group, TreeItemType, Tab, isGroup, isTab } from '../models/types';
 
 export class TreeData {
   private root: Array<Tab | Group> = [];
