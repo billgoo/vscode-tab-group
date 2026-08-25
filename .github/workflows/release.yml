@@ -53,6 +53,29 @@ jobs:
           path: '*.vsix'
           if-no-files-found: error
 
+  attach-release-asset:
+    name: Attach VSIX to GitHub Release
+    if: ${{ github.event_name == 'push' }}
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: tab-group-${{ env.RELEASE_TAG }}-vsix
+          path: release
+      - name: Create or update GitHub Release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          vsix_path="$(find release -maxdepth 1 -name '*.vsix' -print -quit)"
+          test -n "${vsix_path}"
+          if ! gh release view "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release create "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --verify-tag --title "${RELEASE_TAG}" --generate-notes || gh release view "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}"
+          fi
+          gh release upload "${RELEASE_TAG}" "${vsix_path}" --repo "${GITHUB_REPOSITORY}" --clobber
+
   publish:
     name: Publish tagged release
     if: ${{ github.event_name == 'push' || inputs.publish }}
