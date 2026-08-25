@@ -25,6 +25,9 @@ export function getNativeTabs(tab: Tab): vscode.Tab[] {
   });
 }
 
+export const TabDropMimeType = 'application/vnd.code.tree.tabstreeview';
+export const RecentTabsTreeMimeType = 'application/vnd.code.tree.recenttabstreeview';
+
 export class TreeDataProvider
   extends Disposable
   implements
@@ -34,7 +37,6 @@ export class TreeDataProvider
   constructor() {
     super();
   }
-  private static TabDropMimeType = 'application/vnd.code.tree.tabstreeview';
   private _onDidChangeTreeData = this._register(new vscode.EventEmitter<void>());
   onDidChangeTreeData = this._onDidChangeTreeData.event;
   private _onDidChangeState = this._register(new vscode.EventEmitter<void>());
@@ -54,8 +56,8 @@ export class TreeDataProvider
 
   private sortMode = false;
 
-  dropMimeTypes = [TreeDataProvider.TabDropMimeType];
-  dragMimeTypes = ['text/uri-list'];
+  dropMimeTypes = [TabDropMimeType, RecentTabsTreeMimeType];
+  dragMimeTypes = [TabDropMimeType];
 
   getChildren(element?: Tab | Group): Array<Tab | Group | Slot> | null {
     const children = this.treeState.getChildren(element);
@@ -156,7 +158,7 @@ export class TreeDataProvider
     _token: vscode.CancellationToken,
   ): Promise<void> {
     treeDataTransfer.set(
-      TreeDataProvider.TabDropMimeType,
+      TabDropMimeType,
       new vscode.DataTransferItem(source.filter(item => !isSlot(item))),
     );
   }
@@ -167,8 +169,11 @@ export class TreeDataProvider
     _token: vscode.CancellationToken,
   ) {
     const draggeds: Array<Group | Tab> = (
-      treeDataTransfer.get(TreeDataProvider.TabDropMimeType)?.value ?? []
+      treeDataTransfer.get(TabDropMimeType)?.value ?? []
     ).filter((tab: any) => tab !== target);
+    if (draggeds.length === 0) {
+      return;
+    }
 
     if (this.sortMode) {
       this.doHandleSorting(target, draggeds);
@@ -227,7 +232,7 @@ export class TreeDataProvider
 
   public setState(state: Array<Tab | Group>) {
     this.treeState.setState(state);
-    this.triggerRerender();
+    this.triggerStateChange();
   }
 
   public async activate(tab: Tab): Promise<any> {
@@ -327,8 +332,12 @@ export class TreeDataProvider
     this.filePathTree = {};
     this.getLeafNodes(this.treeState.getState()).forEach((leafNode: Tab) => {
       const tabId = leafNode.id;
-      const leafItem = this.getTreeItem(leafNode);
       const nativeTabs = getNativeTabs(leafNode);
+      if (nativeTabs.length === 0) {
+        return;
+      }
+
+      const leafItem = this.getTreeItem(leafNode);
       if (nativeTabs[0].input instanceof vscode.TabInputText && leafItem.resourceUri) {
         // use to update tab label if duplicated file name showing
         const filePathArray = leafItem.resourceUri.fsPath.split(sep);
