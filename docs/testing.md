@@ -23,7 +23,7 @@ npm run package
 | `npm run lint`      | TypeScript style and static analysis.                                     |
 | `npm run test:unit` | Grouping, ungrouping, lifecycle, and pure utility behavior.               |
 | `npm run compile`   | Strict TypeScript compilation.                                            |
-| `npm run test:e2e`  | Extension-host smoke test for activation and public command registration. |
+| `npm run test:e2e`  | Extension-host smoke test for activation, supported tab-input normalization, opaque-input rejection, and public command registration. |
 | `npm run package`   | Production VSIX build and package contents.                               |
 
 On macOS, `test:e2e` uses the installed VS Code application when available. Set `VSCODE_TEST_EXECUTABLE` to an executable path on another platform, or set `VSCODE_TEST_DOWNLOAD=true` to use a downloaded runtime. On headless Linux, run the command through `xvfb-run -a npm run test:e2e`.
@@ -68,6 +68,11 @@ Use `--skip-e2e` only when a local VS Code runtime is unavailable. CI and tag-ba
 
 - Modify an open text file without saving and confirm the unsaved decoration appears in the tree.
 - Save the file and confirm the decoration disappears.
+
+### Supported Tab Inputs
+
+- Confirm text editors, text diffs, custom editors, notebooks, and notebook diffs can be listed, grouped, selected, and reopened from the Tab Group view when their provider is available.
+- Confirm terminal and webview panel tabs are omitted because the public VS Code API does not expose a stable per-instance identity and reopen operation for them.
 
 ### Packaged Extension
 

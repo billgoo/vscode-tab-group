@@ -2,6 +2,7 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { setTabDecoration } from '../decorators/TabFileDecorationProvider';
 import { findLongestCommonFilePathPrefixIndex } from '../utils/filePath';
+import { getNormalizedNotebookDiffId } from '../utils/tabId';
 
 export type InputType = vscode.Tab['input'];
 
@@ -91,7 +92,7 @@ export function getHandler(
 
 /**
  * Register handler
- * Note: The order matters! Place more specifc handler before the general one. e.g. `TabInputReadmePreviewHandler`, then `TabInputWebviewHandler`
+ * Note: The order matters. Place more specific handlers before general ones.
  * @param ctor
  */
 function Registered(ctor: new () => TabTypeHandler<InputType>) {
@@ -184,6 +185,40 @@ export class TabInputTextDiffHandler implements TabTypeHandler<vscode.TabInputTe
 }
 
 @Registered
+export class TabInputNotebookDiffHandler implements TabTypeHandler<vscode.TabInputNotebookDiff> {
+  name = 'TabInputNotebookDiff';
+
+  is(tab: vscode.Tab): tab is TypedTab<vscode.TabInputNotebookDiff> {
+    return tab.input instanceof vscode.TabInputNotebookDiff;
+  }
+
+  getNormalizedId(tab: TypedTab<vscode.TabInputNotebookDiff>): string {
+    return getNormalizedNotebookDiffId(
+      tab.input.original,
+      tab.input.modified,
+      tab.input.notebookType,
+    );
+  }
+
+  createTreeItem(tab: TypedTab<vscode.TabInputNotebookDiff>): vscode.TreeItem {
+    const treeItem = new vscode.TreeItem(tab.input.modified);
+    treeItem.label = tab.label;
+    setTabDecoration(treeItem, tab.input.modified, 'diff');
+
+    return treeItem;
+  }
+
+  async openEditor(tab: TypedTab<vscode.TabInputNotebookDiff>): Promise<void> {
+    await vscode.commands
+      .executeCommand('vscode.diff', tab.input.original, tab.input.modified, tab.label, {
+        viewColumn: tab.group.viewColumn,
+      })
+      .then(undefined, e => console.error(e));
+    return;
+  }
+}
+
+@Registered
 export class TabInputCustomHandler implements TabTypeHandler<vscode.TabInputCustom> {
   name = 'TabInputCustom';
 
@@ -209,27 +244,6 @@ export class TabInputCustomHandler implements TabTypeHandler<vscode.TabInputCust
       })
       .then(undefined, e => console.error(e));
     return;
-  }
-}
-
-@Registered
-export class TabInputWebviewHandler implements TabTypeHandler<vscode.TabInputWebview> {
-  name = 'TabInputWebview';
-
-  is(tab: vscode.Tab): tab is TypedTab<vscode.TabInputWebview> {
-    return tab.input instanceof vscode.TabInputWebview;
-  }
-
-  getNormalizedId(tab: TypedTab<vscode.TabInputWebview>): string {
-    return tab.input.viewType;
-  }
-
-  createTreeItem(tab: TypedTab<vscode.TabInputWebview>): vscode.TreeItem {
-    return new vscode.TreeItem(tab.label);
-  }
-
-  async openEditor(_tab: TypedTab<vscode.TabInputWebview>): Promise<void> {
-    return Promise.resolve();
   }
 }
 

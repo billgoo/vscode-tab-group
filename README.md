@@ -14,6 +14,7 @@ Organize editor tabs into persistent, named groups from the Tab Group activity-b
 - Collapse and expand all groups.
 - Preserve group membership, order, names, colors, and collapsed state in workspace state.
 - Show an unsaved-file decoration for text editors.
+- Track text, text-diff, custom-editor, notebook, and notebook-diff tabs with stable IDs.
 
 ## Usage
 
@@ -22,6 +23,12 @@ Open the **Tab Group** activity-bar view. Drag tabs directly to group them. When
 ![Sorting grouped tabs](docs/sort.gif)
 
 Dropping an item onto another inserts it immediately before the target. In Sort Mode, dropping on the final slot appends it.
+
+## Tab support
+
+Tab Group supports the current public VS Code tab inputs that provide both a stable identity and a public reopen command: text editors, text diffs, custom editors, notebooks, and notebook diffs.
+
+Terminal and webview panel tabs are intentionally omitted. The public `TabInputTerminal` input has no identity fields, while `TabInputWebview` exposes only its view type. VS Code provides no public operation to match or reopen those individual instances, so adding them would merge unrelated tabs or break after a reload. Unknown and future tab inputs are skipped for the same reason.
 
 ## Development
 
