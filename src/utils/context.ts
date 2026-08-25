@@ -4,6 +4,7 @@ import { asPromise } from './async';
 export const enum ContextKeys {
   SortMode = 'tabGroup.sortMode:enabled',
   AllCollapsed = 'tabGroup.groups:allCollapsed',
+  SelectedGroup = 'tabGroup.selectedGroup',
 }
 
 const context: Record<string, any> = {};

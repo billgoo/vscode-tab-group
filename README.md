@@ -7,6 +7,7 @@ Organize editor tabs into persistent, named groups from the Tab Group activity-b
 ## Features
 
 - Drag one or more tabs onto a tab or group to create and populate a named group.
+- Choose a distinct color for each group.
 - Drag tabs to the view background to ungroup them.
 - Use Sort Mode to reorder tabs and groups without changing group membership.
 - Rename, close, ungroup, or dissolve a group from its context menu.

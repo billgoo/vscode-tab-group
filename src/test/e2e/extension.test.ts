@@ -11,6 +11,7 @@ suite('Tab Group extension', () => {
     const commands = await vscode.commands.getCommands(true);
     assert.ok(commands.includes('tabsTreeView.tab.ungroup'));
     assert.ok(commands.includes('tabsTreeView.group.rename'));
+    assert.ok(commands.includes('tabsTreeView.group.changeColor'));
     assert.ok(commands.includes('tabsTreeView.enableSortMode'));
     assert.ok(commands.includes('tabsTreeView.reset'));
   });

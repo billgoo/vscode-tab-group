@@ -8,10 +8,16 @@ import { getNativeTabs, TreeDataProvider } from './TreeDataProvider';
 import { Disposable } from '../utils/disposable';
 import { ContextKeys, setContext } from '../utils/context';
 import { getTabFileDecorationProvider } from '../decorators/TabFileDecorationProvider';
+import { GroupColorId, groupColorOptions } from '../utils/color';
+
+type GroupColorQuickPickItem = vscode.QuickPickItem & {
+  colorId: GroupColorId;
+};
 
 export class TabsView extends Disposable {
   private treeDataProvider: TreeDataProvider = this._register(new TreeDataProvider());
   private exclusiveHandle = new ExclusiveHandle();
+  private selectedGroup: Group | undefined;
 
   constructor(private readonly workspaceStateStore: WorkspaceStateStore) {
     super();
@@ -22,6 +28,7 @@ export class TabsView extends Disposable {
     this.treeDataProvider.setState(initialState);
 
     setContext(ContextKeys.AllCollapsed, this.treeDataProvider.isAllCollapsed());
+    setContext(ContextKeys.SelectedGroup, false);
 
     const view = this._register(
       vscode.window.createTreeView('tabsTreeView', {
@@ -70,6 +77,28 @@ export class TabsView extends Disposable {
     );
 
     this._register(
+      vscode.commands.registerCommand('tabsTreeView.group.changeColor', async (group?: Group) => {
+        const targetGroup = group ?? this.selectedGroup;
+        if (!targetGroup) {
+          return;
+        }
+
+        const selectedColor = await vscode.window.showQuickPick<GroupColorQuickPickItem>(
+          groupColorOptions.map(color => ({
+            label: `${color.swatch} ${color.label}`,
+            description: color.id === targetGroup.colorId ? 'Current color' : undefined,
+            colorId: color.id,
+          })),
+          { placeHolder: `Choose a color for ${targetGroup.label || 'this group'}` },
+        );
+
+        if (selectedColor) {
+          this.treeDataProvider.setGroupColor(targetGroup, selectedColor.colorId);
+        }
+      }),
+    );
+
+    this._register(
       vscode.commands.registerCommand('tabsTreeView.group.cancelGroup', (group: Group) =>
         this.treeDataProvider.cancelGroup(group),
       ),
@@ -83,6 +112,8 @@ export class TabsView extends Disposable {
 
     this._register(
       vscode.commands.registerCommand('tabsTreeView.reset', () => {
+        this.selectedGroup = undefined;
+        setContext(ContextKeys.SelectedGroup, false);
         void this.workspaceStateStore.save([]);
         const initialState = this.initializeState();
         this.treeDataProvider.setState(initialState);
@@ -127,11 +158,12 @@ export class TabsView extends Disposable {
 
     this._register(
       view.onDidChangeSelection(e => {
-        if (e.selection.length > 0) {
-          const item = e.selection[e.selection.length - 1];
-          if (item.type === TreeItemType.Tab) {
-            this.exclusiveHandle.run(() => asPromise(this.treeDataProvider.activate(item)));
-          }
+        const item = e.selection.length > 0 ? e.selection[e.selection.length - 1] : undefined;
+        this.selectedGroup = item && isGroup(item) ? item : undefined;
+        setContext(ContextKeys.SelectedGroup, Boolean(this.selectedGroup));
+
+        if (item?.type === TreeItemType.Tab) {
+          this.exclusiveHandle.run(() => asPromise(this.treeDataProvider.activate(item)));
         }
       }),
     );

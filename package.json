@@ -82,6 +82,11 @@
         "icon": "$(edit)"
       },
       {
+        "command": "tabsTreeView.group.changeColor",
+        "title": "Change Group Color",
+        "icon": "$(symbol-color)"
+      },
+      {
         "command": "tabsTreeView.group.cancelGroup",
         "title": "Cancel Group",
         "icon": "$(array)"
@@ -135,14 +140,19 @@
           "group": "inline@0"
         },
         {
-          "command": "tabsTreeView.group.cancelGroup",
+          "command": "tabsTreeView.group.changeColor",
           "when": "view =~ /^tabsTreeView/ && viewItem == 'group'",
           "group": "inline@1"
         },
         {
-          "command": "tabsTreeView.group.close",
+          "command": "tabsTreeView.group.cancelGroup",
           "when": "view =~ /^tabsTreeView/ && viewItem == 'group'",
           "group": "inline@2"
+        },
+        {
+          "command": "tabsTreeView.group.close",
+          "when": "view =~ /^tabsTreeView/ && viewItem == 'group'",
+          "group": "inline@3"
         }
       ],
       "view/title": [
@@ -155,6 +165,11 @@
           "command": "tabsTreeView.disableSortMode",
           "when": "view =~ /^tabsTreeView/ && tabGroup.sortMode:enabled",
           "group": "navigation@1"
+        },
+        {
+          "command": "tabsTreeView.group.changeColor",
+          "when": "view =~ /^tabsTreeView/ && tabGroup.selectedGroup",
+          "group": "navigation@2"
         },
         {
           "command": "tabsTreeView.collapseAll",

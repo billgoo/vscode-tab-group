@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Group, TreeItemType, Tab, isGroup, isTab } from '../models/types';
 import { safeRemove } from '../utils/Arrays';
-import { getNextColorId } from '../utils/color';
+import { GroupColorId, getNextColorId } from '../utils/color';
 
 export class TreeState {
   private root: Array<Tab | Group> = [];
@@ -155,6 +155,13 @@ export class TreeState {
 
   public renameGroup(group: Group, input: string): void {
     group.label = input;
+  }
+
+  public setGroupColor(groupId: string, colorId: GroupColorId): void {
+    const group = this.groupMap[groupId];
+    if (group) {
+      group.colorId = colorId;
+    }
   }
 
   public cancelGroup(group: Group): void {
