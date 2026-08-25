@@ -3,11 +3,11 @@ name: Publish Tagged Release
 on:
   push:
     tags:
-      - 'v*'
+      - '*.*.*'
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing vX.Y.Z tag to validate and package
+        description: Existing X.Y.Z or vX.Y.Z tag to validate and package
         required: true
         type: string
       publish:

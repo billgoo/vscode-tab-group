@@ -28,14 +28,14 @@ Run `npm run package` to compile the extension and create an installable `.vsix`
 
 1. Update the version in `package.json` and `CHANGELOG.md`.
 2. Verify `npm ci && npm run test:all && npm run package` locally.
-3. Commit the release changes, create an annotated matching version tag, and push it:
+3. Commit the release changes, create an annotated tag matching the version, and push it:
 
    ```bash
-   git tag -a v<package-version> -m "v<package-version>"
-   git push origin v<package-version>
+   git tag -a <package-version> -m "<package-version>"
+   git push origin <package-version>
    ```
 
-4. Pushing a `v*` tag starts `.github/workflows/release.yml`. The workflow verifies that the tag matches `package.json`, runs validation, builds the VSIX, and uploads it as a workflow artifact. Marketplace publishing then waits for approval through the `marketplace-publish` GitHub environment before it publishes that exact package.
+4. Pushing a semantic version tag, such as `2.0.5`, starts `.github/workflows/release.yml`. The workflow also accepts an optional `v` prefix. It verifies that the tag matches `package.json`, runs validation, builds the VSIX, and uploads it as a workflow artifact. Marketplace publishing then waits for approval through the `marketplace-publish` GitHub environment before it publishes that exact package.
 
 ### Marketplace Approval
 
@@ -50,7 +50,7 @@ The publisher owner must approve each Marketplace publication from the workflow'
 
 ### Tagged Recovery And Rollback
 
-Use **Actions** -> **Publish Tagged Release** -> **Run workflow** to validate and package an existing tag. Enter the exact `vX.Y.Z` tag and leave **Publish the selected tag** disabled to obtain a reviewable VSIX artifact.
+Use **Actions** -> **Publish Tagged Release** -> **Run workflow** to validate and package an existing tag. Enter the exact `X.Y.Z` or `vX.Y.Z` tag and leave **Publish the selected tag** disabled to obtain a reviewable VSIX artifact.
 
 Marketplace versions are immutable and VS Code clients do not downgrade to an older version. To roll back the public extension, restore the desired tag's code on a new release commit, increment `package.json` to a version higher than the current Marketplace version, create a matching new tag, and publish that new tag. Enable the manual **Publish the selected tag** option only when recovering a tag that has not already been published.
 
