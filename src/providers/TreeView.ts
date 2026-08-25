@@ -33,7 +33,7 @@ export class TabsView extends Disposable {
     this.recentTabs.setState(this.workspaceStateStore.loadRecentTabs() ?? []);
     this.saveState(initialState);
     this.treeDataProvider.setState(initialState);
-    this.refreshRecentTabs(vscode.window.tabGroups.all.flatMap(tabGroup => tabGroup.tabs));
+    this.refreshRecentTabs(this.getActiveNativeTab());
 
     setContext(ContextKeys.AllCollapsed, this.treeDataProvider.isAllCollapsed());
     setContext(ContextKeys.SelectedGroup, false);
@@ -133,12 +133,8 @@ export class TabsView extends Disposable {
       vscode.commands.registerCommand('tabsTreeView.reset', () => {
         this.selectedGroup = undefined;
         setContext(ContextKeys.SelectedGroup, false);
-        const initialState = this.mergeState(
-          [],
-          vscode.window.tabGroups.all.flatMap(tabGroup => tabGroup.tabs),
-        );
+        const initialState = this.mergeState([], this.getNativeTabs());
         this.treeDataProvider.setState(initialState);
-        this.saveState(initialState);
       }),
     );
 
@@ -175,10 +171,16 @@ export class TabsView extends Disposable {
         }
 
         this.treeDataProvider.triggerRerender();
-        this.refreshRecentTabs([...e.opened, ...e.changed]);
+        this.refreshRecentTabs(this.getActiveNativeTab());
         if (openedTabsChanged || closedTabsChanged) {
           this.saveState(this.treeDataProvider.getState());
         }
+      }),
+    );
+
+    this._register(
+      vscode.window.tabGroups.onDidChangeTabGroups(() => {
+        this.refreshRecentTabs(this.getActiveNativeTab());
       }),
     );
 
@@ -244,8 +246,7 @@ export class TabsView extends Disposable {
 
   private initializeState(): Array<Tab | Group> {
     const jsonItems = this.workspaceStateStore.load() ?? [];
-    const nativeTabs = vscode.window.tabGroups.all.flatMap(tabGroup => tabGroup.tabs);
-    return this.mergeState(jsonItems, nativeTabs);
+    return this.mergeState(jsonItems, this.getNativeTabs());
   }
 
   private mergeState(jsonItems: Array<Tab | Group>, nativeTabs: vscode.Tab[]): Array<Tab | Group> {
@@ -296,44 +297,50 @@ export class TabsView extends Disposable {
   }
 
   private saveRecentTabs(): void {
-    void this.workspaceStateStore.saveRecentTabs(this.recentTabs.getState());
+    void this.workspaceStateStore
+      .saveRecentTabs(this.recentTabs.getState())
+      .then(undefined, error => console.error('Failed to save recent tabs', error));
   }
 
-  private refreshRecentTabs(tabsToTouch: readonly vscode.Tab[] = []): void {
-    const nativeTabs = vscode.window.tabGroups.all.flatMap(tabGroup => tabGroup.tabs);
-    const nativeTabIds: string[] = [];
-    nativeTabs.forEach(nativeTab => {
-      try {
-        const tabId = getNormalizedTabId(nativeTab);
-        if (!nativeTabIds.includes(tabId)) {
-          nativeTabIds.push(tabId);
-        }
-      } catch {
-        // skip unsupported tab inputs
-      }
-    });
+  private refreshRecentTabs(activeTab: vscode.Tab | undefined): void {
+    const nativeTabIds = this.collectNativeTabIds(this.getNativeTabs());
 
-    let changed = this.recentTabs.reconcile(nativeTabIds);
-    const nativeTabIdSet = new Set(nativeTabIds);
-    tabsToTouch.forEach(nativeTab => {
-      if (!nativeTab.isActive) {
-        return;
-      }
-
+    let changed = this.recentTabs.reconcile([...nativeTabIds]);
+    if (activeTab) {
       try {
-        const tabId = getNormalizedTabId(nativeTab);
-        if (nativeTabIdSet.has(tabId)) {
+        const tabId = getNormalizedTabId(activeTab);
+        if (nativeTabIds.has(tabId)) {
           changed = this.recentTabs.touch(tabId) || changed;
         }
       } catch {
         // skip unsupported tab inputs
       }
-    });
+    }
 
     if (changed) {
       this.saveRecentTabs();
       this.recentTabsTreeDataProvider.refresh();
     }
+  }
+
+  private getNativeTabs(): vscode.Tab[] {
+    return vscode.window.tabGroups.all.flatMap(tabGroup => tabGroup.tabs);
+  }
+
+  private getActiveNativeTab(): vscode.Tab | undefined {
+    return vscode.window.tabGroups.activeTabGroup?.activeTab;
+  }
+
+  private collectNativeTabIds(nativeTabs: readonly vscode.Tab[]): Set<string> {
+    const nativeTabIds = new Set<string>();
+    nativeTabs.forEach(nativeTab => {
+      try {
+        nativeTabIds.add(getNormalizedTabId(nativeTab));
+      } catch {
+        // skip unsupported tab inputs
+      }
+    });
+    return nativeTabIds;
   }
 
   private isCorrespondingTab(tab: vscode.Tab, jsonTab: Tab): boolean {

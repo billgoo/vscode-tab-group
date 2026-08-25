@@ -47,10 +47,4 @@ export class RecentTabsTreeDataProvider
   ): Promise<void> {
     treeDataTransfer.set(TabDropMimeType, new vscode.DataTransferItem(source));
   }
-
-  async handleDrop(
-    _target: Tab | undefined,
-    _treeDataTransfer: vscode.DataTransfer,
-    _token: vscode.CancellationToken,
-  ): Promise<void> {}
 }

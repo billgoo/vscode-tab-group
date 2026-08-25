@@ -12,7 +12,7 @@ function createTab(id: string): Tab {
 
 describe('RecentTabs', () => {
   test('moves a viewed tab to the front once', () => {
-    const recentTabs = new RecentTabs(['first', 'second']);
+    const recentTabs = new RecentTabs(['first', 'first', 'second']);
 
     expect(recentTabs.touch('second')).toBe(true);
     expect(recentTabs.touch('second')).toBe(false);

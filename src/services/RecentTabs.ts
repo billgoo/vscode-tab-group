@@ -8,12 +8,7 @@ export class RecentTabs {
   }
 
   public setState(tabIds: readonly string[]): void {
-    this.tabIds = [];
-    tabIds.forEach(tabId => {
-      if (!this.tabIds.includes(tabId)) {
-        this.tabIds.push(tabId);
-      }
-    });
+    this.tabIds = [...new Set(tabIds)];
   }
 
   public getState(): string[] {
@@ -32,10 +27,12 @@ export class RecentTabs {
   public reconcile(tabIds: readonly string[]): boolean {
     const validTabIds = new Set(tabIds);
     const reconciledTabIds = this.tabIds.filter(tabId => validTabIds.has(tabId));
+    const knownTabIds = new Set(reconciledTabIds);
 
     tabIds.forEach(tabId => {
-      if (!reconciledTabIds.includes(tabId)) {
+      if (!knownTabIds.has(tabId)) {
         reconciledTabIds.push(tabId);
+        knownTabIds.add(tabId);
       }
     });
 
