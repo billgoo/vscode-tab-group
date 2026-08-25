@@ -26,16 +26,38 @@ Run `npm run package` to compile the extension and create an installable `.vsix`
 
 ## Marketplace Release
 
-1. Update the version in `package.json` and `CHANGELOG.md`.
-2. Verify `npm ci && npm run test:all && npm run package` locally.
-3. Commit the release changes, create an annotated tag matching the version, and push it:
+1. Choose the next semantic version. This repository uses bare version tags such as `2.0.5`.
+2. Update `package.json` and `package-lock.json` without creating a tag:
 
    ```bash
+   npm version patch --no-git-tag-version
+   ```
+
+   Replace `patch` with `minor`, `major`, or an explicit version when appropriate.
+   If `package.json` was already edited manually, synchronize the lockfile instead:
+
+   ```bash
+   npm install --package-lock-only
+   ```
+
+3. Add a non-empty `## <package-version>` section at the top of `CHANGELOG.md`, using the existing Enhancements and Fix bugs style where applicable.
+4. Run the release metadata guard and the full local release gate:
+
+   ```bash
+   npm run release:check
+   npm run publish:local -- --package-only
+   ```
+
+5. Commit the release changes, merge them to `main`, then create an annotated tag matching the version and push it:
+
+   ```bash
+   git checkout main
+   git pull --ff-only origin main
    git tag -a <package-version> -m "<package-version>"
    git push origin <package-version>
    ```
 
-4. Pushing a semantic version tag, such as `2.0.5`, starts `.github/workflows/release.yml`. The workflow also accepts an optional `v` prefix. It verifies that the tag matches `package.json`, runs validation, builds the VSIX, and uploads it as a workflow artifact. Marketplace publishing then waits for approval through the `marketplace-publish` GitHub environment before it publishes that exact package.
+6. Pushing a semantic version tag, such as `2.0.5`, starts `.github/workflows/release.yml`. The workflow also accepts an optional `v` prefix. It verifies that the tag matches `package.json`, runs validation, builds the VSIX, and uploads it as a workflow artifact. Marketplace publishing then waits for approval through the `marketplace-publish` GitHub environment before it publishes that exact package.
 
 ### Marketplace Approval
 
