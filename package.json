@@ -3,7 +3,7 @@
   "displayName": "Tab Group",
   "description": "Organize VS Code editor tabs into persistent, named groups.",
   "publisher": "jiapeiyao",
-  "version": "2.0.4",
+  "version": "3.0.0",
   "license": "MIT",
   "homepage": "https://github.com/billgoo/vscode-tab-group#readme",
   "galleryBanner": {
@@ -185,6 +185,7 @@
     "test:all": "npm run lint && npm run test:unit && npm run test:e2e",
     "package": "vsce package",
     "publish": "vsce publish",
+    "release:check": "node scripts/check-release.js",
     "publish:local": "node scripts/publish-local.js",
     "vscode:prepublish": "npm run clean && tsc -p ./ --sourceMap false",
     "watch": "tsc -watch -p ./"
