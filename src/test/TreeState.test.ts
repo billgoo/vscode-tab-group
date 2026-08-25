@@ -74,6 +74,24 @@ describe('TreeState ungrouping', () => {
   });
 });
 
+describe('TreeState appending', () => {
+  test('appends a new tab to the root when a group exists', () => {
+    const group = createGroup('G');
+    const existingTab = createTab('A');
+    group.children = [existingTab];
+    existingTab.groupId = group.id;
+
+    const treeState = new TreeState();
+    treeState.setState([group]);
+    treeState.appendTab('B');
+
+    const appendedTab = treeState.getTab('B');
+    expect(appendedTab?.groupId).toBeNull();
+    expect(group.children).toEqual([existingTab]);
+    expect(treeState.getState()).toEqual([group, appendedTab]);
+  });
+});
+
 describe('TreeState group colors', () => {
   test('updates a persisted group color by group id', () => {
     const group = createGroup('G');
