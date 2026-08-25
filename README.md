@@ -31,7 +31,7 @@ npm run test:unit
 npm run test:e2e
 ```
 
-Use **Run Extension** in VS Code to launch an Extension Development Host. See [docs/development.md](docs/development.md) for the test, packaging, CI, and Marketplace release process.
+Use **Run Extension** in VS Code to launch an Extension Development Host. See [docs/testing.md](docs/testing.md) for automated and manual testing, and [docs/development.md](docs/development.md) for packaging, CI, and Marketplace releases.
 
 ## Contributing and Support
 

@@ -14,6 +14,8 @@ npm run test:e2e
 
 `test:unit` validates the grouping model without VS Code. `test:e2e` uses the locally installed VS Code application on macOS, then activates the extension and verifies its public commands are registered. Set `VSCODE_TEST_EXECUTABLE` to use a local executable on another platform. In CI it downloads and starts a clean VS Code Extension Development Host. Set `VSCODE_TEST_DOWNLOAD=true` to use the downloaded runtime locally. On headless Linux, run it through `xvfb-run -a npm run test:e2e`.
 
+See [testing.md](testing.md) for the automated-check matrix and manual acceptance checklist.
+
 ## Packaging
 
 Run `npm run package` to compile the extension and create an installable `.vsix`. Install that file with **Extensions: Install from VSIX...** for manual acceptance testing. The package excludes source, test, CI, and development-only files through `.vscodeignore`.
