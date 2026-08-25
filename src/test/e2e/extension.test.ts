@@ -15,6 +15,12 @@ suite('Tab Group extension', () => {
     assert.ok(commands.includes('tabsTreeView.group.changeColor'));
     assert.ok(commands.includes('tabsTreeView.enableSortMode'));
     assert.ok(commands.includes('tabsTreeView.reset'));
+
+    const contributedViews = extension.packageJSON.contributes.views.tabs as Array<{ id: string }>;
+    assert.ok(
+      contributedViews.some(view => view.id === 'recentTabsTreeView'),
+      'The Recent Tabs view should be contributed.',
+    );
   });
 
   test('recognizes notebook editor tabs', async () => {

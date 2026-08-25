@@ -1,10 +1,12 @@
 import * as vscode from 'vscode';
 import { getNormalizedTabId } from './TabTypeHandler';
 import { WorkspaceStateStore } from '../services/WorkspaceStateStore';
+import { RecentTabs } from '../services/RecentTabs';
 import { ExclusiveHandle } from '../utils/event';
 import { asPromise } from '../utils/async';
 import { Group, isGroup, Tab, TreeItemType } from '../models/types';
 import { getNativeTabs, TreeDataProvider } from './TreeDataProvider';
+import { RecentTabsTreeDataProvider } from './RecentTabsTreeDataProvider';
 import { Disposable } from '../utils/disposable';
 import { ContextKeys, setContext } from '../utils/context';
 import { getTabFileDecorationProvider } from '../decorators/TabFileDecorationProvider';
@@ -16,6 +18,10 @@ type GroupColorQuickPickItem = vscode.QuickPickItem & {
 
 export class TabsView extends Disposable {
   private treeDataProvider: TreeDataProvider = this._register(new TreeDataProvider());
+  private recentTabs = new RecentTabs();
+  private recentTabsTreeDataProvider = this._register(
+    new RecentTabsTreeDataProvider(this.treeDataProvider, this.recentTabs),
+  );
   private exclusiveHandle = new ExclusiveHandle();
   private selectedGroup: Group | undefined;
 
@@ -24,8 +30,10 @@ export class TabsView extends Disposable {
 
     const initialState = this.initializeState();
 
+    this.recentTabs.setState(this.workspaceStateStore.loadRecentTabs() ?? []);
     this.saveState(initialState);
     this.treeDataProvider.setState(initialState);
+    this.refreshRecentTabs(vscode.window.tabGroups.all.flatMap(tabGroup => tabGroup.tabs));
 
     setContext(ContextKeys.AllCollapsed, this.treeDataProvider.isAllCollapsed());
     setContext(ContextKeys.SelectedGroup, false);
@@ -37,11 +45,19 @@ export class TabsView extends Disposable {
         canSelectMany: true,
       }),
     );
+    const recentView = this._register(
+      vscode.window.createTreeView('recentTabsTreeView', {
+        treeDataProvider: this.recentTabsTreeDataProvider,
+        dragAndDropController: this.recentTabsTreeDataProvider,
+        canSelectMany: true,
+      }),
+    );
 
     this._register(
-      this.treeDataProvider.onDidChangeState(() =>
-        this.saveState(this.treeDataProvider.getState()),
-      ),
+      this.treeDataProvider.onDidChangeState(() => {
+        this.saveState(this.treeDataProvider.getState());
+        this.recentTabsTreeDataProvider.refresh();
+      }),
     );
 
     const tabFileDecorationProvider = this._register(getTabFileDecorationProvider());
@@ -50,6 +66,7 @@ export class TabsView extends Disposable {
       tabFileDecorationProvider.onDidChangeFileDecorations(uris => {
         if (uris.length > 0) {
           this.treeDataProvider.triggerRerender();
+          this.recentTabsTreeDataProvider.refresh();
         }
       }),
     );
@@ -158,8 +175,18 @@ export class TabsView extends Disposable {
         }
 
         this.treeDataProvider.triggerRerender();
+        this.refreshRecentTabs([...e.opened, ...e.changed]);
         if (openedTabsChanged || closedTabsChanged) {
           this.saveState(this.treeDataProvider.getState());
+        }
+      }),
+    );
+
+    this._register(
+      recentView.onDidChangeSelection(e => {
+        const item = e.selection.length > 0 ? e.selection[e.selection.length - 1] : undefined;
+        if (item?.type === TreeItemType.Tab) {
+          this.exclusiveHandle.run(() => asPromise(this.treeDataProvider.activate(item)));
         }
       }),
     );
@@ -266,6 +293,47 @@ export class TabsView extends Disposable {
 
   private saveState(state: Array<Tab | Group>): void {
     void this.workspaceStateStore.save(state);
+  }
+
+  private saveRecentTabs(): void {
+    void this.workspaceStateStore.saveRecentTabs(this.recentTabs.getState());
+  }
+
+  private refreshRecentTabs(tabsToTouch: readonly vscode.Tab[] = []): void {
+    const nativeTabs = vscode.window.tabGroups.all.flatMap(tabGroup => tabGroup.tabs);
+    const nativeTabIds: string[] = [];
+    nativeTabs.forEach(nativeTab => {
+      try {
+        const tabId = getNormalizedTabId(nativeTab);
+        if (!nativeTabIds.includes(tabId)) {
+          nativeTabIds.push(tabId);
+        }
+      } catch {
+        // skip unsupported tab inputs
+      }
+    });
+
+    let changed = this.recentTabs.reconcile(nativeTabIds);
+    const nativeTabIdSet = new Set(nativeTabIds);
+    tabsToTouch.forEach(nativeTab => {
+      if (!nativeTab.isActive) {
+        return;
+      }
+
+      try {
+        const tabId = getNormalizedTabId(nativeTab);
+        if (nativeTabIdSet.has(tabId)) {
+          changed = this.recentTabs.touch(tabId) || changed;
+        }
+      } catch {
+        // skip unsupported tab inputs
+      }
+    });
+
+    if (changed) {
+      this.saveRecentTabs();
+      this.recentTabsTreeDataProvider.refresh();
+    }
   }
 
   private isCorrespondingTab(tab: vscode.Tab, jsonTab: Tab): boolean {

@@ -15,6 +15,7 @@ Organize editor tabs into persistent, named groups from the Tab Group activity-b
 - Preserve group membership, order, names, colors, and collapsed state in workspace state.
 - Show an unsaved-file decoration for text editors.
 - Track text, text-diff, custom-editor, notebook, and notebook-diff tabs with stable IDs.
+- Show ungrouped tabs in a Recent Tabs view ordered by most recently viewed.
 
 ## Usage
 
@@ -22,7 +23,7 @@ Open the **Tab Group** activity-bar view. Drag tabs directly to group them. When
 
 ![Sorting grouped tabs](docs/sort.gif)
 
-Dropping an item onto another inserts it immediately before the target. In Sort Mode, dropping on the final slot appends it.
+Dropping an item onto another inserts it immediately before the target. In Sort Mode, dropping on the final slot appends it. The **Recent Tabs** view lists ungrouped tabs by most recent activation; drag a tab from it onto a group in the **Tabs** view to organize it.
 
 ## Tab support
 

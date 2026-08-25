@@ -25,6 +25,8 @@ export function getNativeTabs(tab: Tab): vscode.Tab[] {
   });
 }
 
+export const TabDropMimeType = 'application/vnd.code.tree.tabstreeview';
+
 export class TreeDataProvider
   extends Disposable
   implements
@@ -34,7 +36,6 @@ export class TreeDataProvider
   constructor() {
     super();
   }
-  private static TabDropMimeType = 'application/vnd.code.tree.tabstreeview';
   private _onDidChangeTreeData = this._register(new vscode.EventEmitter<void>());
   onDidChangeTreeData = this._onDidChangeTreeData.event;
   private _onDidChangeState = this._register(new vscode.EventEmitter<void>());
@@ -54,7 +55,7 @@ export class TreeDataProvider
 
   private sortMode = false;
 
-  dropMimeTypes = [TreeDataProvider.TabDropMimeType];
+  dropMimeTypes = [TabDropMimeType];
   dragMimeTypes = ['text/uri-list'];
 
   getChildren(element?: Tab | Group): Array<Tab | Group | Slot> | null {
@@ -156,7 +157,7 @@ export class TreeDataProvider
     _token: vscode.CancellationToken,
   ): Promise<void> {
     treeDataTransfer.set(
-      TreeDataProvider.TabDropMimeType,
+      TabDropMimeType,
       new vscode.DataTransferItem(source.filter(item => !isSlot(item))),
     );
   }
@@ -167,7 +168,7 @@ export class TreeDataProvider
     _token: vscode.CancellationToken,
   ) {
     const draggeds: Array<Group | Tab> = (
-      treeDataTransfer.get(TreeDataProvider.TabDropMimeType)?.value ?? []
+      treeDataTransfer.get(TabDropMimeType)?.value ?? []
     ).filter((tab: any) => tab !== target);
 
     if (this.sortMode) {

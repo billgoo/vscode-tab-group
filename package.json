@@ -62,6 +62,12 @@
           "name": "Tabs",
           "icon": "media/icon.svg",
           "contextualTitle": "Tabs"
+        },
+        {
+          "id": "recentTabsTreeView",
+          "name": "Recent Tabs",
+          "icon": "media/icon.svg",
+          "contextualTitle": "Recent Tabs"
         }
       ]
     },
@@ -126,32 +132,32 @@
       "view/item/context": [
         {
           "command": "tabsTreeView.tab.ungroup",
-          "when": "view =~ /^tabsTreeView/ && viewItem == 'grouped-tab'",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem == 'grouped-tab'",
           "group": "inline@0"
         },
         {
           "command": "tabsTreeView.tab.close",
-          "when": "view =~ /^tabsTreeView/ && viewItem =~ /tab/",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem =~ /tab/",
           "group": "inline@1"
         },
         {
           "command": "tabsTreeView.group.rename",
-          "when": "view =~ /^tabsTreeView/ && viewItem == 'group'",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem == 'group'",
           "group": "inline@0"
         },
         {
           "command": "tabsTreeView.group.changeColor",
-          "when": "view =~ /^tabsTreeView/ && viewItem == 'group'",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem == 'group'",
           "group": "inline@1"
         },
         {
           "command": "tabsTreeView.group.cancelGroup",
-          "when": "view =~ /^tabsTreeView/ && viewItem == 'group'",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem == 'group'",
           "group": "inline@2"
         },
         {
           "command": "tabsTreeView.group.close",
-          "when": "view =~ /^tabsTreeView/ && viewItem == 'group'",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem == 'group'",
           "group": "inline@3"
         }
       ],
