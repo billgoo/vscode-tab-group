@@ -171,6 +171,9 @@ export class TreeDataProvider
     const draggeds: Array<Group | Tab> = (
       treeDataTransfer.get(TabDropMimeType)?.value ?? []
     ).filter((tab: any) => tab !== target);
+    if (draggeds.length === 0) {
+      return;
+    }
 
     if (this.sortMode) {
       this.doHandleSorting(target, draggeds);
@@ -229,8 +232,7 @@ export class TreeDataProvider
 
   public setState(state: Array<Tab | Group>) {
     this.treeState.setState(state);
-    this.triggerRerender();
-    this._onDidChangeState.fire();
+    this.triggerStateChange();
   }
 
   public async activate(tab: Tab): Promise<any> {
@@ -330,13 +332,13 @@ export class TreeDataProvider
     this.filePathTree = {};
     this.getLeafNodes(this.treeState.getState()).forEach((leafNode: Tab) => {
       const tabId = leafNode.id;
-      const leafItem = this.getTreeItem(leafNode);
       const nativeTabs = getNativeTabs(leafNode);
-      if (
-        nativeTabs.length > 0 &&
-        nativeTabs[0].input instanceof vscode.TabInputText &&
-        leafItem.resourceUri
-      ) {
+      if (nativeTabs.length === 0) {
+        return;
+      }
+
+      const leafItem = this.getTreeItem(leafNode);
+      if (nativeTabs[0].input instanceof vscode.TabInputText && leafItem.resourceUri) {
         // use to update tab label if duplicated file name showing
         const filePathArray = leafItem.resourceUri.fsPath.split(sep);
         if (filePathArray.length > 1) {
