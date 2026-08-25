@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { join, sep } from 'node:path';
 
-import { Disposable } from '../services/lifecycle';
+import { Disposable } from '../utils/disposable';
 import {
   FilePathNode,
   Group,
@@ -12,8 +12,9 @@ import {
   Tab,
   TreeItemType,
 } from '../models/types';
+import { TreeState } from '../services/TreeState';
 import { getHandler, getNormalizedTabId } from './TabTypeHandler';
-import { TreeData } from './TreeData';
+import { findLongestCommonFilePathPrefixIndex } from '../utils/filePath';
 
 export function getNativeTabs(tab: Tab): vscode.Tab[] {
   const currentNativeTabs = vscode.window.tabGroups.all.flatMap(tabGroup => tabGroup.tabs);
@@ -36,7 +37,7 @@ export class TreeDataProvider
   private _onDidChangeTreeData = this._register(new vscode.EventEmitter<void>());
   onDidChangeTreeData = this._onDidChangeTreeData.event;
 
-  private treeData: TreeData = new TreeData();
+  private treeState = new TreeState();
 
   /**
    * To reuse tree item object
@@ -54,7 +55,7 @@ export class TreeDataProvider
   dragMimeTypes = ['text/uri-list'];
 
   getChildren(element?: Tab | Group): Array<Tab | Group | Slot> | null {
-    const children = this.treeData.getChildren(element);
+    const children = this.treeState.getChildren(element);
 
     if (this.sortMode && Array.isArray(children) && children.length > 0) {
       const groupId = isGroup(children[0]) ? null : children[0].groupId;
@@ -125,7 +126,7 @@ export class TreeDataProvider
   }
 
   getParent(element: Tab | Group) {
-    return this.treeData.getParent(element);
+    return this.treeState.getParent(element);
   }
 
   private createTabTreeItem(tab: Tab): vscode.TreeItem {
@@ -178,27 +179,27 @@ export class TreeDataProvider
 
   private doHandleSorting(target: Tab | Group | Slot | undefined, draggeds: Array<Tab | Group>) {
     if (target === undefined) {
-      this.treeData.pushBack(null, draggeds);
+      this.treeState.pushBack(null, draggeds);
     } else if (isSlot(target)) {
-      this.treeData.pushBack(target.groupId, draggeds);
+      this.treeState.pushBack(target.groupId, draggeds);
     } else {
-      this.treeData.moveTo(target, draggeds);
+      this.treeState.moveTo(target, draggeds);
     }
   }
 
   private doHandleGrouping(target: Tab | Group | undefined, tabs: Tab[]) {
     if (target === undefined) {
-      this.treeData.ungroup(tabs, true);
+      this.treeState.ungroup(tabs, true);
     } else {
       const isCreatingNewGroup = isTab(target) && target.groupId === null && tabs.length > 0;
-      this.treeData.group(target, tabs);
+      this.treeState.group(target, tabs);
 
       if (isCreatingNewGroup && tabs[0].groupId !== null) {
-        const group = this.treeData.getGroup(tabs[0].groupId);
+        const group = this.treeState.getGroup(tabs[0].groupId);
         if (group) {
           vscode.window.showInputBox({ placeHolder: 'Name this Group' }).then(input => {
             if (input) {
-              this.treeData.renameGroup(group, input);
+              this.treeState.renameGroup(group, input);
               this.triggerRerender();
             }
           });
@@ -214,7 +215,7 @@ export class TreeDataProvider
   }
 
   public setState(state: Array<Tab | Group>) {
-    this.treeData.setState(state);
+    this.treeState.setState(state);
     this.triggerRerender();
   }
 
@@ -228,7 +229,7 @@ export class TreeDataProvider
     nativeTabs.forEach(nativeTab => {
       try {
         const tabId = getNormalizedTabId(nativeTab);
-        this.treeData.appendTab(tabId);
+        this.treeState.appendTab(tabId);
       } catch {
         // skip
       }
@@ -239,9 +240,9 @@ export class TreeDataProvider
     nativeTabs.forEach(nativeTab => {
       try {
         const tabId = getNormalizedTabId(nativeTab);
-        const tab = this.treeData.getTab(tabId);
+        const tab = this.treeState.getTab(tabId);
         if (tab && getNativeTabs(tab).length === 0) {
-          this.treeData.deleteTab(tabId);
+          this.treeState.deleteTab(tabId);
         }
       } catch {
         // skip
@@ -252,28 +253,28 @@ export class TreeDataProvider
   public getTab(nativeTab: vscode.Tab): Tab | undefined {
     try {
       const tabId = getNormalizedTabId(nativeTab);
-      return this.treeData.getTab(tabId);
+      return this.treeState.getTab(tabId);
     } catch {
       return undefined;
     }
   }
 
   public getState(): Array<Tab | Group> {
-    return this.treeData.getState();
+    return this.treeState.getState();
   }
 
   public ungroup(tab: Tab) {
-    this.treeData.ungroup([tab]);
+    this.treeState.ungroup([tab]);
     this.triggerRerender();
   }
 
   public renameGroup(group: Group, input: string): void {
-    this.treeData.renameGroup(group, input);
+    this.treeState.renameGroup(group, input);
     this.triggerRerender();
   }
 
   public cancelGroup(group: Group): void {
-    this.treeData.cancelGroup(group);
+    this.treeState.cancelGroup(group);
     this.triggerRerender();
   }
 
@@ -283,17 +284,17 @@ export class TreeDataProvider
   }
 
   public isAllCollapsed(): boolean {
-    return this.treeData.isAllCollapsed();
+    return this.treeState.isAllCollapsed();
   }
 
   public setCollapsedState(group: Group, collapsed: boolean) {
-    this.treeData.setCollapsedState(group, collapsed);
+    this.treeState.setCollapsedState(group, collapsed);
     // sync data from tree view, so rerendering is not needed
   }
 
   private refreshFilePathTree() {
     this.filePathTree = {};
-    this.getLeafNodes(this.treeData.getState()).forEach((leafNode: Tab) => {
+    this.getLeafNodes(this.treeState.getState()).forEach((leafNode: Tab) => {
       const tabId = leafNode.id;
       const leafItem = this.getTreeItem(leafNode);
       const nativeTabs = getNativeTabs(leafNode);
@@ -357,27 +358,4 @@ export class TreeDataProvider
         : undefined;
     }
   }
-}
-
-export function findLongestCommonFilePathPrefixIndex(filePathArrays: Array<Array<string>>): number {
-  const size = filePathArrays.length;
-
-  if (size === 0) {
-    return -1;
-  } else if (size === 1) {
-    return 0;
-  }
-
-  filePathArrays.sort((a, b) => a.length - b.length);
-
-  // find the minimum length from first and last array
-  const minLength = Math.min(filePathArrays[0].length, filePathArrays[size - 1].length);
-
-  // find the common prefix between the first and last array
-  let i = 0;
-  while (i < minLength && filePathArrays[0][i] === filePathArrays[size - 1][i]) {
-    i++;
-  }
-
-  return i - 1;
 }

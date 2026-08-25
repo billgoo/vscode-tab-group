@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
-import { WorkspaceState } from './models/WorkspaceState';
+import { WorkspaceStateStore } from './services/WorkspaceStateStore';
 import { TabsView } from './providers/TreeView';
 
 function activate(context: vscode.ExtensionContext) {
-  WorkspaceState.use(context);
-  context.subscriptions.push(new TabsView());
+  const workspaceStateStore = new WorkspaceStateStore(context.workspaceState);
+  context.subscriptions.push(new TabsView(workspaceStateStore));
 }
 
 function deactivate() {}

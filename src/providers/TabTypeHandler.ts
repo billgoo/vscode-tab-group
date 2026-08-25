@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { findLongestCommonFilePathPrefixIndex } from './TreeDataProvider';
 import { setTabDecoration } from '../decorators/TabFileDecorationProvider';
+import { findLongestCommonFilePathPrefixIndex } from '../utils/filePath';
 
 export type InputType = vscode.Tab['input'];
 

@@ -20,19 +20,18 @@ export class TabFileDecorationProvider implements vscode.FileDecorationProvider,
     this.subscriptions.forEach(subscription => subscription.dispose());
     this._onDidChangeFileDecorations.dispose();
 
-    if (_tabFileDecorationProvider === this) {
-      _tabFileDecorationProvider = undefined;
+    if (tabFileDecorationProvider === this) {
+      tabFileDecorationProvider = undefined;
     }
   }
 
-  provideFileDecoration(uri: vscode.Uri): vscode.ProviderResult<vscode.FileDecoration> {
-    // Check if the document is dirty (modified but not saved)
+  provideFileDecoration(uri: vscode.Uri): vscode.FileDecoration | undefined {
     const document = vscode.workspace.textDocuments.find(
-      doc => doc.uri.toString() === uri.toString(),
+      textDocument => textDocument.uri.toString() === uri.toString(),
     );
-    if (document && document.isDirty) {
+    if (document?.isDirty) {
       return {
-        badge: '⦿', // A dot to indicate modified
+        badge: '⦿',
         tooltip: 'Unsaved',
         color: new vscode.ThemeColor('charts.orange'),
         propagate: false,
@@ -42,40 +41,31 @@ export class TabFileDecorationProvider implements vscode.FileDecorationProvider,
   }
 }
 
-// Lazy-initialized global instance
-let _tabFileDecorationProvider: TabFileDecorationProvider | undefined;
+let tabFileDecorationProvider: TabFileDecorationProvider | undefined;
+
 export function getTabFileDecorationProvider(): TabFileDecorationProvider {
-  if (!_tabFileDecorationProvider) {
-    _tabFileDecorationProvider = new TabFileDecorationProvider();
-  }
-  return _tabFileDecorationProvider;
+  tabFileDecorationProvider ??= new TabFileDecorationProvider();
+  return tabFileDecorationProvider;
 }
 
-// Backward compatibility export
-Object.defineProperty(module.exports, 'tabFileDecorationProvider', {
-  get() {
-    return getTabFileDecorationProvider();
-  },
-});
-
-// Helper function to apply decoration to a TreeItem
 export function setTabDecoration(
   treeItem: vscode.TreeItem,
   uri: vscode.Uri,
   iconType: string = 'file',
 ): void {
-  const provider = getTabFileDecorationProvider();
-  const decoration = provider.provideFileDecoration(uri) as vscode.FileDecoration | undefined;
+  const decoration = getTabFileDecorationProvider().provideFileDecoration(uri);
 
-  if (decoration) {
-    if (decoration.badge && treeItem.label) {
-      treeItem.label = `${decoration.badge} ${treeItem.label}`;
-    }
-    if (decoration.tooltip) {
-      treeItem.tooltip = decoration.tooltip;
-    }
-    if (decoration.color) {
-      treeItem.iconPath = new vscode.ThemeIcon(iconType, decoration.color);
-    }
+  if (!decoration) {
+    return;
+  }
+
+  if (decoration.badge && treeItem.label) {
+    treeItem.label = `${decoration.badge} ${treeItem.label}`;
+  }
+  if (decoration.tooltip) {
+    treeItem.tooltip = decoration.tooltip;
+  }
+  if (decoration.color) {
+    treeItem.iconPath = new vscode.ThemeIcon(iconType, decoration.color);
   }
 }
