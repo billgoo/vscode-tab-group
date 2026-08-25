@@ -73,3 +73,31 @@ describe('TreeState ungrouping', () => {
     expect(state[2]).toBe(c);
   });
 });
+
+describe('TreeState group colors', () => {
+  test('updates a persisted group color by group id', () => {
+    const group = createGroup('G');
+    const tab = createTab('A');
+    group.colorId = 'charts.blue';
+    tab.groupId = group.id;
+    group.children = [tab];
+    const treeState = new TreeState();
+    treeState.setState([group]);
+
+    treeState.setGroupColor(group.id, 'charts.orange');
+
+    expect(treeState.getGroup(group.id)?.colorId).toBe('charts.orange');
+    expect((treeState.getState()[0] as Group).colorId).toBe('charts.orange');
+  });
+
+  test('does not change another group when the group id is unknown', () => {
+    const group = createGroup('G');
+    group.colorId = 'charts.blue';
+    const treeState = new TreeState();
+    treeState.setState([group]);
+
+    treeState.setGroupColor('unknown', 'charts.orange');
+
+    expect(treeState.getGroup(group.id)?.colorId).toBe('charts.blue');
+  });
+});

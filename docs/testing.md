@@ -48,6 +48,7 @@ Use `--skip-e2e` only when a local VS Code runtime is unavailable. CI and tag-ba
 - Confirm each tab appears exactly once in the tree.
 - Drag another root tab onto the group and confirm it joins that group.
 - Drag a grouped tab onto the view background and confirm it returns to the root list.
+- Select a group, use the top-right **Change Group Color** action (or the group item action), choose a color, and confirm the colored group icon and color name update.
 
 ### Sorting And Toolbar
 
@@ -59,6 +60,7 @@ Use `--skip-e2e` only when a local VS Code runtime is unavailable. CI and tag-ba
 ### Persistence And Synchronization
 
 - Collapse a group, run **Developer: Reload Window**, and confirm the group membership, order, and collapsed state are restored.
+- Confirm the selected group color is restored after reloading the window.
 - Open a file and confirm it appears in the tree; close its native editor tab and confirm it disappears.
 - Select a tree item and confirm the corresponding editor becomes active.
 

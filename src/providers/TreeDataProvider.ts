@@ -14,6 +14,7 @@ import {
 } from '../models/types';
 import { TreeState } from '../services/TreeState';
 import { getHandler, getNormalizedTabId } from './TabTypeHandler';
+import { GroupColorId, getGroupColorOption } from '../utils/color';
 import { findLongestCommonFilePathPrefixIndex } from '../utils/filePath';
 
 export function getNativeTabs(tab: Tab): vscode.Tab[] {
@@ -100,6 +101,7 @@ export class TreeDataProvider
       return treeItem;
     }
 
+    const groupColor = getGroupColorOption(element.colorId);
     if (!this.treeItemMap[element.id]) {
       const treeItem = new vscode.TreeItem(
         element.label,
@@ -110,16 +112,18 @@ export class TreeDataProvider
       treeItem.contextValue = 'group';
       treeItem.iconPath = new vscode.ThemeIcon(
         'layout-sidebar-left',
-        new vscode.ThemeColor(element.colorId),
+        groupColor ? new vscode.ThemeColor(groupColor.themeColorId) : undefined,
       );
+      treeItem.description = groupColor?.label;
       this.treeItemMap[element.id] = treeItem;
     } else {
       const treeItem = this.treeItemMap[element.id];
       treeItem.label = element.label;
       treeItem.iconPath = new vscode.ThemeIcon(
         'layout-sidebar-left',
-        new vscode.ThemeColor(element.colorId),
+        groupColor ? new vscode.ThemeColor(groupColor.themeColorId) : undefined,
       );
+      treeItem.description = groupColor?.label;
     }
 
     return this.treeItemMap[element.id];
@@ -270,6 +274,11 @@ export class TreeDataProvider
 
   public renameGroup(group: Group, input: string): void {
     this.treeState.renameGroup(group, input);
+    this.triggerRerender();
+  }
+
+  public setGroupColor(group: Group, colorId: GroupColorId): void {
+    this.treeState.setGroupColor(group.id, colorId);
     this.triggerRerender();
   }
 
