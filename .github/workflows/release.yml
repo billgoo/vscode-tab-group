@@ -4,17 +4,33 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing vX.Y.Z tag to validate and package
+        required: true
+        type: string
+      publish:
+        description: Publish the selected tag to Marketplace after approval
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
 
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+
 jobs:
-  publish:
+  validate:
+    name: Build tagged release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ env.RELEASE_TAG }}
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -23,15 +39,42 @@ jobs:
       - run: npm run lint
       - run: npm run test:unit
       - run: xvfb-run -a npm run test:e2e
-      - name: Verify tag matches extension version
-        run: test "${GITHUB_REF_NAME#v}" = "$(node -p \"require('./package.json').version\")"
+      - name: Verify selected tag matches extension version
+        run: |
+          git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}"
+          tag_commit="$(git rev-parse "refs/tags/${RELEASE_TAG}^{commit}")"
+          package_version="$(node -p "require('./package.json').version")"
+          test "$(git rev-parse HEAD)" = "${tag_commit}"
+          test "${RELEASE_TAG#v}" = "${package_version}"
       - run: npm run package
       - uses: actions/upload-artifact@v4
         with:
-          name: tab-group-${{ github.ref_name }}-vsix
+          name: tab-group-${{ env.RELEASE_TAG }}-vsix
           path: '*.vsix'
           if-no-files-found: error
+
+  publish:
+    name: Publish tagged release
+    if: ${{ github.event_name == 'push' || inputs.publish }}
+    needs: validate
+    runs-on: ubuntu-latest
+    environment:
+      name: marketplace-publish
+      url: https://marketplace.visualstudio.com/items?itemName=jiapeiyao.tab-group
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - uses: actions/download-artifact@v4
+        with:
+          name: tab-group-${{ env.RELEASE_TAG }}-vsix
+          path: release
       - name: Publish packaged extension
-        run: npx vsce publish --packagePath "$(find . -maxdepth 1 -name '*.vsix' -print -quit)"
+        run: npx --no-install vsce publish --packagePath "$(find release -maxdepth 1 -name '*.vsix' -print -quit)"
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}

@@ -35,7 +35,24 @@ Run `npm run package` to compile the extension and create an installable `.vsix`
    git push origin v<package-version>
    ```
 
-4. Pushing a `v*` tag starts `.github/workflows/release.yml`. The workflow verifies that the tag matches `package.json`, runs validation, builds the VSIX, uploads it as a workflow artifact, and publishes that exact package to the Marketplace.
+4. Pushing a `v*` tag starts `.github/workflows/release.yml`. The workflow verifies that the tag matches `package.json`, runs validation, builds the VSIX, and uploads it as a workflow artifact. Marketplace publishing then waits for approval through the `marketplace-publish` GitHub environment before it publishes that exact package.
+
+### Marketplace Approval
+
+GitHub Environment reviewers are repository settings, not workflow YAML. After this workflow is merged into the default branch, configure the one-time approval gate:
+
+1. Open the repository **Settings** -> **Environments** -> **New environment**.
+2. Create `marketplace-publish`.
+3. Enable **Required reviewers** and add the repository owner, `@billgoo` (Bill Gu).
+4. Add `VSCE_PAT` as an environment secret named `VSCE_PAT`, then remove any repository-level secret with the same name. This keeps the token unavailable until the deployment is approved.
+
+The publisher owner must approve each Marketplace publication from the workflow's **Review deployments** prompt.
+
+### Tagged Recovery And Rollback
+
+Use **Actions** -> **Publish Tagged Release** -> **Run workflow** to validate and package an existing tag. Enter the exact `vX.Y.Z` tag and leave **Publish the selected tag** disabled to obtain a reviewable VSIX artifact.
+
+Marketplace versions are immutable and VS Code clients do not downgrade to an older version. To roll back the public extension, restore the desired tag's code on a new release commit, increment `package.json` to a version higher than the current Marketplace version, create a matching new tag, and publish that new tag. Enable the manual **Publish the selected tag** option only when recovering a tag that has not already been published.
 
 For a local release, set `VSCE_PAT` in the environment and run `npm run publish:local`. The script runs linting, unit tests, the extension-host test, and packaging before publishing the exact `tab-group-<package-version>.vsix`. `vsce` reads `VSCE_PAT` from the environment.
 
