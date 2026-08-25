@@ -1,7 +1,7 @@
 ---
 name: 'Tab Group Maintainer'
 description: 'Implement and verify VS Code tab-group features in this extension.'
-tools: ['read', 'edit', 'search', 'terminal', 'web']
+tools: [vscode, execute, read, agent, edit, search, web, browser, todo]
 ---
 
 # Tab Group Maintainer

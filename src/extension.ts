@@ -3,20 +3,12 @@ import { WorkspaceState } from './models/WorkspaceState';
 import { TabsView } from './providers/TreeView';
 
 function activate(context: vscode.ExtensionContext) {
-  try {
-    WorkspaceState.use(context);
-    // Delay TabsView creation for debugging to avoid potential activation hang
-    context.subscriptions.push(new TabsView());
-  } catch (err) {
-    throw err;
-  } finally {
-  }
+  WorkspaceState.use(context);
+  context.subscriptions.push(new TabsView());
 }
 
-// this method is called when your extension is deactivated
 function deactivate() {}
 
-// eslint-disable-next-line no-undef
 module.exports = {
   activate,
   deactivate,
