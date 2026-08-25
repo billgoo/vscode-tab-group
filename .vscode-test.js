@@ -16,6 +16,7 @@ module.exports = defineConfig({
   },
   useInstallation:
     useLocalCode && localCodeExecutable ? { fromPath: localCodeExecutable } : undefined,
+  launchArgs: ['--disable-extensions'],
   mocha: {
     ui: 'tdd',
     timeout: 30000,
