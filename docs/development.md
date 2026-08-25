@@ -48,7 +48,17 @@ Run `npm run package` to compile the extension and create an installable `.vsix`
    npm run publish:local -- --package-only
    ```
 
-5. Commit the release changes, merge them to `main`, then create an annotated tag matching the version and push it:
+5. Commit the release changes and merge them to `main`.
+
+6. Create the GitHub Release for the matching tag:
+
+   1. Open the repository **Releases** page and select **Draft a new release**.
+   2. Enter `<package-version>` as the tag, create the tag from `main`, and use the same value as the release title.
+   3. Add the release notes and select **Publish release**.
+
+   Publishing the GitHub Release creates the tag and starts `.github/workflows/release.yml`. After validation, the workflow attaches the generated `tab-group-<package-version>.vsix` to that GitHub Release and retains the same file as an Actions artifact.
+
+   A tag pushed from Git also starts the workflow; when no GitHub Release exists yet, the workflow creates one and attaches the VSIX:
 
    ```bash
    git checkout main
@@ -57,7 +67,7 @@ Run `npm run package` to compile the extension and create an installable `.vsix`
    git push origin <package-version>
    ```
 
-6. Pushing a semantic version tag, such as `2.0.5`, starts `.github/workflows/release.yml`. The workflow also accepts an optional `v` prefix. It verifies that the tag matches `package.json`, runs validation, builds the VSIX, and uploads it as a workflow artifact. Marketplace publishing then waits for approval through the `marketplace-publish` GitHub environment before it publishes that exact package.
+7. The workflow accepts semantic version tags such as `2.0.5` and also accepts an optional `v` prefix. It verifies that the tag matches `package.json`, runs validation, builds the VSIX, attaches it to the GitHub Release, and uploads it as a workflow artifact. Marketplace publishing then waits for approval through the `marketplace-publish` GitHub environment before it publishes that exact package.
 
 ### Marketplace Approval
 
