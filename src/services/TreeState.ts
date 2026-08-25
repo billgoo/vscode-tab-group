@@ -1,19 +1,11 @@
-import { randomUUID } from 'crypto';
-import { safeRemove } from '@src/utils/Arrays';
-import { getNextColorId } from '@src/utils/color';
-import { Group, TreeItemType, Tab, isGroup, isTab } from '@src/models/types';
+import { randomUUID } from 'node:crypto';
+import { Group, TreeItemType, Tab, isGroup, isTab } from '../models/types';
+import { safeRemove } from '../utils/Arrays';
+import { getNextColorId } from '../utils/color';
 
-export class TreeData {
+export class TreeState {
   private root: Array<Tab | Group> = [];
-
-  /**
-   * To quickly access group
-   */
   private groupMap: Record<string, Group> = {};
-
-  /**
-   * To quickly access tab
-   */
   private tabMap: Record<string, Tab> = {};
 
   public setState(state: Array<Tab | Group>) {
@@ -38,10 +30,10 @@ export class TreeData {
   }
 
   private removeEmptyGroups() {
-    for (let i = this.root.length - 1; i >= 0; i--) {
-      const item = this.root[i];
+    for (let index = this.root.length - 1; index >= 0; index--) {
+      const item = this.root[index];
       if (isGroup(item) && item.children.length === 0) {
-        this.root.splice(i, 1);
+        this.root.splice(index, 1);
         delete this.groupMap[item.id];
       }
     }
@@ -59,34 +51,30 @@ export class TreeData {
   }
 
   getParent(element: Tab | Group) {
-    if (element.type === TreeItemType.Group) {
-      return undefined;
-    }
-
-    if (element.groupId === null) {
+    if (element.type === TreeItemType.Group || element.groupId === null) {
       return undefined;
     }
 
     return this.groupMap[element.groupId];
   }
 
-  private _insertTabToGroup(tab: Tab, group: Group, index?: number) {
+  private insertTabToGroup(tab: Tab, group: Group, index?: number) {
     tab.groupId = group.id;
     group.children.splice(index ?? group.children.length, 0, tab);
   }
 
-  private _insertTabToRoot(tab: Tab, index?: number) {
+  private insertTabToRoot(tab: Tab, index?: number) {
     tab.groupId = null;
     this.root.splice(index ?? this.root.length, 0, tab);
   }
 
-  private _removeTab(tab: Tab) {
+  private removeTab(tab: Tab) {
     const from = tab.groupId === null ? this.root : this.groupMap[tab.groupId].children;
     safeRemove(from, tab);
     tab.groupId = null;
   }
 
-  private _getUsedColorIds(): string[] {
+  private getUsedColorIds(): string[] {
     return Object.values(this.groupMap).map(group => group.colorId);
   }
 
@@ -96,20 +84,20 @@ export class TreeData {
     }
 
     if (isGroup(target)) {
-      tabs.forEach(tab => this._group(target, tab));
+      tabs.forEach(tab => this.groupTab(target, tab));
       return;
     }
 
     if (target.groupId) {
       const group = this.groupMap[target.groupId];
       const index = group.children.indexOf(target);
-      tabs.forEach(tab => this._group(group, tab, index));
+      tabs.forEach(tab => this.groupTab(group, tab, index));
       return;
     }
 
     const group: Group = {
       type: TreeItemType.Group,
-      colorId: getNextColorId(this._getUsedColorIds()),
+      colorId: getNextColorId(this.getUsedColorIds()),
       id: randomUUID(),
       label: '',
       children: [],
@@ -117,15 +105,14 @@ export class TreeData {
     };
     this.groupMap[group.id] = group;
     this.root.splice(this.root.indexOf(target), 1, group);
-    this._insertTabToGroup(target, group);
+    this.insertTabToGroup(target, group);
 
-    tabs.forEach(tab => this._group(group, tab));
-    return;
+    tabs.forEach(tab => this.groupTab(group, tab));
   }
 
-  private _group(group: Group, tab: Tab, index?: number) {
-    this._removeTab(tab);
-    this._insertTabToGroup(tab, group, index);
+  private groupTab(group: Group, tab: Tab, index?: number) {
+    this.removeTab(tab);
+    this.insertTabToGroup(tab, group, index);
   }
 
   public ungroup(tabs: Tab[], pushBack: boolean = false) {
@@ -137,7 +124,7 @@ export class TreeData {
       const index = this.root.indexOf(group);
       safeRemove(group.children, tab);
       tab.groupId = null;
-      this._insertTabToRoot(tab, pushBack ? undefined : index + 1);
+      this.insertTabToRoot(tab, pushBack ? undefined : index + 1);
     });
   }
 
@@ -154,7 +141,7 @@ export class TreeData {
 
   public deleteTab(tabId: string) {
     const tab = this.tabMap[tabId];
-    this._removeTab(tab);
+    this.removeTab(tab);
     delete this.tabMap[tabId];
   }
 
@@ -171,13 +158,13 @@ export class TreeData {
   }
 
   public cancelGroup(group: Group): void {
-    this.ungroup(group.children.slice(0).reverse());
+    this.ungroup(group.children.slice().reverse());
   }
 
   public moveTo(target: Tab | Group, draggeds: Array<Tab | Group>) {
     if (isTab(target) && target.groupId) {
       const draggedTabs: Array<Tab> = draggeds.filter(isTab);
-      draggedTabs.forEach(tab => this._removeTab(tab));
+      draggedTabs.forEach(tab => this.removeTab(tab));
       const group = this.groupMap[target.groupId];
       group.children.splice(group.children.indexOf(target), 0, ...draggedTabs);
       draggedTabs.forEach(tab => (tab.groupId = target.groupId));
@@ -188,16 +175,16 @@ export class TreeData {
       if (isGroup(dragged)) {
         safeRemove(this.root, dragged);
       } else {
-        this._removeTab(dragged);
+        this.removeTab(dragged);
       }
     });
     this.root.splice(this.root.indexOf(target), 0, ...draggeds);
   }
 
-  public pushBack(groupId: string | null, draggeds: (Tab | Group)[]) {
+  public pushBack(groupId: string | null, draggeds: Array<Tab | Group>) {
     if (groupId) {
       const draggedTabs: Array<Tab> = draggeds.filter(isTab);
-      draggedTabs.forEach(tab => this._removeTab(tab));
+      draggedTabs.forEach(tab => this.removeTab(tab));
       this.groupMap[groupId].children.push(...draggedTabs);
       draggedTabs.forEach(tab => (tab.groupId = groupId));
       return;
@@ -207,19 +194,14 @@ export class TreeData {
       if (isGroup(dragged)) {
         safeRemove(this.root, dragged);
       } else {
-        this._removeTab(dragged);
+        this.removeTab(dragged);
       }
     });
     this.root.push(...draggeds);
   }
 
   public isAllCollapsed(): boolean {
-    for (const item of this.root) {
-      if (isGroup(item) && !item.collapsed) {
-        return false;
-      }
-    }
-    return true;
+    return this.root.every(item => !isGroup(item) || item.collapsed);
   }
 
   public setCollapsedState(group: Group, collapsed: boolean) {

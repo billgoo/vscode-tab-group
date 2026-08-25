@@ -1,184 +1,217 @@
 {
-	"name": "tab-group",
-	"displayName": "Tab Group",
-	"description": "Edge's vertical Tab Group in VSCode",
-	"publisher": "jiapeiyao",
-	"version": "2.0.4",
-	"license": "MIT",
-	"contributors": [
-		{
-			"name": "Jiapei Yao",
-			"email": "charlesyjp@gmail.com"
-		},
-		{
-			"name": "Bill Goo",
-			"email": "billgoo0813@gmail.com"
-		}
-	],
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/billgoo/vscode-tab-group"
-	},
-	"bugs": {
-		"url": "https://github.com/billgoo/vscode-tab-group/issues"
-	},
-	"categories": [
-		"Other"
-	],
-	"icon": "media/icon.png",
-	"engines": {
-		"vscode": "^1.71.0"
-	},
-	"activationEvents": [
-		"onStartupFinished"
-	],
-	"main": "./out/extension.js",
-	"contributes": {
-		"viewsContainers": {
-			"activitybar": [
-				{
-					"id": "tabs",
-					"title": "Tab Group",
-					"icon": "media/icon.svg"
-				}
-			]
-		},
-		"views": {
-			"tabs": [
-				{
-					"id": "tabsTreeView",
-					"name": "Tabs",
-					"icon": "media/icon.svg",
-					"contextualTitle": "Tabs"
-				}
-			]
-		},
-		"commands": [
-			{
-				"command": "tabsTreeView.tab.close",
-				"title": "Close",
-				"icon": "$(close)"
-			},
-			{
-				"command": "tabsTreeView.tab.ungroup",
-				"title": "Ungroup",
-				"icon": "$(array)"
-			},
-			{
-				"command": "tabsTreeView.group.rename",
-				"title": "Rename Group",
-				"icon": "$(edit)"
-			},
-			{
-				"command": "tabsTreeView.group.cancelGroup",
-				"title": "Cancel Group",
-				"icon": "$(array)"
-			},
-			{
-				"command": "tabsTreeView.group.close",
-				"title": "Close Grouped Tabs",
-				"icon": "$(close)"
-			},
-			{
-				"command": "tabsTreeView.enableSortMode",
-				"title": "Sort Mode",
-				"icon": "$(selection)"
-			},
-			{
-				"command": "tabsTreeView.disableSortMode",
-				"title": "Done",
-				"icon": "$(check)"
-			},
-			{
-				"command": "tabsTreeView.collapseAll",
-				"title": "Collapse All",
-				"icon": "$(collapse-all)"
-			},
-			{
-				"command": "tabsTreeView.expandAll",
-				"title": "Expand All",
-				"icon": "$(expand-all)"
-			},
-			{
-				"command": "tabsTreeView.reset",
-				"title": "Reset All",
-				"icon": "$(clear-all)"
-			}
-		],
-		"menus": {
-			"view/item/context": [
-				{
-					"command": "tabsTreeView.tab.ungroup",
-					"when": "view =~ /^tabsTreeView/ && viewItem == 'grouped-tab'",
-					"group": "inline@0"
-				},
-				{
-					"command": "tabsTreeView.tab.close",
-					"when": "view =~ /^tabsTreeView/ && viewItem =~ /tab/",
-					"group": "inline@1"
-				},
-				{
-					"command": "tabsTreeView.group.rename",
-					"when": "view =~ /^tabsTreeView/ && viewItem == 'group'",
-					"group": "inline@0"
-				},
-				{
-					"command": "tabsTreeView.group.cancelGroup",
-					"when": "view =~ /^tabsTreeView/ && viewItem == 'group'",
-					"group": "inline@1"
-				},
-				{
-					"command": "tabsTreeView.group.close",
-					"when": "view =~ /^tabsTreeView/ && viewItem == 'group'",
-					"group": "inline@2"
-				}
-			],
-			"view/title": [
-				{
-					"command": "tabsTreeView.enableSortMode",
-					"when": "view =~ /^tabsTreeView/ && !tabGroup.sortMode:enabled",
-					"group": "navigation@1"
-				},
-				{
-					"command": "tabsTreeView.disableSortMode",
-					"when": "view =~ /^tabsTreeView/ && tabGroup.sortMode:enabled",
-					"group": "navigation@1"
-				},
-				{
-					"command": "tabsTreeView.collapseAll",
-					"when": "view =~ /^tabsTreeView/ && !tabGroup.groups:allCollapsed",
-					"group": "navigation@8"
-				},
-				{
-					"command": "tabsTreeView.expandAll",
-					"when": "view =~ /^tabsTreeView/ && tabGroup.groups:allCollapsed",
-					"group": "navigation@8"
-				},
-				{
-					"command": "tabsTreeView.reset",
-					"when": "view =~ /^tabsTreeView/",
-					"group": "navigation@9"
-				}
-			]
-		}
-	},
-	"scripts": {
-		"compile": "tsc -p ./",
-		"format-project": "prettier --write \"src/**/*.ts\"",
-		"lint": "eslint src --ext .ts",
-		"test": "jest",
-		"vscode:prepublish": "tsc -p ./ --sourceMap false",
-		"watch": "tsc -watch -p ./"
-	},
-	"devDependencies": {
-		"@eslint/eslintrc": "^3.3.3",
-		"@eslint/js": "^9.39.2",
-		"@types/jest": "^29.1.2",
-		"@types/node": "^18.7.15",
-		"@types/vscode": "^1.71.0",
-		"jest": "^29.1.2",
-		"prettier": "^3.8.1",
-		"ts-jest": "^29.0.3",
-		"typescript": "^4.8.2"
-	}
+  "name": "tab-group",
+  "displayName": "Tab Group",
+  "description": "Organize VS Code editor tabs into persistent, named groups.",
+  "publisher": "jiapeiyao",
+  "version": "2.0.4",
+  "license": "MIT",
+  "homepage": "https://github.com/billgoo/vscode-tab-group#readme",
+  "galleryBanner": {
+    "color": "#2d6a4f",
+    "theme": "dark"
+  },
+  "keywords": [
+    "tabs",
+    "tab groups",
+    "editor tabs",
+    "productivity",
+    "workspace"
+  ],
+  "contributors": [
+    {
+      "name": "Jiapei Yao",
+      "email": "charlesyjp@gmail.com"
+    },
+    {
+      "name": "Bill Goo",
+      "email": "billgoo0813@gmail.com"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/billgoo/vscode-tab-group"
+  },
+  "bugs": {
+    "url": "https://github.com/billgoo/vscode-tab-group/issues"
+  },
+  "categories": [
+    "Other"
+  ],
+  "icon": "media/icon.png",
+  "engines": {
+    "vscode": "^1.71.0"
+  },
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "tabs",
+          "title": "Tab Group",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "tabs": [
+        {
+          "id": "tabsTreeView",
+          "name": "Tabs",
+          "icon": "media/icon.svg",
+          "contextualTitle": "Tabs"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "tabsTreeView.tab.close",
+        "title": "Close",
+        "icon": "$(close)"
+      },
+      {
+        "command": "tabsTreeView.tab.ungroup",
+        "title": "Ungroup",
+        "icon": "$(array)"
+      },
+      {
+        "command": "tabsTreeView.group.rename",
+        "title": "Rename Group",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "tabsTreeView.group.cancelGroup",
+        "title": "Cancel Group",
+        "icon": "$(array)"
+      },
+      {
+        "command": "tabsTreeView.group.close",
+        "title": "Close Grouped Tabs",
+        "icon": "$(close)"
+      },
+      {
+        "command": "tabsTreeView.enableSortMode",
+        "title": "Sort Mode",
+        "icon": "$(selection)"
+      },
+      {
+        "command": "tabsTreeView.disableSortMode",
+        "title": "Done",
+        "icon": "$(check)"
+      },
+      {
+        "command": "tabsTreeView.collapseAll",
+        "title": "Collapse All",
+        "icon": "$(collapse-all)"
+      },
+      {
+        "command": "tabsTreeView.expandAll",
+        "title": "Expand All",
+        "icon": "$(expand-all)"
+      },
+      {
+        "command": "tabsTreeView.reset",
+        "title": "Reset All",
+        "icon": "$(clear-all)"
+      }
+    ],
+    "menus": {
+      "view/item/context": [
+        {
+          "command": "tabsTreeView.tab.ungroup",
+          "when": "view =~ /^tabsTreeView/ && viewItem == 'grouped-tab'",
+          "group": "inline@0"
+        },
+        {
+          "command": "tabsTreeView.tab.close",
+          "when": "view =~ /^tabsTreeView/ && viewItem =~ /tab/",
+          "group": "inline@1"
+        },
+        {
+          "command": "tabsTreeView.group.rename",
+          "when": "view =~ /^tabsTreeView/ && viewItem == 'group'",
+          "group": "inline@0"
+        },
+        {
+          "command": "tabsTreeView.group.cancelGroup",
+          "when": "view =~ /^tabsTreeView/ && viewItem == 'group'",
+          "group": "inline@1"
+        },
+        {
+          "command": "tabsTreeView.group.close",
+          "when": "view =~ /^tabsTreeView/ && viewItem == 'group'",
+          "group": "inline@2"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "tabsTreeView.enableSortMode",
+          "when": "view =~ /^tabsTreeView/ && !tabGroup.sortMode:enabled",
+          "group": "navigation@1"
+        },
+        {
+          "command": "tabsTreeView.disableSortMode",
+          "when": "view =~ /^tabsTreeView/ && tabGroup.sortMode:enabled",
+          "group": "navigation@1"
+        },
+        {
+          "command": "tabsTreeView.collapseAll",
+          "when": "view =~ /^tabsTreeView/ && !tabGroup.groups:allCollapsed",
+          "group": "navigation@8"
+        },
+        {
+          "command": "tabsTreeView.expandAll",
+          "when": "view =~ /^tabsTreeView/ && tabGroup.groups:allCollapsed",
+          "group": "navigation@8"
+        },
+        {
+          "command": "tabsTreeView.reset",
+          "when": "view =~ /^tabsTreeView/",
+          "group": "navigation@9"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "clean": "rimraf out",
+    "compile": "npm run clean && tsc -p ./",
+    "format-project": "prettier --write \"src/**/*.ts\"",
+    "lint": "eslint src --ext .ts",
+    "test": "npm run test:unit",
+    "test:unit": "jest",
+    "test:e2e": "npm run compile && vscode-test",
+    "test:all": "npm run lint && npm run test:unit && npm run test:e2e",
+    "package": "vsce package",
+    "publish": "vsce publish",
+    "publish:local": "node scripts/publish-local.js",
+    "vscode:prepublish": "npm run clean && tsc -p ./ --sourceMap false",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.3",
+    "@eslint/js": "^9.39.2",
+    "@types/jest": "^29.1.2",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^18.7.15",
+    "@types/vscode": "^1.71.0",
+    "@typescript-eslint/eslint-plugin": "^8.67.0",
+    "@typescript-eslint/parser": "^8.67.0",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^3.9.2",
+    "eslint": "^10.9.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.6",
+    "jest": "^29.1.2",
+    "prettier": "^3.8.1",
+    "rimraf": "^6.1.3",
+    "ts-jest": "^29.0.3",
+    "typescript": "^4.8.2"
+  },
+  "overrides": {
+    "diff": "^8.0.4",
+    "serialize-javascript": "^7.0.6"
+  }
 }

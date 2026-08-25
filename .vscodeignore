@@ -1,11 +1,15 @@
 .vscode/**
 .vscode-test/**
+.vscode-test.js
+.github/**
 out/test/**
 test/**
 src/**
+scripts/**
 **/*.map
 .gitignore
 tsconfig.json
+eslint.config.js
+jest.config.js
 vsc-extension-quickstart.md
 *.vsix
-jest.config.js
