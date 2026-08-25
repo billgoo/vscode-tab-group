@@ -1,0 +1,39 @@
+name: Validate Extension
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run test:unit
+      - run: xvfb-run -a npm run test:e2e
+        if: runner.os == 'Linux'
+      - run: npm run test:e2e
+        if: runner.os != 'Linux'
+      - run: npm run package
+        if: runner.os == 'Linux'
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Linux'
+        with:
+          name: tab-group-vsix
+          path: '*.vsix'
+          if-no-files-found: error

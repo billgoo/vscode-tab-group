@@ -1,0 +1,37 @@
+name: Publish Tagged Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run test:unit
+      - run: xvfb-run -a npm run test:e2e
+      - name: Verify tag matches extension version
+        run: test "${GITHUB_REF_NAME#v}" = "$(node -p \"require('./package.json').version\")"
+      - run: npm run package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tab-group-${{ github.ref_name }}-vsix
+          path: '*.vsix'
+          if-no-files-found: error
+      - name: Publish packaged extension
+        run: npx vsce publish --packagePath "$(find . -maxdepth 1 -name '*.vsix' -print -quit)"
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
