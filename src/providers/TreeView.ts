@@ -39,7 +39,7 @@ export class TabsView extends Disposable {
     );
 
     this._register(
-      this.treeDataProvider.onDidChangeTreeData(() =>
+      this.treeDataProvider.onDidChangeState(() =>
         this.saveState(this.treeDataProvider.getState()),
       ),
     );
@@ -47,8 +47,10 @@ export class TabsView extends Disposable {
     const tabFileDecorationProvider = this._register(getTabFileDecorationProvider());
 
     this._register(
-      tabFileDecorationProvider.onDidChangeFileDecorations(() => {
-        this.treeDataProvider.triggerRerender();
+      tabFileDecorationProvider.onDidChangeFileDecorations(uris => {
+        if (uris.length > 0) {
+          this.treeDataProvider.triggerRerender();
+        }
       }),
     );
 
@@ -114,9 +116,12 @@ export class TabsView extends Disposable {
       vscode.commands.registerCommand('tabsTreeView.reset', () => {
         this.selectedGroup = undefined;
         setContext(ContextKeys.SelectedGroup, false);
-        void this.workspaceStateStore.save([]);
-        const initialState = this.initializeState();
+        const initialState = this.mergeState(
+          [],
+          vscode.window.tabGroups.all.flatMap(tabGroup => tabGroup.tabs),
+        );
         this.treeDataProvider.setState(initialState);
+        this.saveState(initialState);
       }),
     );
 
@@ -138,8 +143,8 @@ export class TabsView extends Disposable {
 
     this._register(
       vscode.window.tabGroups.onDidChangeTabs(e => {
-        this.treeDataProvider.appendTabs(e.opened);
-        this.treeDataProvider.closeTabs(e.closed);
+        const openedTabsChanged = this.treeDataProvider.appendTabs(e.opened);
+        const closedTabsChanged = this.treeDataProvider.closeTabs(e.closed);
 
         if (e.changed[0] && e.changed[0].isActive) {
           const tab = this.treeDataProvider.getTab(e.changed[0]);
@@ -153,6 +158,9 @@ export class TabsView extends Disposable {
         }
 
         this.treeDataProvider.triggerRerender();
+        if (openedTabsChanged || closedTabsChanged) {
+          this.saveState(this.treeDataProvider.getState());
+        }
       }),
     );
 

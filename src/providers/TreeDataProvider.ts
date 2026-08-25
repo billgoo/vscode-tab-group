@@ -37,6 +37,8 @@ export class TreeDataProvider
   private static TabDropMimeType = 'application/vnd.code.tree.tabstreeview';
   private _onDidChangeTreeData = this._register(new vscode.EventEmitter<void>());
   onDidChangeTreeData = this._onDidChangeTreeData.event;
+  private _onDidChangeState = this._register(new vscode.EventEmitter<void>());
+  onDidChangeState = this._onDidChangeState.event;
 
   private treeState = new TreeState();
 
@@ -178,7 +180,12 @@ export class TreeDataProvider
       this.doHandleGrouping(target, draggeds.filter<Tab>(isTab));
     }
 
-    this._onDidChangeTreeData.fire();
+    this.triggerStateChange();
+  }
+
+  private triggerStateChange() {
+    this._onDidChangeState.fire();
+    this.triggerRerender();
   }
 
   private doHandleSorting(target: Tab | Group | Slot | undefined, draggeds: Array<Tab | Group>) {
@@ -204,7 +211,7 @@ export class TreeDataProvider
           vscode.window.showInputBox({ placeHolder: 'Name this Group' }).then(input => {
             if (input) {
               this.treeState.renameGroup(group, input);
-              this.triggerRerender();
+              this.triggerStateChange();
             }
           });
         }
@@ -225,33 +232,48 @@ export class TreeDataProvider
 
   public async activate(tab: Tab): Promise<any> {
     const nativeTabs = getNativeTabs(tab);
-    const handler = getHandler(nativeTabs[0])!;
-    return handler.openEditor(nativeTabs[0]);
+    const nativeTab = nativeTabs.find(candidate => candidate.isActive) ?? nativeTabs[0];
+    if (!nativeTab || nativeTab.isActive) {
+      return;
+    }
+
+    const handler = getHandler(nativeTab);
+    if (handler) {
+      return handler.openEditor(nativeTab);
+    }
   }
 
-  public appendTabs(nativeTabs: readonly vscode.Tab[]) {
+  public appendTabs(nativeTabs: readonly vscode.Tab[]): boolean {
+    let changed = false;
     nativeTabs.forEach(nativeTab => {
       try {
         const tabId = getNormalizedTabId(nativeTab);
-        this.treeState.appendTab(tabId);
+        if (!this.treeState.getTab(tabId)) {
+          this.treeState.appendTab(tabId);
+          changed = true;
+        }
       } catch {
         // skip
       }
     });
+    return changed;
   }
 
-  public closeTabs(nativeTabs: readonly vscode.Tab[]) {
+  public closeTabs(nativeTabs: readonly vscode.Tab[]): boolean {
+    let changed = false;
     nativeTabs.forEach(nativeTab => {
       try {
         const tabId = getNormalizedTabId(nativeTab);
         const tab = this.treeState.getTab(tabId);
         if (tab && getNativeTabs(tab).length === 0) {
           this.treeState.deleteTab(tabId);
+          changed = true;
         }
       } catch {
         // skip
       }
     });
+    return changed;
   }
 
   public getTab(nativeTab: vscode.Tab): Tab | undefined {
@@ -269,22 +291,22 @@ export class TreeDataProvider
 
   public ungroup(tab: Tab) {
     this.treeState.ungroup([tab]);
-    this.triggerRerender();
+    this.triggerStateChange();
   }
 
   public renameGroup(group: Group, input: string): void {
     this.treeState.renameGroup(group, input);
-    this.triggerRerender();
+    this.triggerStateChange();
   }
 
   public setGroupColor(group: Group, colorId: GroupColorId): void {
     this.treeState.setGroupColor(group.id, colorId);
-    this.triggerRerender();
+    this.triggerStateChange();
   }
 
   public cancelGroup(group: Group): void {
     this.treeState.cancelGroup(group);
-    this.triggerRerender();
+    this.triggerStateChange();
   }
 
   public toggleSortMode(sortMode: boolean) {

@@ -10,9 +10,6 @@ export class TabFileDecorationProvider implements vscode.FileDecorationProvider,
       vscode.workspace.onDidChangeTextDocument(e => {
         this._onDidChangeFileDecorations.fire([e.document.uri]);
       }),
-      vscode.window.tabGroups.onDidChangeTabs(() => {
-        this._onDidChangeFileDecorations.fire([]);
-      }),
     ];
   }
 
