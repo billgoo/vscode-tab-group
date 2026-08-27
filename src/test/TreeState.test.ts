@@ -74,6 +74,40 @@ describe('TreeState ungrouping', () => {
   });
 });
 
+describe('TreeState sorting', () => {
+  test('reorders tabs within their existing group', () => {
+    const group = createGroup('group');
+    const firstTab = createTab('first');
+    const secondTab = createTab('second');
+    const thirdTab = createTab('third');
+    firstTab.groupId = group.id;
+    secondTab.groupId = group.id;
+    thirdTab.groupId = group.id;
+    group.children = [firstTab, secondTab, thirdTab];
+    const treeState = new TreeState();
+    treeState.setState([group]);
+
+    expect(treeState.sort(secondTab, [thirdTab])).toBe(true);
+    expect(group.children).toEqual([firstTab, thirdTab, secondTab]);
+    expect(thirdTab.groupId).toBe(group.id);
+  });
+
+  test('rejects sort operations across group boundaries', () => {
+    const rootTab = createTab('root');
+    const group = createGroup('group');
+    const groupedTab = createTab('grouped');
+    groupedTab.groupId = group.id;
+    group.children = [groupedTab];
+    const treeState = new TreeState();
+    treeState.setState([rootTab, group]);
+
+    expect(treeState.sort(groupedTab, [rootTab])).toBe(false);
+    expect(treeState.sort(undefined, [groupedTab])).toBe(false);
+    expect(treeState.getState()).toEqual([rootTab, group]);
+    expect(group.children).toEqual([groupedTab]);
+  });
+});
+
 describe('TreeState appending', () => {
   test('appends a new tab to the root when a group exists', () => {
     const group = createGroup('G');
@@ -152,8 +186,9 @@ describe('TreeState saved group restoration', () => {
   test('reuses a saved group source id instead of creating a second live group', () => {
     const firstTab = createTab('first');
     const secondTab = createTab('second');
+    const extraTab = createTab('extra');
     const treeState = new TreeState();
-    treeState.setState([firstTab, secondTab]);
+    treeState.setState([firstTab, secondTab, extraTab]);
     const savedGroup = {
       colorId: 'charts.green',
       label: 'Saved group',
@@ -161,11 +196,13 @@ describe('TreeState saved group restoration', () => {
     };
 
     const firstRestore = treeState.restoreGroup([firstTab, secondTab], savedGroup, 'source-group');
+    treeState.group(firstRestore!, [extraTab]);
     const secondRestore = treeState.restoreGroup([secondTab, firstTab], savedGroup, 'source-group');
 
     expect(firstRestore?.id).toBe('source-group');
     expect(secondRestore).toBe(firstRestore);
     expect(secondRestore?.children).toEqual([secondTab, firstTab]);
-    expect(treeState.getState()).toEqual([firstRestore]);
+    expect(extraTab.groupId).toBeNull();
+    expect(treeState.getState()).toEqual([firstRestore, extraTab]);
   });
 });

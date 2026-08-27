@@ -3,6 +3,7 @@ import { SavedGroup, SavedTab } from '../models/SavedGroup';
 import { SavedGroupsStore } from '../services/SavedGroupsStore';
 import { Disposable } from '../utils/disposable';
 import { getFilePathDescription } from '../utils/filePath';
+import { getSavedTabLabel, getSavedTabPath, getSavedTabUri } from '../utils/savedTab';
 
 type SavedTabTreeItem = {
   readonly savedGroup: SavedGroup;
@@ -44,6 +45,7 @@ export class SavedGroupsTreeDataProvider
     const savedGroup = element;
     const treeItem = new vscode.TreeItem(savedGroup.name);
     const tabCount = savedGroup.tabs.length;
+    treeItem.id = `saved-group:${savedGroup.id}`;
     treeItem.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
     treeItem.contextValue = 'saved-group';
     treeItem.description = `${tabCount} tab${tabCount === 1 ? '' : 's'}`;
@@ -56,9 +58,10 @@ export class SavedGroupsTreeDataProvider
   }
 
   private createSavedTabTreeItem(savedGroup: SavedGroup, savedTab: SavedTab): vscode.TreeItem {
-    const resourceUri = vscode.Uri.parse(this.getSavedTabUri(savedTab));
-    const label = this.getSavedTabLabel(savedTab);
+    const resourceUri = vscode.Uri.parse(getSavedTabUri(savedTab));
+    const label = getSavedTabLabel(savedTab);
     const treeItem = new vscode.TreeItem(label);
+    treeItem.id = `saved-tab:${savedGroup.id}:${savedTab.id}`;
     treeItem.contextValue = 'saved-tab';
     treeItem.description = this.getSavedTabDescription(savedGroup, savedTab, label);
     treeItem.resourceUri = resourceUri;
@@ -66,28 +69,15 @@ export class SavedGroupsTreeDataProvider
     return treeItem;
   }
 
-  private getSavedTabUri(savedTab: SavedTab): string {
-    return 'uri' in savedTab ? savedTab.uri : savedTab.modifiedUri;
-  }
-
-  private getSavedTabLabel(savedTab: SavedTab): string {
-    if ('label' in savedTab && savedTab.label) {
-      return savedTab.label;
-    }
-
-    const path = vscode.Uri.parse(this.getSavedTabUri(savedTab)).path;
-    return path.substring(path.lastIndexOf('/') + 1) || path;
-  }
-
   private getSavedTabDescription(
     savedGroup: SavedGroup,
     savedTab: SavedTab,
     label: string,
   ): string | undefined {
-    const matchingTabs = savedGroup.tabs.filter(tab => this.getSavedTabLabel(tab) === label);
+    const matchingTabs = savedGroup.tabs.filter(tab => getSavedTabLabel(tab) === label);
     return getFilePathDescription(
-      vscode.Uri.parse(this.getSavedTabUri(savedTab)).path.split('/'),
-      matchingTabs.map(tab => vscode.Uri.parse(this.getSavedTabUri(tab)).path.split('/')),
+      getSavedTabPath(savedTab).split('/'),
+      matchingTabs.map(tab => getSavedTabPath(tab).split('/')),
     );
   }
 }

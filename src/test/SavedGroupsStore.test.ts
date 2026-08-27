@@ -105,4 +105,17 @@ describe('SavedGroupsStore', () => {
       groups,
     });
   });
+
+  test('does not overwrite an unsupported saved-groups state version', async () => {
+    const update = jest.fn(async () => {});
+    const workspaceState = {
+      get: jest.fn().mockReturnValue({ version: 2, groups: [] }),
+      update,
+    } as unknown as Memento;
+
+    await expect(new SavedGroupsStore(workspaceState).save([createSavedGroup()])).rejects.toThrow(
+      'newer version',
+    );
+    expect(update).not.toHaveBeenCalled();
+  });
 });

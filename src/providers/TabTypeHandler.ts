@@ -10,6 +10,7 @@ import {
   SavedTextTab,
 } from '../models/SavedGroup';
 import { findLongestCommonFilePathPrefixIndex } from '../utils/filePath';
+import { getCustomTabId, getNotebookTabId } from '../utils/savedTab';
 import { getNormalizedNotebookDiffId } from '../utils/tabId';
 
 export type InputType = vscode.Tab['input'];
@@ -29,6 +30,7 @@ export interface TabTypeHandler<T extends InputType> {
    * @param tab
    */
   getNormalizedId(tab: TypedTab<T>): string;
+  getLegacyNormalizedIds?(tab: TypedTab<T>): readonly string[];
   toSavedTab?(tab: TypedTab<T>): SavedTab;
   openSavedTab?(savedTab: SavedTab): Promise<void>;
   createTreeItem(tab: TypedTab<T>): vscode.TreeItem;
@@ -103,6 +105,15 @@ export function getHandler(
 
 export function toSavedTab(tab: vscode.Tab): SavedTab | undefined {
   return getHandler(tab)?.toSavedTab?.(tab);
+}
+
+export function matchesTabId(tab: vscode.Tab, tabId: string): boolean {
+  const handler = getHandler(tab);
+  return Boolean(
+    handler &&
+    (handler.getNormalizedId(tab) === tabId ||
+      handler.getLegacyNormalizedIds?.(tab).includes(tabId)),
+  );
 }
 
 export async function reopenSavedTab(savedTab: SavedTab): Promise<void> {
@@ -322,10 +333,11 @@ export class TabInputCustomHandler implements TabTypeHandler<vscode.TabInputCust
   }
 
   getNormalizedId(tab: TypedTab<vscode.TabInputCustom>): string {
-    return JSON.stringify({
-      uri: tab.input.uri.path, // sometimes, the content in uri object changes although the resource is the same one.
-      viewType: tab.input.viewType,
-    });
+    return getCustomTabId(tab.input.uri.toString(), tab.input.viewType);
+  }
+
+  getLegacyNormalizedIds(tab: TypedTab<vscode.TabInputCustom>): readonly string[] {
+    return [JSON.stringify({ uri: tab.input.uri.path, viewType: tab.input.viewType })];
   }
 
   toSavedTab(tab: TypedTab<vscode.TabInputCustom>): SavedCustomTab {
@@ -374,10 +386,11 @@ export class TabInputNotebookHandler implements TabTypeHandler<vscode.TabInputNo
   }
 
   getNormalizedId(tab: TypedTab<vscode.TabInputNotebook>): string {
-    return JSON.stringify({
-      uri: tab.input.uri.path,
-      notebookType: tab.input.notebookType,
-    });
+    return getNotebookTabId(tab.input.uri.toString(), tab.input.notebookType);
+  }
+
+  getLegacyNormalizedIds(tab: TypedTab<vscode.TabInputNotebook>): readonly string[] {
+    return [JSON.stringify({ uri: tab.input.uri.path, notebookType: tab.input.notebookType })];
   }
 
   toSavedTab(tab: TypedTab<vscode.TabInputNotebook>): SavedNotebookTab {

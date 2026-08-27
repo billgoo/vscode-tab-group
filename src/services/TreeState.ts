@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { Group, TreeItemType, Tab, isGroup, isTab } from '../models/types';
+import { Group, Slot, TreeItemType, Tab, isGroup, isSlot, isTab } from '../models/types';
 import { safeRemove } from '../utils/Arrays';
 import { GroupColorId, getNextColorId } from '../utils/color';
 
@@ -121,6 +121,8 @@ export class TreeState {
 
     const group = sourceGroupId ? this.groupMap[sourceGroupId] : undefined;
     if (group) {
+      const savedTabIds = new Set(tabs.map(tab => tab.id));
+      this.ungroup(group.children.filter(tab => !savedTabIds.has(tab.id)).reverse());
       group.colorId = colorId;
       group.label = label;
       group.collapsed = collapsed;
@@ -198,6 +200,28 @@ export class TreeState {
 
   public cancelGroup(group: Group): void {
     this.ungroup(group.children.slice().reverse());
+  }
+
+  public sort(target: Tab | Group | Slot | undefined, draggeds: Array<Tab | Group>): boolean {
+    if (draggeds.length === 0) {
+      return false;
+    }
+
+    const targetGroupId = this.getSortGroupId(target);
+    if (draggeds.some(dragged => this.getSortGroupId(dragged) !== targetGroupId)) {
+      return false;
+    }
+
+    if (!target || isSlot(target)) {
+      this.pushBack(targetGroupId, draggeds);
+    } else {
+      this.moveTo(target, draggeds);
+    }
+    return true;
+  }
+
+  private getSortGroupId(item: Tab | Group | Slot | undefined): string | null {
+    return !item || isGroup(item) ? null : item.groupId;
   }
 
   public moveTo(target: Tab | Group, draggeds: Array<Tab | Group>) {

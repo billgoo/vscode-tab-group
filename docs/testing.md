@@ -54,6 +54,7 @@ Use `--skip-e2e` only when a local VS Code runtime is unavailable. CI and tag-ba
 
 - Use the top-right **Sort Mode** action, reorder tabs or groups, and select **Done**.
 - Confirm ordering changes without changing group membership.
+- Try to drop a root tab into a group and a grouped tab onto the root while sorting; confirm both drops are ignored.
 - Use **Collapse All** and **Expand All** when available.
 - Use **Reset All** and confirm that groups are removed while open tabs remain listed at the root.
 
@@ -67,12 +68,20 @@ Use `--skip-e2e` only when a local VS Code runtime is unavailable. CI and tag-ba
 ### Saved Tab Groups
 
 - Create a group containing at least two text files, then choose **Save Group...** from its context menu and enter a snapshot name.
+- Expand the **Saved Groups** panel, which starts collapsed, and confirm the saved snapshot name and tab count appear.
+- Expand the saved snapshot and confirm each saved file appears as a read-only child item.
+- Save two files with the same name from different folders and confirm their child items show the shortest distinguishing parent paths.
+- Remove one tab from the same live group, save it again, and confirm the existing snapshot updates its tab count instead of creating a second snapshot.
 - Close both native editor tabs and confirm the live group disappears from the Tabs view.
-- Choose **Restore Saved Group...** from the Tabs view title actions, select the snapshot, and confirm both files reopen in a group with the saved label, color, order, and collapsed state.
+- Use the snapshot's folder action and confirm both files reopen in a group with the saved label, color, order, and collapsed state.
+- Add another tab to that live group, restore the snapshot again, and confirm the extra tab returns to the root list while the restored group matches the snapshot exactly.
 - Restore the snapshot when one of its files is already open and confirm the file is reused instead of duplicated.
 - Run **Developer: Reload Window** and confirm the snapshot remains available in the restore picker.
 - Rename or remove one saved file, restore the snapshot, and confirm the available files reopen, a warning appears, and the snapshot remains available.
-- Run **Delete Saved Group...** from the Command Palette, confirm deletion, and verify the snapshot no longer appears in the restore picker.
+- Use the snapshot's trash action in the **Saved Groups** panel, confirm deletion, and verify it no longer appears in the panel or restore picker.
+- Create two non-overlapping snapshots, use **Restore All Saved Groups** from the Saved Groups panel toolbar, and confirm both restore. When snapshots share a tab, confirm the shared tab remains in the first saved group shown in the panel.
+- Include a missing file in a snapshot, use **Restore All Saved Groups**, and confirm the final warning reports the failed saved tab.
+- Use **Delete All Saved Groups** from the panel toolbar, confirm deletion, and verify the panel and restore picker are empty.
 
 ### Unsaved File Decoration
 

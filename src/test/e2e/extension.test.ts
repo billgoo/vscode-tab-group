@@ -2,11 +2,12 @@ import * as assert from 'assert';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import * as vscode from 'vscode';
-import { SavedGroup } from '../../models/SavedGroup';
+import { SavedGroup, SavedTextTab } from '../../models/SavedGroup';
 import { Group, isGroup, Tab, TreeItemType } from '../../models/types';
 import {
   getHandler,
   getNormalizedTabId,
+  matchesTabId,
   reopenSavedTab,
   toSavedTab,
 } from '../../providers/TabTypeHandler';
@@ -19,6 +20,38 @@ import {
 import { RecentTabs } from '../../services/RecentTabs';
 import { SavedGroupsTreeDataProvider } from '../../providers/SavedGroupsTreeDataProvider';
 import { SavedGroupsStore } from '../../services/SavedGroupsStore';
+
+function getOpenTabIds(): Set<string> {
+  return new Set(
+    vscode.window.tabGroups.all
+      .flatMap(tabGroup => tabGroup.tabs)
+      .flatMap(tab => {
+        try {
+          return [getNormalizedTabId(tab)];
+        } catch {
+          return [];
+        }
+      }),
+  );
+}
+
+async function closeTabs(tabIds: readonly string[]): Promise<void> {
+  const ids = new Set(tabIds);
+  const tabs = vscode.window.tabGroups.all
+    .flatMap(tabGroup => tabGroup.tabs)
+    .filter(tab => {
+      try {
+        return ids.has(getNormalizedTabId(tab));
+      } catch {
+        return false;
+      }
+    });
+  await vscode.window.tabGroups.close(tabs);
+}
+
+function createSavedTextTab(uri: vscode.Uri): SavedTextTab {
+  return { kind: 'text', id: uri.toString(), uri: uri.toString() };
+}
 
 suite('Tab Group extension', () => {
   test('activates and registers its tab-group commands', async () => {
@@ -85,7 +118,65 @@ suite('Tab Group extension', () => {
 
     assert.equal(
       getNormalizedTabId(notebookTab),
-      JSON.stringify({ uri: notebookUri.path, notebookType }),
+      JSON.stringify({ uri: notebookUri.toString(), notebookType }),
+    );
+  });
+
+  test('keeps custom and notebook tabs with different full URIs distinct', () => {
+    const firstUri = vscode.Uri.from({
+      scheme: 'vscode-remote',
+      authority: 'ssh-remote+first',
+      path: '/workspace/example',
+      query: 'version=1',
+      fragment: 'first',
+    });
+    const secondUri = vscode.Uri.from({
+      scheme: 'vscode-remote',
+      authority: 'ssh-remote+second',
+      path: '/workspace/example',
+      query: 'version=2',
+      fragment: 'second',
+    });
+    const firstCustomTab = {
+      input: new vscode.TabInputCustom(firstUri, 'example.custom'),
+    } as vscode.Tab;
+    const secondCustomTab = {
+      input: new vscode.TabInputCustom(secondUri, 'example.custom'),
+    } as vscode.Tab;
+    const firstNotebookTab = {
+      input: new vscode.TabInputNotebook(firstUri, 'jupyter-notebook'),
+    } as vscode.Tab;
+    const secondNotebookTab = {
+      input: new vscode.TabInputNotebook(secondUri, 'jupyter-notebook'),
+    } as vscode.Tab;
+
+    assert.notEqual(getNormalizedTabId(firstCustomTab), getNormalizedTabId(secondCustomTab));
+    assert.notEqual(getNormalizedTabId(firstNotebookTab), getNormalizedTabId(secondNotebookTab));
+  });
+
+  test('matches legacy custom and notebook tab IDs during state restoration', () => {
+    const uri = vscode.Uri.from({
+      scheme: 'vscode-remote',
+      authority: 'ssh-remote+workspace',
+      path: '/workspace/example',
+      query: 'version=1',
+      fragment: 'first',
+    });
+    const customTab = {
+      input: new vscode.TabInputCustom(uri, 'example.custom'),
+    } as vscode.Tab;
+    const notebookTab = {
+      input: new vscode.TabInputNotebook(uri, 'jupyter-notebook'),
+    } as vscode.Tab;
+
+    assert.ok(
+      matchesTabId(customTab, JSON.stringify({ uri: uri.path, viewType: 'example.custom' })),
+    );
+    assert.ok(
+      matchesTabId(
+        notebookTab,
+        JSON.stringify({ uri: uri.path, notebookType: 'jupyter-notebook' }),
+      ),
     );
   });
 
@@ -138,6 +229,7 @@ suite('Tab Group extension', () => {
     assert.deepStrictEqual(provider.getChildren(), [savedGroup]);
     const treeItem = provider.getTreeItem(savedGroup);
     assert.equal(treeItem.contextValue, 'saved-group');
+    assert.equal(treeItem.id, 'saved-group:saved-group');
     assert.equal(treeItem.description, '2 tabs');
     assert.equal(treeItem.collapsibleState, vscode.TreeItemCollapsibleState.Collapsed);
     assert.equal(treeItem.command, undefined);
@@ -146,6 +238,7 @@ suite('Tab Group extension', () => {
     assert.equal(savedTabs.length, 2);
     const firstSavedTabTreeItem = provider.getTreeItem(savedTabs[0]);
     assert.equal(firstSavedTabTreeItem.contextValue, 'saved-tab');
+    assert.equal(firstSavedTabTreeItem.id, 'saved-tab:saved-group:event-publisher-role');
     assert.equal(firstSavedTabTreeItem.label, 'app.py');
     assert.equal(firstSavedTabTreeItem.description, 'event-publisher-role');
     const secondSavedTabTreeItem = provider.getTreeItem(savedTabs[1]);
@@ -178,6 +271,34 @@ suite('Tab Group extension', () => {
 
     cancellation.dispose();
     recentTabsTreeDataProvider.dispose();
+    treeDataProvider.dispose();
+  });
+
+  test('does not change group membership while sorting', async () => {
+    const treeDataProvider = new TreeDataProvider();
+    const rootTab: Tab = { type: TreeItemType.Tab, groupId: null, id: 'root' };
+    const group: Group = {
+      type: TreeItemType.Group,
+      id: 'group',
+      colorId: 'charts.green',
+      label: 'Group',
+      children: [],
+      collapsed: false,
+    };
+    const groupedTab: Tab = { type: TreeItemType.Tab, groupId: group.id, id: 'grouped' };
+    group.children = [groupedTab];
+    const cancellation = new vscode.CancellationTokenSource();
+    const dataTransfer = new vscode.DataTransfer();
+
+    treeDataProvider.setState([rootTab, group]);
+    treeDataProvider.toggleSortMode(true);
+    await treeDataProvider.handleDrag([rootTab], dataTransfer, cancellation.token);
+    await treeDataProvider.handleDrop(groupedTab, dataTransfer, cancellation.token);
+
+    assert.deepStrictEqual(treeDataProvider.getState(), [rootTab, group]);
+    assert.deepStrictEqual(group.children, [groupedTab]);
+
+    cancellation.dispose();
     treeDataProvider.dispose();
   });
 
@@ -274,16 +395,8 @@ suite('Tab Group extension', () => {
     const prefix = `tab-group-saved-tabs-${Date.now()}`;
     const firstUri = vscode.Uri.file(join(tmpdir(), `${prefix}-first.txt`));
     const secondUri = vscode.Uri.file(join(tmpdir(), `${prefix}-second.txt`));
-    const firstSavedTab = {
-      kind: 'text' as const,
-      id: firstUri.toString(),
-      uri: firstUri.toString(),
-    };
-    const secondSavedTab = {
-      kind: 'text' as const,
-      id: secondUri.toString(),
-      uri: secondUri.toString(),
-    };
+    const firstSavedTab = createSavedTextTab(firstUri);
+    const secondSavedTab = createSavedTextTab(secondUri);
 
     await vscode.workspace.fs.writeFile(firstUri, Buffer.from('first'));
     await vscode.workspace.fs.writeFile(secondUri, Buffer.from('second'));
@@ -292,35 +405,40 @@ suite('Tab Group extension', () => {
       await reopenSavedTab(firstSavedTab);
       await reopenSavedTab(secondSavedTab);
 
-      const openTabIds = new Set(
-        vscode.window.tabGroups.all
-          .flatMap(tabGroup => tabGroup.tabs)
-          .map(tab => {
-            try {
-              return getNormalizedTabId(tab);
-            } catch {
-              return undefined;
-            }
-          }),
-      );
+      const openTabIds = getOpenTabIds();
       assert.ok(openTabIds.has(firstSavedTab.id));
       assert.ok(openTabIds.has(secondSavedTab.id));
     } finally {
-      const tabsToClose = vscode.window.tabGroups.all
-        .flatMap(tabGroup => tabGroup.tabs)
-        .filter(tab => {
-          try {
-            return (
-              getNormalizedTabId(tab) === firstSavedTab.id ||
-              getNormalizedTabId(tab) === secondSavedTab.id
-            );
-          } catch {
-            return false;
-          }
-        });
-      await vscode.window.tabGroups.close(tabsToClose);
+      await closeTabs([firstSavedTab.id, secondSavedTab.id]);
       await vscode.workspace.fs.delete(firstUri, { useTrash: false });
       await vscode.workspace.fs.delete(secondUri, { useTrash: false });
+    }
+  });
+
+  test('restores available tabs when a saved group is only partially restorable', async () => {
+    const prefix = `tab-group-partial-restore-${Date.now()}`;
+    const availableUri = vscode.Uri.file(join(tmpdir(), `${prefix}-available.txt`));
+    const missingUri = vscode.Uri.file(join(tmpdir(), `${prefix}-missing.txt`));
+    const availableTab = createSavedTextTab(availableUri);
+    const savedGroup: SavedGroup = {
+      id: `${prefix}-group`,
+      sourceGroupId: `${prefix}-source`,
+      name: 'Partial restore',
+      groupLabel: 'Partial restore',
+      colorId: 'charts.green',
+      collapsed: false,
+      tabs: [availableTab, createSavedTextTab(missingUri)],
+    };
+
+    await vscode.workspace.fs.writeFile(availableUri, Buffer.from('available'));
+
+    try {
+      await vscode.commands.executeCommand('tabsTreeView.savedGroup.restore', savedGroup);
+
+      assert.ok(getOpenTabIds().has(availableTab.id));
+    } finally {
+      await closeTabs([availableTab.id]);
+      await vscode.workspace.fs.delete(availableUri, { useTrash: false });
     }
   });
 

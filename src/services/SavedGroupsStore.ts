@@ -12,6 +12,13 @@ export class SavedGroupsStore {
   }
 
   save(groups: readonly SavedGroup[]): Thenable<void> {
+    const currentState = this.workspaceState.get<unknown>(SavedGroupsStore.stateKey);
+    if (currentState !== undefined && !isSavedGroupsState(currentState)) {
+      return Promise.reject(
+        new Error('Saved tab groups use a newer version or invalid format and cannot be changed.'),
+      );
+    }
+
     const state: SavedGroupsState = { version: 1, groups: [...groups] };
     return this.workspaceState.update(SavedGroupsStore.stateKey, state);
   }
