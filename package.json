@@ -102,12 +102,12 @@
       {
         "command": "tabsTreeView.sortTabsAscending",
         "title": "Sort: A to Z",
-        "icon": "$(sort-precedence)"
+        "icon": "$(arrow-up)"
       },
       {
         "command": "tabsTreeView.sortTabsDescending",
         "title": "Sort: Z to A",
-        "icon": "$(sort-precedence)"
+        "icon": "$(arrow-down)"
       },
       {
         "command": "tabsTreeView.group.save",
@@ -147,7 +147,7 @@
       {
         "command": "tabsTreeView.enableSortMode",
         "title": "Sort Mode",
-        "icon": "$(selection)"
+        "icon": "$(sort-precedence)"
       },
       {
         "command": "tabsTreeView.disableSortMode",

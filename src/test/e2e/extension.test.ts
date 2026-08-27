@@ -82,12 +82,12 @@ suite('Tab Group extension', () => {
     assert.equal(
       contributedCommands.find(command => command.command === 'tabsTreeView.sortTabsAscending')
         ?.icon,
-      '$(sort-precedence)',
+      '$(arrow-up)',
     );
     assert.equal(
       contributedCommands.find(command => command.command === 'tabsTreeView.sortTabsDescending')
         ?.icon,
-      '$(sort-precedence)',
+      '$(arrow-down)',
     );
 
     const contributedViews = extension.packageJSON.contributes.views.tabs as Array<{
