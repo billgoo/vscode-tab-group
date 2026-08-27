@@ -102,12 +102,12 @@
       {
         "command": "tabsTreeView.sortTabsAscending",
         "title": "Sort: A to Z",
-        "icon": "$(sort-ascending)"
+        "icon": "$(sort-precedence)"
       },
       {
         "command": "tabsTreeView.sortTabsDescending",
         "title": "Sort: Z to A",
-        "icon": "$(sort-descending)"
+        "icon": "$(sort-precedence)"
       },
       {
         "command": "tabsTreeView.group.save",

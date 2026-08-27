@@ -193,6 +193,34 @@ describe('TreeState sorting', () => {
     expect(secondGroup.children).toEqual([secondGroupZuluTab, secondGroupAlphaTab]);
   });
 
+  test('sorts root tabs and every group without changing group membership', () => {
+    const firstRootTab = createTab('root-zulu');
+    const secondRootTab = createTab('root-alpha');
+    const firstGroup = createGroup('first-group');
+    const secondGroup = createGroup('second-group');
+    const firstGroupZuluTab = createTab('first-zulu');
+    const firstGroupAlphaTab = createTab('first-alpha');
+    const secondGroupZuluTab = createTab('second-zulu');
+    const secondGroupAlphaTab = createTab('second-alpha');
+    firstGroupZuluTab.groupId = firstGroup.id;
+    firstGroupAlphaTab.groupId = firstGroup.id;
+    secondGroupZuluTab.groupId = secondGroup.id;
+    secondGroupAlphaTab.groupId = secondGroup.id;
+    firstGroup.children = [firstGroupZuluTab, firstGroupAlphaTab];
+    secondGroup.children = [secondGroupZuluTab, secondGroupAlphaTab];
+    const treeState = new TreeState();
+    treeState.setState([firstRootTab, firstGroup, secondRootTab, secondGroup]);
+
+    expect(
+      treeState.sortAllTabs((leftTab, rightTab) => leftTab.id.localeCompare(rightTab.id)),
+    ).toBe(true);
+    expect(treeState.getState()).toEqual([secondRootTab, firstGroup, firstRootTab, secondGroup]);
+    expect(firstGroup.children).toEqual([firstGroupAlphaTab, firstGroupZuluTab]);
+    expect(secondGroup.children).toEqual([secondGroupAlphaTab, secondGroupZuluTab]);
+    expect(firstGroupAlphaTab.groupId).toBe(firstGroup.id);
+    expect(secondGroupAlphaTab.groupId).toBe(secondGroup.id);
+  });
+
   test('does not report a state change when every tab is already sorted', () => {
     const firstTab = createTab('alpha');
     const secondTab = createTab('bravo');

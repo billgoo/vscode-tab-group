@@ -18,13 +18,13 @@ npm run test:e2e
 npm run package
 ```
 
-| Command             | Coverage                                                                                                                                                                                                  |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run lint`      | TypeScript style and static analysis.                                                                                                                                                                     |
-| `npm run test:unit` | Grouping, ungrouping, lifecycle, and pure utility behavior.                                                                                                                                               |
-| `npm run compile`   | Strict TypeScript compilation.                                                                                                                                                                            |
-| `npm run test:e2e`  | Extension-host smoke test for activation, Recent Tabs, Saved Groups, root URI and group-name sorting, independent group URI sort controls, supported tab-input normalization, and opaque-input rejection. |
-| `npm run package`   | Production VSIX build and package contents.                                                                                                                                                               |
+| Command             | Coverage                                                                                                                                                                                                                                    |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run lint`      | TypeScript style and static analysis.                                                                                                                                                                                                       |
+| `npm run test:unit` | Grouping, ungrouping, lifecycle, and pure utility behavior.                                                                                                                                                                                 |
+| `npm run compile`   | Strict TypeScript compilation.                                                                                                                                                                                                              |
+| `npm run test:e2e`  | Extension-host smoke test for activation, Recent Tabs, Saved Groups, root URI sorting across root and grouped tabs, group-name sorting, independent group URI sort controls, supported tab-input normalization, and opaque-input rejection. |
+| `npm run package`   | Production VSIX build and package contents.                                                                                                                                                                                                 |
 
 On macOS, `test:e2e` uses the installed VS Code application when available. Set `VSCODE_TEST_EXECUTABLE` to an executable path on another platform, or set `VSCODE_TEST_DOWNLOAD=true` to use a downloaded runtime. On headless Linux, run the command through `xvfb-run -a npm run test:e2e`.
 

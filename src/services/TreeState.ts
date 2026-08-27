@@ -234,6 +234,14 @@ export class TreeState {
     return changed;
   }
 
+  public sortAllTabs(compare: (leftTab: Tab, rightTab: Tab) => number): boolean {
+    let changed = this.sortTabs(compare);
+    for (const group of this.root.filter(isGroup)) {
+      changed = this.sortTabs(compare, group.id) || changed;
+    }
+    return changed;
+  }
+
   public sortGroups(compare: (leftGroup: Group, rightGroup: Group) => number): boolean {
     const groups = this.root.filter(isGroup);
     const changed = this.sortList(groups, compare);

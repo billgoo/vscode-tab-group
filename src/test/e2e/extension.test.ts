@@ -82,12 +82,12 @@ suite('Tab Group extension', () => {
     assert.equal(
       contributedCommands.find(command => command.command === 'tabsTreeView.sortTabsAscending')
         ?.icon,
-      '$(sort-ascending)',
+      '$(sort-precedence)',
     );
     assert.equal(
       contributedCommands.find(command => command.command === 'tabsTreeView.sortTabsDescending')
         ?.icon,
-      '$(sort-descending)',
+      '$(sort-precedence)',
     );
 
     const contributedViews = extension.packageJSON.contributes.views.tabs as Array<{
@@ -446,7 +446,7 @@ suite('Tab Group extension', () => {
     treeDataProvider.dispose();
   });
 
-  test('sorts root tabs and one selected group by URI without moving groups', async () => {
+  test('sorts root tabs and group children by URI without moving groups', async () => {
     const prefix = `tab-group-sort-${Date.now()}`;
     const alphaUri = vscode.Uri.file(join(tmpdir(), `${prefix}-alpha.txt`));
     const bravoUri = vscode.Uri.file(join(tmpdir(), `${prefix}-bravo.txt`));
@@ -490,10 +490,14 @@ suite('Tab Group extension', () => {
 
       assert.equal(treeDataProvider.sortTabs('ascending'), true);
       assert.deepStrictEqual(treeDataProvider.getState(), [rootAlphaTab, group, rootZuluTab]);
+      assert.deepStrictEqual(group.children, [groupedBravoTab, groupedDeltaTab]);
+
+      assert.equal(treeDataProvider.sortTabs('descending'), true);
+      assert.deepStrictEqual(treeDataProvider.getState(), [rootZuluTab, group, rootAlphaTab]);
       assert.deepStrictEqual(group.children, [groupedDeltaTab, groupedBravoTab]);
 
       assert.equal(treeDataProvider.sortTabs('ascending', group), true);
-      assert.deepStrictEqual(treeDataProvider.getState(), [rootAlphaTab, group, rootZuluTab]);
+      assert.deepStrictEqual(treeDataProvider.getState(), [rootZuluTab, group, rootAlphaTab]);
       assert.deepStrictEqual(group.children, [groupedBravoTab, groupedDeltaTab]);
     } finally {
       treeDataProvider.dispose();

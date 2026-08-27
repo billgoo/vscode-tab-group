@@ -338,7 +338,7 @@ export class TreeDataProvider
     const directionChanged = this.setNextGroupSortDirection(direction, group);
     const tabs = group
       ? this.treeState.getGroup(group.id)?.children
-      : this.treeState.getState().filter(isTab);
+      : this.getLeafNodes(this.treeState.getState());
     if (!tabs) {
       if (directionChanged) {
         this.triggerRerender();
@@ -348,11 +348,15 @@ export class TreeDataProvider
 
     const sortKeys = this.getTabSortKeys(tabs);
     const changed = sortKeys
-      ? this.treeState.sortTabs(
-          (leftTab, rightTab) =>
+      ? group
+        ? this.treeState.sortTabs(
+            (leftTab, rightTab) =>
+              compareTabSortKeys(sortKeys.get(leftTab.id)!, sortKeys.get(rightTab.id)!, direction),
+            group.id,
+          )
+        : this.treeState.sortAllTabs((leftTab, rightTab) =>
             compareTabSortKeys(sortKeys.get(leftTab.id)!, sortKeys.get(rightTab.id)!, direction),
-          group?.id,
-        )
+          )
       : false;
     const groupsChanged =
       !group &&
