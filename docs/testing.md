@@ -18,13 +18,13 @@ npm run test:e2e
 npm run package
 ```
 
-| Command             | Coverage                                                                  |
-| ------------------- | ------------------------------------------------------------------------- |
-| `npm run lint`      | TypeScript style and static analysis.                                     |
-| `npm run test:unit` | Grouping, ungrouping, lifecycle, and pure utility behavior.               |
-| `npm run compile`   | Strict TypeScript compilation.                                            |
-| `npm run test:e2e`  | Extension-host smoke test for activation, Recent Tabs contribution, supported tab-input normalization, opaque-input rejection, and public command registration. |
-| `npm run package`   | Production VSIX build and package contents.                               |
+| Command             | Coverage                                                                                                                                                                                   |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `npm run lint`      | TypeScript style and static analysis.                                                                                                                                                      |
+| `npm run test:unit` | Grouping, ungrouping, lifecycle, and pure utility behavior.                                                                                                                                |
+| `npm run compile`   | Strict TypeScript compilation.                                                                                                                                                             |
+| `npm run test:e2e`  | Extension-host smoke test for activation, Recent Tabs, the expandable Saved Groups panel, saved-tab commands and reopening, supported tab-input normalization, and opaque-input rejection. |
+| `npm run package`   | Production VSIX build and package contents.                                                                                                                                                |
 
 On macOS, `test:e2e` uses the installed VS Code application when available. Set `VSCODE_TEST_EXECUTABLE` to an executable path on another platform, or set `VSCODE_TEST_DOWNLOAD=true` to use a downloaded runtime. On headless Linux, run the command through `xvfb-run -a npm run test:e2e`.
 
@@ -64,6 +64,16 @@ Use `--skip-e2e` only when a local VS Code runtime is unavailable. CI and tag-ba
 - Open a file and confirm it appears in the tree; close its native editor tab and confirm it disappears.
 - Select a tree item and confirm the corresponding editor becomes active.
 
+### Saved Tab Groups
+
+- Create a group containing at least two text files, then choose **Save Group...** from its context menu and enter a snapshot name.
+- Close both native editor tabs and confirm the live group disappears from the Tabs view.
+- Choose **Restore Saved Group...** from the Tabs view title actions, select the snapshot, and confirm both files reopen in a group with the saved label, color, order, and collapsed state.
+- Restore the snapshot when one of its files is already open and confirm the file is reused instead of duplicated.
+- Run **Developer: Reload Window** and confirm the snapshot remains available in the restore picker.
+- Rename or remove one saved file, restore the snapshot, and confirm the available files reopen, a warning appears, and the snapshot remains available.
+- Run **Delete Saved Group...** from the Command Palette, confirm deletion, and verify the snapshot no longer appears in the restore picker.
+
 ### Unsaved File Decoration
 
 - Modify an open text file without saving and confirm the unsaved decoration appears in the tree.
@@ -77,7 +87,7 @@ Use `--skip-e2e` only when a local VS Code runtime is unavailable. CI and tag-ba
 
 ### Supported Tab Inputs
 
-- Confirm text editors, text diffs, custom editors, notebooks, and notebook diffs can be listed, grouped, selected, and reopened from the Tab Group view when their provider is available.
+- Confirm text editors, text diffs, custom editors, notebooks, and notebook diffs can be listed, grouped, selected, reopened from the Tab Group view, and restored from a saved group when their provider is available.
 - Confirm terminal and webview panel tabs are omitted because the public VS Code API does not expose a stable per-instance identity and reopen operation for them.
 
 ### Packaged Extension

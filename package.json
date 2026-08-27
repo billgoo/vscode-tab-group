@@ -68,6 +68,13 @@
           "name": "Recent Tabs",
           "icon": "media/icon.svg",
           "contextualTitle": "Recent Tabs"
+        },
+        {
+          "id": "savedGroupsTreeView",
+          "name": "Saved Groups",
+          "icon": "media/icon.svg",
+          "contextualTitle": "Saved Groups",
+          "visibility": "collapsed"
         }
       ]
     },
@@ -91,6 +98,31 @@
         "command": "tabsTreeView.group.changeColor",
         "title": "Change Group Color",
         "icon": "$(symbol-color)"
+      },
+      {
+        "command": "tabsTreeView.group.save",
+        "title": "Save Group...",
+        "icon": "$(save)"
+      },
+      {
+        "command": "tabsTreeView.savedGroup.restore",
+        "title": "Restore Saved Group...",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "tabsTreeView.savedGroup.delete",
+        "title": "Delete Saved Group...",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "tabsTreeView.savedGroups.restoreAll",
+        "title": "Restore All Saved Groups",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "tabsTreeView.savedGroups.deleteAll",
+        "title": "Delete All Saved Groups",
+        "icon": "$(trash)"
       },
       {
         "command": "tabsTreeView.group.cancelGroup",
@@ -151,17 +183,42 @@
           "group": "inline@1"
         },
         {
+          "command": "tabsTreeView.group.save",
+          "when": "view =~ /^tabsTreeView/ && viewItem == 'group'",
+          "group": "inline@2"
+        },
+        {
           "command": "tabsTreeView.group.cancelGroup",
           "when": "view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem == 'group'",
-          "group": "inline@2"
+          "group": "inline@3"
         },
         {
           "command": "tabsTreeView.group.close",
           "when": "view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem == 'group'",
-          "group": "inline@3"
+          "group": "inline@4"
+        },
+        {
+          "command": "tabsTreeView.savedGroup.restore",
+          "when": "view == savedGroupsTreeView && viewItem == 'saved-group'",
+          "group": "inline@0"
+        },
+        {
+          "command": "tabsTreeView.savedGroup.delete",
+          "when": "view == savedGroupsTreeView && viewItem == 'saved-group'",
+          "group": "inline@1"
         }
       ],
       "view/title": [
+        {
+          "command": "tabsTreeView.savedGroups.restoreAll",
+          "when": "view == savedGroupsTreeView",
+          "group": "navigation@0"
+        },
+        {
+          "command": "tabsTreeView.savedGroups.deleteAll",
+          "when": "view == savedGroupsTreeView",
+          "group": "navigation@1"
+        },
         {
           "command": "tabsTreeView.enableSortMode",
           "when": "view =~ /^tabsTreeView/ && !tabGroup.sortMode:enabled",
@@ -176,6 +233,11 @@
           "command": "tabsTreeView.group.changeColor",
           "when": "view =~ /^tabsTreeView/ && tabGroup.selectedGroup",
           "group": "navigation@2"
+        },
+        {
+          "command": "tabsTreeView.savedGroup.restore",
+          "when": "view =~ /^tabsTreeView/",
+          "group": "navigation@3"
         },
         {
           "command": "tabsTreeView.collapseAll",

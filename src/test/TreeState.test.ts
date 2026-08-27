@@ -119,3 +119,53 @@ describe('TreeState group colors', () => {
     expect(treeState.getGroup(group.id)?.colorId).toBe('charts.blue');
   });
 });
+
+describe('TreeState saved group restoration', () => {
+  test('creates a new group with saved metadata and moves tabs in saved order', () => {
+    const firstTab = createTab('first');
+    const previousGroup = createGroup('previous');
+    const secondTab = createTab('second');
+    const remainingTab = createTab('remaining');
+    secondTab.groupId = previousGroup.id;
+    previousGroup.children = [secondTab];
+
+    const treeState = new TreeState();
+    treeState.setState([firstTab, previousGroup, remainingTab]);
+
+    const restoredGroup = treeState.restoreGroup([secondTab, firstTab], {
+      colorId: 'charts.green',
+      label: 'Saved group',
+      collapsed: true,
+    });
+
+    expect(restoredGroup).toMatchObject({
+      type: TreeItemType.Group,
+      colorId: 'charts.green',
+      label: 'Saved group',
+      collapsed: true,
+      children: [secondTab, firstTab],
+    });
+    expect(restoredGroup?.id).not.toBe(previousGroup.id);
+    expect(treeState.getState()).toEqual([remainingTab, restoredGroup]);
+  });
+
+  test('reuses a saved group source id instead of creating a second live group', () => {
+    const firstTab = createTab('first');
+    const secondTab = createTab('second');
+    const treeState = new TreeState();
+    treeState.setState([firstTab, secondTab]);
+    const savedGroup = {
+      colorId: 'charts.green',
+      label: 'Saved group',
+      collapsed: false,
+    };
+
+    const firstRestore = treeState.restoreGroup([firstTab, secondTab], savedGroup, 'source-group');
+    const secondRestore = treeState.restoreGroup([secondTab, firstTab], savedGroup, 'source-group');
+
+    expect(firstRestore?.id).toBe('source-group');
+    expect(secondRestore).toBe(firstRestore);
+    expect(secondRestore?.children).toEqual([secondTab, firstTab]);
+    expect(treeState.getState()).toEqual([firstRestore]);
+  });
+});

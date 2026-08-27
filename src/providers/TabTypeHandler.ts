@@ -1,6 +1,14 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { setTabDecoration } from '../decorators/TabFileDecorationProvider';
+import {
+  SavedCustomTab,
+  SavedNotebookDiffTab,
+  SavedNotebookTab,
+  SavedTab,
+  SavedTextDiffTab,
+  SavedTextTab,
+} from '../models/SavedGroup';
 import { findLongestCommonFilePathPrefixIndex } from '../utils/filePath';
 import { getNormalizedNotebookDiffId } from '../utils/tabId';
 
@@ -12,6 +20,7 @@ type TypedTab<T extends InputType> = vscode.Tab & {
 
 export interface TabTypeHandler<T extends InputType> {
   readonly name: string;
+  readonly savedTabKind?: SavedTab['kind'];
 
   is(tab: vscode.Tab): tab is TypedTab<T>;
 
@@ -20,6 +29,8 @@ export interface TabTypeHandler<T extends InputType> {
    * @param tab
    */
   getNormalizedId(tab: TypedTab<T>): string;
+  toSavedTab?(tab: TypedTab<T>): SavedTab;
+  openSavedTab?(savedTab: SavedTab): Promise<void>;
   createTreeItem(tab: TypedTab<T>): vscode.TreeItem;
   openEditor(tab: TypedTab<T>): Promise<void>;
 }
@@ -90,6 +101,19 @@ export function getHandler(
   return useDefault ? unknownInputTypeHandler : undefined;
 }
 
+export function toSavedTab(tab: vscode.Tab): SavedTab | undefined {
+  return getHandler(tab)?.toSavedTab?.(tab);
+}
+
+export async function reopenSavedTab(savedTab: SavedTab): Promise<void> {
+  const handler = handlers.find(candidate => candidate.savedTabKind === savedTab.kind);
+  if (!handler?.openSavedTab) {
+    throw new UnimplementedError(`Cannot reopen saved tab type ${savedTab.kind}`);
+  }
+
+  await handler.openSavedTab(savedTab);
+}
+
 /**
  * Register handler
  * Note: The order matters. Place more specific handlers before general ones.
@@ -102,6 +126,7 @@ function Registered(ctor: new () => TabTypeHandler<InputType>) {
 @Registered
 export class TabInputTextHandler implements TabTypeHandler<vscode.TabInputText> {
   name = 'TabInputText';
+  readonly savedTabKind = 'text';
 
   is(tab: vscode.Tab): tab is TypedTab<vscode.TabInputText> {
     return tab.input instanceof vscode.TabInputText;
@@ -109,6 +134,24 @@ export class TabInputTextHandler implements TabTypeHandler<vscode.TabInputText> 
 
   getNormalizedId(tab: TypedTab<vscode.TabInputText>): string {
     return tab.input.uri.toString();
+  }
+
+  toSavedTab(tab: TypedTab<vscode.TabInputText>): SavedTextTab {
+    return {
+      kind: 'text',
+      id: this.getNormalizedId(tab),
+      uri: tab.input.uri.toString(),
+    };
+  }
+
+  async openSavedTab(savedTab: SavedTab): Promise<void> {
+    if (savedTab.kind !== 'text') {
+      throw new UnimplementedError('Expected a saved text tab');
+    }
+
+    await vscode.commands.executeCommand('vscode.open', vscode.Uri.parse(savedTab.uri), {
+      preview: false,
+    });
   }
 
   createTreeItem(tab: TypedTab<vscode.TabInputText>): vscode.TreeItem {
@@ -131,6 +174,7 @@ export class TabInputTextHandler implements TabTypeHandler<vscode.TabInputText> 
 @Registered
 export class TabInputTextDiffHandler implements TabTypeHandler<vscode.TabInputTextDiff> {
   name = 'TabInputTextDiff';
+  readonly savedTabKind = 'textDiff';
 
   is(tab: vscode.Tab): tab is TypedTab<vscode.TabInputTextDiff> {
     return tab.input instanceof vscode.TabInputTextDiff;
@@ -146,6 +190,30 @@ export class TabInputTextDiffHandler implements TabTypeHandler<vscode.TabInputTe
       original: serializeUri(tab.input.original),
       modified: serializeUri(tab.input.modified),
     });
+  }
+
+  toSavedTab(tab: TypedTab<vscode.TabInputTextDiff>): SavedTextDiffTab {
+    return {
+      kind: 'textDiff',
+      id: this.getNormalizedId(tab),
+      originalUri: tab.input.original.toString(),
+      modifiedUri: tab.input.modified.toString(),
+      label: tab.label,
+    };
+  }
+
+  async openSavedTab(savedTab: SavedTab): Promise<void> {
+    if (savedTab.kind !== 'textDiff') {
+      throw new UnimplementedError('Expected a saved text diff tab');
+    }
+
+    await vscode.commands.executeCommand(
+      'vscode.diff',
+      vscode.Uri.parse(savedTab.originalUri),
+      vscode.Uri.parse(savedTab.modifiedUri),
+      savedTab.label,
+      { preview: false },
+    );
   }
 
   createTreeItem(tab: TypedTab<vscode.TabInputTextDiff>): vscode.TreeItem {
@@ -187,6 +255,7 @@ export class TabInputTextDiffHandler implements TabTypeHandler<vscode.TabInputTe
 @Registered
 export class TabInputNotebookDiffHandler implements TabTypeHandler<vscode.TabInputNotebookDiff> {
   name = 'TabInputNotebookDiff';
+  readonly savedTabKind = 'notebookDiff';
 
   is(tab: vscode.Tab): tab is TypedTab<vscode.TabInputNotebookDiff> {
     return tab.input instanceof vscode.TabInputNotebookDiff;
@@ -197,6 +266,31 @@ export class TabInputNotebookDiffHandler implements TabTypeHandler<vscode.TabInp
       tab.input.original,
       tab.input.modified,
       tab.input.notebookType,
+    );
+  }
+
+  toSavedTab(tab: TypedTab<vscode.TabInputNotebookDiff>): SavedNotebookDiffTab {
+    return {
+      kind: 'notebookDiff',
+      id: this.getNormalizedId(tab),
+      originalUri: tab.input.original.toString(),
+      modifiedUri: tab.input.modified.toString(),
+      notebookType: tab.input.notebookType,
+      label: tab.label,
+    };
+  }
+
+  async openSavedTab(savedTab: SavedTab): Promise<void> {
+    if (savedTab.kind !== 'notebookDiff') {
+      throw new UnimplementedError('Expected a saved notebook diff tab');
+    }
+
+    await vscode.commands.executeCommand(
+      'vscode.diff',
+      vscode.Uri.parse(savedTab.originalUri),
+      vscode.Uri.parse(savedTab.modifiedUri),
+      savedTab.label,
+      { preview: false },
     );
   }
 
@@ -221,6 +315,7 @@ export class TabInputNotebookDiffHandler implements TabTypeHandler<vscode.TabInp
 @Registered
 export class TabInputCustomHandler implements TabTypeHandler<vscode.TabInputCustom> {
   name = 'TabInputCustom';
+  readonly savedTabKind = 'custom';
 
   is(tab: vscode.Tab): tab is TypedTab<vscode.TabInputCustom> {
     return tab.input instanceof vscode.TabInputCustom;
@@ -231,6 +326,28 @@ export class TabInputCustomHandler implements TabTypeHandler<vscode.TabInputCust
       uri: tab.input.uri.path, // sometimes, the content in uri object changes although the resource is the same one.
       viewType: tab.input.viewType,
     });
+  }
+
+  toSavedTab(tab: TypedTab<vscode.TabInputCustom>): SavedCustomTab {
+    return {
+      kind: 'custom',
+      id: this.getNormalizedId(tab),
+      uri: tab.input.uri.toString(),
+      viewType: tab.input.viewType,
+    };
+  }
+
+  async openSavedTab(savedTab: SavedTab): Promise<void> {
+    if (savedTab.kind !== 'custom') {
+      throw new UnimplementedError('Expected a saved custom tab');
+    }
+
+    await vscode.commands.executeCommand(
+      'vscode.openWith',
+      vscode.Uri.parse(savedTab.uri),
+      savedTab.viewType,
+      { preview: false },
+    );
   }
 
   createTreeItem(tab: TypedTab<vscode.TabInputCustom>): vscode.TreeItem {
@@ -250,6 +367,7 @@ export class TabInputCustomHandler implements TabTypeHandler<vscode.TabInputCust
 @Registered
 export class TabInputNotebookHandler implements TabTypeHandler<vscode.TabInputNotebook> {
   name = 'TabInputNotebook';
+  readonly savedTabKind = 'notebook';
 
   is(tab: vscode.Tab): tab is TypedTab<vscode.TabInputNotebook> {
     return tab.input instanceof vscode.TabInputNotebook;
@@ -260,6 +378,28 @@ export class TabInputNotebookHandler implements TabTypeHandler<vscode.TabInputNo
       uri: tab.input.uri.path,
       notebookType: tab.input.notebookType,
     });
+  }
+
+  toSavedTab(tab: TypedTab<vscode.TabInputNotebook>): SavedNotebookTab {
+    return {
+      kind: 'notebook',
+      id: this.getNormalizedId(tab),
+      uri: tab.input.uri.toString(),
+      notebookType: tab.input.notebookType,
+    };
+  }
+
+  async openSavedTab(savedTab: SavedTab): Promise<void> {
+    if (savedTab.kind !== 'notebook') {
+      throw new UnimplementedError('Expected a saved notebook tab');
+    }
+
+    await vscode.commands.executeCommand(
+      'vscode.openWith',
+      vscode.Uri.parse(savedTab.uri),
+      savedTab.notebookType,
+      { preview: false },
+    );
   }
 
   createTreeItem(tab: TypedTab<vscode.TabInputNotebook>): vscode.TreeItem {

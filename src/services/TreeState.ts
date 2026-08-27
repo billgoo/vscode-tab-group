@@ -110,6 +110,38 @@ export class TreeState {
     tabs.forEach(tab => this.groupTab(group, tab));
   }
 
+  public restoreGroup(
+    tabs: Tab[],
+    { colorId, label, collapsed }: Pick<Group, 'colorId' | 'label' | 'collapsed'>,
+    sourceGroupId?: string,
+  ): Group | undefined {
+    if (tabs.length === 0) {
+      return undefined;
+    }
+
+    const group = sourceGroupId ? this.groupMap[sourceGroupId] : undefined;
+    if (group) {
+      group.colorId = colorId;
+      group.label = label;
+      group.collapsed = collapsed;
+      tabs.forEach(tab => this.groupTab(group, tab));
+      return group;
+    }
+
+    const restoredGroup: Group = {
+      type: TreeItemType.Group,
+      colorId,
+      id: sourceGroupId ?? randomUUID(),
+      label,
+      children: [],
+      collapsed,
+    };
+    this.groupMap[restoredGroup.id] = restoredGroup;
+    this.root.push(restoredGroup);
+    tabs.forEach(tab => this.groupTab(restoredGroup, tab));
+    return restoredGroup;
+  }
+
   private groupTab(group: Group, tab: Tab, index?: number) {
     this.removeTab(tab);
     this.insertTabToGroup(tab, group, index);

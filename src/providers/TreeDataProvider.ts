@@ -314,6 +314,18 @@ export class TreeDataProvider
     this.triggerStateChange();
   }
 
+  public restoreGroup(
+    tabs: Tab[],
+    group: Pick<Group, 'colorId' | 'label' | 'collapsed'>,
+    sourceGroupId?: string,
+  ): Group | undefined {
+    const restoredGroup = this.treeState.restoreGroup(tabs, group, sourceGroupId);
+    if (restoredGroup) {
+      this.triggerStateChange();
+    }
+    return restoredGroup;
+  }
+
   public toggleSortMode(sortMode: boolean) {
     this.sortMode = sortMode;
     this.triggerRerender();
