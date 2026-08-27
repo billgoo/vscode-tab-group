@@ -106,6 +106,124 @@ describe('TreeState sorting', () => {
     expect(treeState.getState()).toEqual([rootTab, group]);
     expect(group.children).toEqual([groupedTab]);
   });
+
+  test('sorts root tabs without moving groups or their children', () => {
+    const firstRootTab = createTab('charlie');
+    const group = createGroup('group');
+    const secondRootTab = createTab('alpha');
+    const thirdRootTab = createTab('bravo');
+    const firstGroupedTab = createTab('zulu');
+    const secondGroupedTab = createTab('echo');
+    firstGroupedTab.groupId = group.id;
+    secondGroupedTab.groupId = group.id;
+    group.children = [firstGroupedTab, secondGroupedTab];
+    const treeState = new TreeState();
+    treeState.setState([firstRootTab, group, secondRootTab, thirdRootTab]);
+
+    expect(treeState.sortTabs((leftTab, rightTab) => leftTab.id.localeCompare(rightTab.id))).toBe(
+      true,
+    );
+    expect(treeState.getState()).toEqual([secondRootTab, group, thirdRootTab, firstRootTab]);
+    expect(group.children).toEqual([firstGroupedTab, secondGroupedTab]);
+    expect(firstGroupedTab.groupId).toBe(group.id);
+    expect(secondGroupedTab.groupId).toBe(group.id);
+  });
+
+  test('sorts groups by label in both directions without moving root tabs or group children', () => {
+    const firstRootTab = createTab('first-root');
+    const firstGroup = createGroup('first-group');
+    const secondRootTab = createTab('second-root');
+    const secondGroup = createGroup('second-group');
+    const firstGroupedTab = createTab('first-grouped');
+    const secondGroupedTab = createTab('second-grouped');
+    firstGroup.label = 'Zulu';
+    secondGroup.label = 'Alpha';
+    firstGroupedTab.groupId = firstGroup.id;
+    secondGroupedTab.groupId = secondGroup.id;
+    firstGroup.children = [firstGroupedTab];
+    secondGroup.children = [secondGroupedTab];
+    const treeState = new TreeState();
+    treeState.setState([firstRootTab, firstGroup, secondRootTab, secondGroup]);
+
+    expect(
+      treeState.sortGroups((leftGroup, rightGroup) =>
+        leftGroup.label.localeCompare(rightGroup.label),
+      ),
+    ).toBe(true);
+    expect(treeState.getState()).toEqual([firstRootTab, secondGroup, secondRootTab, firstGroup]);
+    expect(firstGroup.children).toEqual([firstGroupedTab]);
+
+    expect(
+      treeState.sortGroups((leftGroup, rightGroup) =>
+        rightGroup.label.localeCompare(leftGroup.label),
+      ),
+    ).toBe(true);
+    expect(treeState.getState()).toEqual([firstRootTab, firstGroup, secondRootTab, secondGroup]);
+    expect(firstGroup.children).toEqual([firstGroupedTab]);
+    expect(secondGroup.children).toEqual([secondGroupedTab]);
+    expect(secondGroup.children).toEqual([secondGroupedTab]);
+  });
+
+  test('sorts tabs in one group without changing root tabs or another group', () => {
+    const firstGroup = createGroup('first-group');
+    const secondGroup = createGroup('second-group');
+    const firstRootTab = createTab('root-zulu');
+    const secondRootTab = createTab('root-alpha');
+    const firstGroupZuluTab = createTab('zulu');
+    const firstGroupAlphaTab = createTab('alpha');
+    const secondGroupZuluTab = createTab('second-zulu');
+    const secondGroupAlphaTab = createTab('second-alpha');
+    firstGroupZuluTab.groupId = firstGroup.id;
+    firstGroupAlphaTab.groupId = firstGroup.id;
+    secondGroupZuluTab.groupId = secondGroup.id;
+    secondGroupAlphaTab.groupId = secondGroup.id;
+    firstGroup.children = [firstGroupZuluTab, firstGroupAlphaTab];
+    secondGroup.children = [secondGroupZuluTab, secondGroupAlphaTab];
+    const treeState = new TreeState();
+    treeState.setState([firstRootTab, firstGroup, secondRootTab, secondGroup]);
+
+    expect(
+      treeState.sortTabs(
+        (leftTab, rightTab) => leftTab.id.localeCompare(rightTab.id),
+        firstGroup.id,
+      ),
+    ).toBe(true);
+    expect(treeState.getState()).toEqual([firstRootTab, firstGroup, secondRootTab, secondGroup]);
+    expect(firstGroup.children).toEqual([firstGroupAlphaTab, firstGroupZuluTab]);
+    expect(secondGroup.children).toEqual([secondGroupZuluTab, secondGroupAlphaTab]);
+  });
+
+  test('does not report a state change when every tab is already sorted', () => {
+    const firstTab = createTab('alpha');
+    const secondTab = createTab('bravo');
+    const treeState = new TreeState();
+    treeState.setState([firstTab, secondTab]);
+
+    expect(treeState.sortTabs((leftTab, rightTab) => leftTab.id.localeCompare(rightTab.id))).toBe(
+      false,
+    );
+    expect(treeState.getState()).toEqual([firstTab, secondTab]);
+  });
+
+  test('does not report a state change when every group is already sorted', () => {
+    const firstGroup = createGroup('alpha');
+    const secondGroup = createGroup('bravo');
+    const firstGroupedTab = createTab('first-grouped');
+    const secondGroupedTab = createTab('second-grouped');
+    firstGroupedTab.groupId = firstGroup.id;
+    secondGroupedTab.groupId = secondGroup.id;
+    firstGroup.children = [firstGroupedTab];
+    secondGroup.children = [secondGroupedTab];
+    const treeState = new TreeState();
+    treeState.setState([firstGroup, secondGroup]);
+
+    expect(
+      treeState.sortGroups((leftGroup, rightGroup) =>
+        leftGroup.label.localeCompare(rightGroup.label),
+      ),
+    ).toBe(false);
+    expect(treeState.getState()).toEqual([firstGroup, secondGroup]);
+  });
 });
 
 describe('TreeState appending', () => {

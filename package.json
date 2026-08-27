@@ -100,6 +100,16 @@
         "icon": "$(symbol-color)"
       },
       {
+        "command": "tabsTreeView.sortTabsAscending",
+        "title": "Sort: A to Z",
+        "icon": "$(sort-ascending)"
+      },
+      {
+        "command": "tabsTreeView.sortTabsDescending",
+        "title": "Sort: Z to A",
+        "icon": "$(sort-descending)"
+      },
+      {
         "command": "tabsTreeView.group.save",
         "title": "Save Group...",
         "icon": "$(save)"
@@ -174,28 +184,38 @@
         },
         {
           "command": "tabsTreeView.group.rename",
-          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem == 'group'",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem =~ /^group-sort-/",
           "group": "inline@0"
         },
         {
           "command": "tabsTreeView.group.changeColor",
-          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem == 'group'",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem =~ /^group-sort-/",
           "group": "inline@1"
         },
         {
-          "command": "tabsTreeView.group.save",
-          "when": "view =~ /^tabsTreeView/ && viewItem == 'group'",
+          "command": "tabsTreeView.sortTabsAscending",
+          "when": "view == tabsTreeView && viewItem == 'group-sort-ascending'",
           "group": "inline@2"
         },
         {
-          "command": "tabsTreeView.group.cancelGroup",
-          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem == 'group'",
+          "command": "tabsTreeView.sortTabsDescending",
+          "when": "view == tabsTreeView && viewItem == 'group-sort-descending'",
+          "group": "inline@2"
+        },
+        {
+          "command": "tabsTreeView.group.save",
+          "when": "view =~ /^tabsTreeView/ && viewItem =~ /^group-sort-/",
           "group": "inline@3"
         },
         {
-          "command": "tabsTreeView.group.close",
-          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem == 'group'",
+          "command": "tabsTreeView.group.cancelGroup",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem =~ /^group-sort-/",
           "group": "inline@4"
+        },
+        {
+          "command": "tabsTreeView.group.close",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem =~ /^group-sort-/",
+          "group": "inline@5"
         },
         {
           "command": "tabsTreeView.savedGroup.restore",
@@ -232,12 +252,17 @@
         {
           "command": "tabsTreeView.group.changeColor",
           "when": "view =~ /^tabsTreeView/ && tabGroup.selectedGroup",
+          "group": "navigation@3"
+        },
+        {
+          "command": "tabsTreeView.sortTabsAscending",
+          "when": "view =~ /^tabsTreeView/ && !tabGroup.sortMode:enabled && tabGroup.sort:nextRootAscending",
           "group": "navigation@2"
         },
         {
-          "command": "tabsTreeView.savedGroup.restore",
-          "when": "view =~ /^tabsTreeView/",
-          "group": "navigation@3"
+          "command": "tabsTreeView.sortTabsDescending",
+          "when": "view =~ /^tabsTreeView/ && !tabGroup.sortMode:enabled && !tabGroup.sort:nextRootAscending",
+          "group": "navigation@2"
         },
         {
           "command": "tabsTreeView.collapseAll",

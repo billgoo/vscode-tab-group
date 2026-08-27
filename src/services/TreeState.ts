@@ -220,8 +220,42 @@ export class TreeState {
     return true;
   }
 
+  public sortTabs(compare: (leftTab: Tab, rightTab: Tab) => number, groupId?: string): boolean {
+    if (groupId !== undefined) {
+      return this.sortList(this.groupMap[groupId]?.children ?? [], compare);
+    }
+
+    const rootTabs = this.root.filter(isTab);
+    const changed = this.sortList(rootTabs, compare);
+    if (changed) {
+      let rootTabIndex = 0;
+      this.root = this.root.map(item => (isTab(item) ? rootTabs[rootTabIndex++] : item));
+    }
+    return changed;
+  }
+
+  public sortGroups(compare: (leftGroup: Group, rightGroup: Group) => number): boolean {
+    const groups = this.root.filter(isGroup);
+    const changed = this.sortList(groups, compare);
+    if (changed) {
+      let groupIndex = 0;
+      this.root = this.root.map(item => (isGroup(item) ? groups[groupIndex++] : item));
+    }
+    return changed;
+  }
+
   private getSortGroupId(item: Tab | Group | Slot | undefined): string | null {
     return !item || isGroup(item) ? null : item.groupId;
+  }
+
+  private sortList<T>(items: T[], compare: (leftItem: T, rightItem: T) => number): boolean {
+    const sortedItems = items.slice().sort(compare);
+    if (sortedItems.every((item, index) => item === items[index])) {
+      return false;
+    }
+
+    items.splice(0, items.length, ...sortedItems);
+    return true;
   }
 
   public moveTo(target: Tab | Group, draggeds: Array<Tab | Group>) {

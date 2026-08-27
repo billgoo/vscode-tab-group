@@ -16,6 +16,7 @@ import { ContextKeys, setContext } from '../utils/context';
 import { getTabFileDecorationProvider } from '../decorators/TabFileDecorationProvider';
 import { GroupColorId, groupColorOptions } from '../utils/color';
 import { getSavedTabId, getSavedTabLabel } from '../utils/savedTab';
+import { TabSortDirection } from '../utils/tabSort';
 
 type GroupColorQuickPickItem = vscode.QuickPickItem & {
   colorId: GroupColorId;
@@ -59,6 +60,7 @@ export class TabsView extends Disposable {
 
     setContext(ContextKeys.AllCollapsed, this.treeDataProvider.isAllCollapsed());
     setContext(ContextKeys.SelectedGroup, false);
+    setContext(ContextKeys.NextRootSortAscending, true);
 
     const view = this._register(
       vscode.window.createTreeView('tabsTreeView', {
@@ -142,6 +144,18 @@ export class TabsView extends Disposable {
           this.treeDataProvider.setGroupColor(targetGroup, selectedColor.colorId);
         }
       }),
+    );
+
+    this._register(
+      vscode.commands.registerCommand('tabsTreeView.sortTabsAscending', (group?: Group) =>
+        this.sortTabs('ascending', group),
+      ),
+    );
+
+    this._register(
+      vscode.commands.registerCommand('tabsTreeView.sortTabsDescending', (group?: Group) =>
+        this.sortTabs('descending', group),
+      ),
     );
 
     this._register(
@@ -303,6 +317,13 @@ export class TabsView extends Disposable {
   }
 
   private __tabsview_construct_end() {}
+
+  private async sortTabs(direction: TabSortDirection, group?: Group): Promise<void> {
+    this.treeDataProvider.sortTabs(direction, group);
+    if (!group) {
+      await setContext(ContextKeys.NextRootSortAscending, direction === 'descending');
+    }
+  }
 
   private async saveGroup(group: Group): Promise<void> {
     const tabs: SavedTab[] = [];

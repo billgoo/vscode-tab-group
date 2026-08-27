@@ -11,6 +11,7 @@ import {
 } from '../models/SavedGroup';
 import { findLongestCommonFilePathPrefixIndex } from '../utils/filePath';
 import { getCustomTabId, getNotebookTabId } from '../utils/savedTab';
+import { createTabSortKey, TabSortKey } from '../utils/tabSort';
 import { getNormalizedNotebookDiffId } from '../utils/tabId';
 
 export type InputType = vscode.Tab['input'];
@@ -30,6 +31,7 @@ export interface TabTypeHandler<T extends InputType> {
    * @param tab
    */
   getNormalizedId(tab: TypedTab<T>): string;
+  getSortKey(tab: TypedTab<T>): TabSortKey;
   getLegacyNormalizedIds?(tab: TypedTab<T>): readonly string[];
   toSavedTab?(tab: TypedTab<T>): SavedTab;
   openSavedTab?(savedTab: SavedTab): Promise<void>;
@@ -57,6 +59,10 @@ function getNormalizedIdForUnknownObject(input: object): string {
   return JSON.stringify(getNormalizedObject(input));
 }
 
+function getUriSortKey(uri: vscode.Uri, id: string): TabSortKey {
+  return createTabSortKey(uri.toString(), id);
+}
+
 /**
  * This class is a default for logic safety.
  * Unknown-typed tab won't be added to the tree data, because we cannot find the way to find a unique id which can bind tree data and actual tab.
@@ -75,6 +81,10 @@ export class UnknownInputTypeHandler implements TabTypeHandler<unknown> {
       return tab.label;
     }
     return `${tab.label}:${(tab.input as any).toString()}`;
+  }
+
+  getSortKey(tab: TypedTab<unknown>): TabSortKey {
+    return createTabSortKey(tab.label, this.getNormalizedId(tab));
   }
 
   createTreeItem(tab: TypedTab<unknown>) {
@@ -147,6 +157,10 @@ export class TabInputTextHandler implements TabTypeHandler<vscode.TabInputText> 
     return tab.input.uri.toString();
   }
 
+  getSortKey(tab: TypedTab<vscode.TabInputText>): TabSortKey {
+    return getUriSortKey(tab.input.uri, this.getNormalizedId(tab));
+  }
+
   toSavedTab(tab: TypedTab<vscode.TabInputText>): SavedTextTab {
     return {
       kind: 'text',
@@ -201,6 +215,10 @@ export class TabInputTextDiffHandler implements TabTypeHandler<vscode.TabInputTe
       original: serializeUri(tab.input.original),
       modified: serializeUri(tab.input.modified),
     });
+  }
+
+  getSortKey(tab: TypedTab<vscode.TabInputTextDiff>): TabSortKey {
+    return getUriSortKey(tab.input.modified, this.getNormalizedId(tab));
   }
 
   toSavedTab(tab: TypedTab<vscode.TabInputTextDiff>): SavedTextDiffTab {
@@ -280,6 +298,10 @@ export class TabInputNotebookDiffHandler implements TabTypeHandler<vscode.TabInp
     );
   }
 
+  getSortKey(tab: TypedTab<vscode.TabInputNotebookDiff>): TabSortKey {
+    return getUriSortKey(tab.input.modified, this.getNormalizedId(tab));
+  }
+
   toSavedTab(tab: TypedTab<vscode.TabInputNotebookDiff>): SavedNotebookDiffTab {
     return {
       kind: 'notebookDiff',
@@ -336,6 +358,10 @@ export class TabInputCustomHandler implements TabTypeHandler<vscode.TabInputCust
     return getCustomTabId(tab.input.uri.toString(), tab.input.viewType);
   }
 
+  getSortKey(tab: TypedTab<vscode.TabInputCustom>): TabSortKey {
+    return getUriSortKey(tab.input.uri, this.getNormalizedId(tab));
+  }
+
   getLegacyNormalizedIds(tab: TypedTab<vscode.TabInputCustom>): readonly string[] {
     return [JSON.stringify({ uri: tab.input.uri.path, viewType: tab.input.viewType })];
   }
@@ -387,6 +413,10 @@ export class TabInputNotebookHandler implements TabTypeHandler<vscode.TabInputNo
 
   getNormalizedId(tab: TypedTab<vscode.TabInputNotebook>): string {
     return getNotebookTabId(tab.input.uri.toString(), tab.input.notebookType);
+  }
+
+  getSortKey(tab: TypedTab<vscode.TabInputNotebook>): TabSortKey {
+    return getUriSortKey(tab.input.uri, this.getNormalizedId(tab));
   }
 
   getLegacyNormalizedIds(tab: TypedTab<vscode.TabInputNotebook>): readonly string[] {
