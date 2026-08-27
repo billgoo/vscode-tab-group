@@ -176,7 +176,9 @@ export class TreeDataProvider
     }
 
     if (this.sortMode) {
-      this.doHandleSorting(target, draggeds);
+      if (!this.doHandleSorting(target, draggeds)) {
+        return;
+      }
     } else {
       if (target && isSlot(target)) {
         return; // should not have slot in group mode
@@ -193,14 +195,11 @@ export class TreeDataProvider
     this.triggerRerender();
   }
 
-  private doHandleSorting(target: Tab | Group | Slot | undefined, draggeds: Array<Tab | Group>) {
-    if (target === undefined) {
-      this.treeState.pushBack(null, draggeds);
-    } else if (isSlot(target)) {
-      this.treeState.pushBack(target.groupId, draggeds);
-    } else {
-      this.treeState.moveTo(target, draggeds);
-    }
+  private doHandleSorting(
+    target: Tab | Group | Slot | undefined,
+    draggeds: Array<Tab | Group>,
+  ): boolean {
+    return this.treeState.sort(target, draggeds);
   }
 
   private doHandleGrouping(target: Tab | Group | undefined, tabs: Tab[]) {
@@ -312,6 +311,18 @@ export class TreeDataProvider
   public cancelGroup(group: Group): void {
     this.treeState.cancelGroup(group);
     this.triggerStateChange();
+  }
+
+  public restoreGroup(
+    tabs: Tab[],
+    group: Pick<Group, 'colorId' | 'label' | 'collapsed'>,
+    sourceGroupId?: string,
+  ): Group | undefined {
+    const restoredGroup = this.treeState.restoreGroup(tabs, group, sourceGroupId);
+    if (restoredGroup) {
+      this.triggerStateChange();
+    }
+    return restoredGroup;
   }
 
   public toggleSortMode(sortMode: boolean) {

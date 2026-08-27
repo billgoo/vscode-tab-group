@@ -12,7 +12,7 @@ npm run test:unit
 npm run test:e2e
 ```
 
-`test:unit` validates the grouping model without VS Code. `test:e2e` uses the locally installed VS Code application on macOS, then activates the extension and verifies public commands, the Recent Tabs view, supported tab-input normalization, and rejection of opaque inputs. Set `VSCODE_TEST_EXECUTABLE` to use a local executable on another platform. In CI it downloads and starts a clean VS Code Extension Development Host. Set `VSCODE_TEST_DOWNLOAD=true` to use the downloaded runtime locally. On headless Linux, run it through `xvfb-run -a npm run test:e2e`.
+`test:unit` validates grouping, Sort Mode boundaries, and saved-group persistence without VS Code. `test:e2e` uses the locally installed VS Code application on macOS, then activates the extension and verifies public commands, Recent Tabs, the default-collapsed expandable Saved Groups panel, full-URI supported-tab identity, saved-tab descriptor capture, complete and partial text-tab restoration, and rejection of opaque inputs. Set `VSCODE_TEST_EXECUTABLE` to use a local executable on another platform. In CI it downloads and starts a clean VS Code Extension Development Host. Set `VSCODE_TEST_DOWNLOAD=true` to use the downloaded runtime locally. On headless Linux, run it through `xvfb-run -a npm run test:e2e`.
 
 See [testing.md](testing.md) for the automated-check matrix and manual acceptance checklist.
 

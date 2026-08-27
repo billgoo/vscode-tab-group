@@ -16,3 +16,16 @@ export function findLongestCommonFilePathPrefixIndex(
 
   return minLength - 1;
 }
+
+export function getFilePathDescription(
+  filePath: ReadonlyArray<string>,
+  relatedFilePaths: ReadonlyArray<ReadonlyArray<string>>,
+): string | undefined {
+  if (relatedFilePaths.length < 2) {
+    return undefined;
+  }
+
+  const commonPrefixIndex = findLongestCommonFilePathPrefixIndex(relatedFilePaths);
+  const description = filePath.slice(commonPrefixIndex + 1, -1);
+  return description.length > 0 ? description.join('/') : undefined;
+}

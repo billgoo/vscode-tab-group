@@ -1,19 +1,33 @@
 import * as vscode from 'vscode';
-import { getNormalizedTabId } from './TabTypeHandler';
+import { randomUUID } from 'node:crypto';
+import { getNormalizedTabId, matchesTabId, reopenSavedTab, toSavedTab } from './TabTypeHandler';
 import { WorkspaceStateStore } from '../services/WorkspaceStateStore';
+import { SavedGroupsStore } from '../services/SavedGroupsStore';
 import { RecentTabs } from '../services/RecentTabs';
 import { ExclusiveHandle } from '../utils/event';
 import { asPromise } from '../utils/async';
 import { Group, isGroup, Tab, TreeItemType } from '../models/types';
+import { SavedGroup, SavedTab } from '../models/SavedGroup';
 import { getNativeTabs, TreeDataProvider } from './TreeDataProvider';
 import { RecentTabsTreeDataProvider } from './RecentTabsTreeDataProvider';
+import { SavedGroupsTreeDataProvider } from './SavedGroupsTreeDataProvider';
 import { Disposable } from '../utils/disposable';
 import { ContextKeys, setContext } from '../utils/context';
 import { getTabFileDecorationProvider } from '../decorators/TabFileDecorationProvider';
 import { GroupColorId, groupColorOptions } from '../utils/color';
+import { getSavedTabId, getSavedTabLabel } from '../utils/savedTab';
 
 type GroupColorQuickPickItem = vscode.QuickPickItem & {
   colorId: GroupColorId;
+};
+
+type SavedGroupQuickPickItem = vscode.QuickPickItem & {
+  savedGroup: SavedGroup;
+};
+
+type SavedGroupRestoreResult = {
+  readonly restoredTabIds: readonly string[];
+  readonly failedTabs: readonly SavedTab[];
 };
 
 export class TabsView extends Disposable {
@@ -22,11 +36,19 @@ export class TabsView extends Disposable {
   private recentTabsTreeDataProvider = this._register(
     new RecentTabsTreeDataProvider(this.treeDataProvider, this.recentTabs),
   );
+  private readonly savedGroupsTreeDataProvider: SavedGroupsTreeDataProvider;
   private exclusiveHandle = new ExclusiveHandle();
   private selectedGroup: Group | undefined;
 
-  constructor(private readonly workspaceStateStore: WorkspaceStateStore) {
+  constructor(
+    private readonly workspaceStateStore: WorkspaceStateStore,
+    private readonly savedGroupsStore: SavedGroupsStore,
+  ) {
     super();
+
+    this.savedGroupsTreeDataProvider = this._register(
+      new SavedGroupsTreeDataProvider(this.savedGroupsStore),
+    );
 
     const initialState = this.initializeState();
 
@@ -50,6 +72,11 @@ export class TabsView extends Disposable {
         treeDataProvider: this.recentTabsTreeDataProvider,
         dragAndDropController: this.recentTabsTreeDataProvider,
         canSelectMany: true,
+      }),
+    );
+    this._register(
+      vscode.window.createTreeView('savedGroupsTreeView', {
+        treeDataProvider: this.savedGroupsTreeDataProvider,
       }),
     );
 
@@ -115,6 +142,39 @@ export class TabsView extends Disposable {
           this.treeDataProvider.setGroupColor(targetGroup, selectedColor.colorId);
         }
       }),
+    );
+
+    this._register(
+      vscode.commands.registerCommand('tabsTreeView.group.save', async (group?: Group) => {
+        if (group) {
+          await this.saveGroup(group);
+        }
+      }),
+    );
+
+    this._register(
+      vscode.commands.registerCommand(
+        'tabsTreeView.savedGroup.restore',
+        (savedGroup?: SavedGroup) => this.restoreSavedGroup(savedGroup),
+      ),
+    );
+
+    this._register(
+      vscode.commands.registerCommand('tabsTreeView.savedGroup.delete', (savedGroup?: SavedGroup) =>
+        this.deleteSavedGroup(savedGroup),
+      ),
+    );
+
+    this._register(
+      vscode.commands.registerCommand('tabsTreeView.savedGroups.restoreAll', () =>
+        this.restoreAllSavedGroups(),
+      ),
+    );
+
+    this._register(
+      vscode.commands.registerCommand('tabsTreeView.savedGroups.deleteAll', () =>
+        this.deleteAllSavedGroups(),
+      ),
     );
 
     this._register(
@@ -244,6 +304,288 @@ export class TabsView extends Disposable {
 
   private __tabsview_construct_end() {}
 
+  private async saveGroup(group: Group): Promise<void> {
+    const tabs: SavedTab[] = [];
+    for (const tab of group.children) {
+      const nativeTab = getNativeTabs(tab)[0];
+      const savedTab = nativeTab && toSavedTab(nativeTab);
+      if (!savedTab) {
+        void vscode.window.showWarningMessage(
+          'Cannot save this group because one or more tabs are no longer open.',
+        );
+        return;
+      }
+      tabs.push(savedTab);
+    }
+
+    if (tabs.length === 0) {
+      void vscode.window.showWarningMessage('Cannot save an empty group.');
+      return;
+    }
+
+    const savedGroups = this.getSavedGroups();
+    const existingGroup = savedGroups.find(savedGroup => savedGroup.sourceGroupId === group.id);
+    const name =
+      existingGroup?.name ??
+      (
+        await vscode.window.showInputBox({
+          placeHolder: 'Name this saved group',
+          value: group.label,
+        })
+      )?.trim();
+    if (!name) {
+      return;
+    }
+
+    const groupWithSameName = savedGroups.find(savedGroup => savedGroup.name === name);
+    if (!existingGroup && groupWithSameName) {
+      const choice = await vscode.window.showWarningMessage(
+        `Replace the saved tab group "${name}"?`,
+        { modal: true },
+        'Replace',
+      );
+      if (choice !== 'Replace') {
+        return;
+      }
+    }
+
+    const groupToReplace = existingGroup ?? groupWithSameName;
+
+    const savedGroup: SavedGroup = {
+      id: groupToReplace?.id ?? randomUUID(),
+      sourceGroupId: group.id,
+      name,
+      groupLabel: group.label,
+      colorId: group.colorId,
+      collapsed: group.collapsed,
+      tabs,
+    };
+    const nextSavedGroups = groupToReplace
+      ? savedGroups.map(candidate => (candidate.id === groupToReplace.id ? savedGroup : candidate))
+      : [...savedGroups, savedGroup];
+
+    await this.saveSavedGroups(
+      nextSavedGroups,
+      `${existingGroup ? 'Updated' : 'Saved'} tab group "${name}".`,
+      `Could not save tab group "${name}".`,
+    );
+  }
+
+  private async restoreSavedGroup(selectedSavedGroup?: SavedGroup): Promise<void> {
+    const savedGroup =
+      selectedSavedGroup ?? (await this.pickSavedGroup('Choose a saved tab group to restore'));
+    if (!savedGroup) {
+      return;
+    }
+
+    const result = await this.restoreSavedGroupTabs(savedGroup);
+    this.showRestoreResult(savedGroup, result);
+  }
+
+  private async restoreSavedGroupTabs(savedGroup: SavedGroup): Promise<SavedGroupRestoreResult> {
+    const tabs: Tab[] = [];
+    const failedTabs: SavedTab[] = [];
+    for (const savedTab of savedGroup.tabs) {
+      const tabId = getSavedTabId(savedTab);
+      let nativeTab = this.findNativeTab(tabId);
+      if (!nativeTab) {
+        try {
+          await reopenSavedTab(savedTab);
+          nativeTab = this.findNativeTab(tabId);
+        } catch (error) {
+          console.error('Failed to restore saved tab', error);
+        }
+      }
+
+      if (!nativeTab) {
+        failedTabs.push(savedTab);
+        continue;
+      }
+
+      this.treeDataProvider.appendTabs([nativeTab]);
+      const tab = this.treeDataProvider.getTab(nativeTab);
+      if (tab) {
+        tabs.push(tab);
+      } else {
+        failedTabs.push(savedTab);
+      }
+    }
+
+    const restoredGroup = this.treeDataProvider.restoreGroup(
+      tabs,
+      {
+        colorId: savedGroup.colorId,
+        label: savedGroup.groupLabel,
+        collapsed: savedGroup.collapsed,
+      },
+      savedGroup.sourceGroupId,
+    );
+    if (!restoredGroup) {
+      return { restoredTabIds: [], failedTabs };
+    }
+
+    setContext(ContextKeys.AllCollapsed, this.treeDataProvider.isAllCollapsed());
+    return { restoredTabIds: tabs.map(tab => tab.id), failedTabs };
+  }
+
+  private showRestoreResult(savedGroup: SavedGroup, result: SavedGroupRestoreResult): void {
+    if (result.restoredTabIds.length === 0) {
+      void vscode.window.showErrorMessage(`Could not restore tab group "${savedGroup.name}".`);
+      return;
+    }
+
+    if (result.failedTabs.length > 0) {
+      const failedTabLabels = result.failedTabs.map(getSavedTabLabel).join(', ');
+      void vscode.window.showWarningMessage(
+        `Restored "${savedGroup.name}", but could not open: ${failedTabLabels}.`,
+      );
+      return;
+    }
+
+    void vscode.window.showInformationMessage(`Restored tab group "${savedGroup.name}".`);
+  }
+
+  private async restoreAllSavedGroups(): Promise<void> {
+    const savedGroups = this.getSavedGroups();
+    if (savedGroups.length === 0) {
+      void vscode.window.showInformationMessage('No saved tab groups are available.');
+      return;
+    }
+
+    const restoredTabIds = new Set<string>();
+    let restoredGroupCount = 0;
+    let overlappingTabCount = 0;
+    let failedTabCount = 0;
+    for (const savedGroup of savedGroups) {
+      const tabs = savedGroup.tabs.filter(savedTab => !restoredTabIds.has(getSavedTabId(savedTab)));
+      overlappingTabCount += savedGroup.tabs.length - tabs.length;
+      if (tabs.length === 0) {
+        continue;
+      }
+
+      const result = await this.restoreSavedGroupTabs({ ...savedGroup, tabs });
+      result.restoredTabIds.forEach(tabId => restoredTabIds.add(tabId));
+      failedTabCount += result.failedTabs.length;
+      if (result.restoredTabIds.length > 0) {
+        restoredGroupCount++;
+      }
+    }
+
+    const message = `Restored ${restoredGroupCount} of ${savedGroups.length} saved tab groups.`;
+    if (overlappingTabCount > 0 || restoredGroupCount !== savedGroups.length) {
+      const details = [];
+      if (overlappingTabCount > 0) {
+        details.push('Shared tabs stayed with the first matching saved group.');
+      }
+      if (failedTabCount > 0) {
+        details.push(
+          `Could not restore ${failedTabCount} saved tab${failedTabCount === 1 ? '' : 's'}.`,
+        );
+      }
+      if (restoredGroupCount !== savedGroups.length) {
+        details.push('Some snapshots had no restorable tabs.');
+      }
+      void vscode.window.showWarningMessage(`${message} ${details.join(' ')}`);
+      return;
+    }
+
+    void vscode.window.showInformationMessage(message);
+  }
+
+  private async deleteSavedGroup(selectedSavedGroup?: SavedGroup): Promise<void> {
+    const savedGroup =
+      selectedSavedGroup ?? (await this.pickSavedGroup('Choose a saved tab group to delete'));
+    if (!savedGroup) {
+      return;
+    }
+
+    const choice = await vscode.window.showWarningMessage(
+      `Delete the saved tab group "${savedGroup.name}"?`,
+      { modal: true },
+      'Delete',
+    );
+    if (choice !== 'Delete') {
+      return;
+    }
+
+    const savedGroups = this.getSavedGroups();
+    await this.saveSavedGroups(
+      savedGroups.filter(candidate => candidate.id !== savedGroup.id),
+      `Deleted saved tab group "${savedGroup.name}".`,
+      `Could not delete tab group "${savedGroup.name}".`,
+    );
+  }
+
+  private async deleteAllSavedGroups(): Promise<void> {
+    const savedGroups = this.getSavedGroups();
+    if (savedGroups.length === 0) {
+      void vscode.window.showInformationMessage('No saved tab groups are available.');
+      return;
+    }
+
+    const choice = await vscode.window.showWarningMessage(
+      `Delete all ${savedGroups.length} saved tab groups?`,
+      { modal: true },
+      'Delete All',
+    );
+    if (choice !== 'Delete All') {
+      return;
+    }
+
+    await this.saveSavedGroups(
+      [],
+      `Deleted ${savedGroups.length} saved tab groups.`,
+      'Could not delete all saved tab groups.',
+    );
+  }
+
+  private async pickSavedGroup(placeHolder: string): Promise<SavedGroup | undefined> {
+    const savedGroups = this.getSavedGroups();
+    if (savedGroups.length === 0) {
+      void vscode.window.showInformationMessage('No saved tab groups are available.');
+      return undefined;
+    }
+
+    const selected = await vscode.window.showQuickPick<SavedGroupQuickPickItem>(
+      savedGroups.map(savedGroup => ({
+        label: savedGroup.name,
+        description: `${savedGroup.tabs.length} tab${savedGroup.tabs.length === 1 ? '' : 's'}`,
+        savedGroup,
+      })),
+      { placeHolder },
+    );
+    return selected?.savedGroup;
+  }
+
+  private getSavedGroups(): readonly SavedGroup[] {
+    return this.savedGroupsStore.load() ?? [];
+  }
+
+  private async saveSavedGroups(
+    savedGroups: readonly SavedGroup[],
+    successMessage: string,
+    failureMessage: string,
+  ): Promise<void> {
+    try {
+      await this.savedGroupsStore.save(savedGroups);
+      this.savedGroupsTreeDataProvider.refresh();
+      void vscode.window.showInformationMessage(successMessage);
+    } catch (error) {
+      console.error(failureMessage, error);
+      void vscode.window.showErrorMessage(failureMessage);
+    }
+  }
+
+  private findNativeTab(tabId: string): vscode.Tab | undefined {
+    return this.getNativeTabs().find(nativeTab => {
+      try {
+        return getNormalizedTabId(nativeTab) === tabId;
+      } catch {
+        return false;
+      }
+    });
+  }
+
   private initializeState(): Array<Tab | Group> {
     const jsonItems = this.workspaceStateStore.load() ?? [];
     return this.mergeState(jsonItems, this.getNativeTabs());
@@ -254,19 +596,18 @@ export class TabsView extends Disposable {
 
     for (const jsonItem of jsonItems) {
       if (jsonItem.type === TreeItemType.Tab) {
-        const length = nativeTabs.length;
-        nativeTabs = nativeTabs.filter(nativeTab => !this.isCorrespondingTab(nativeTab, jsonItem));
-        if (nativeTabs.length < length) {
-          mergedTabs.push(jsonItem);
+        const nativeTab = this.findCorrespondingTab(nativeTabs, jsonItem);
+        if (nativeTab) {
+          mergedTabs.push(this.withNormalizedTabId(jsonItem, nativeTab));
+          nativeTabs = this.removeNativeTab(nativeTabs, nativeTab);
         }
       } else {
         const children: Tab[] = [];
         jsonItem.children.forEach(tab => {
-          const length = nativeTabs.length;
-          nativeTabs = nativeTabs.filter(nativeTab => !this.isCorrespondingTab(nativeTab, tab));
-
-          if (nativeTabs.length < length) {
-            children.push(tab);
+          const nativeTab = this.findCorrespondingTab(nativeTabs, tab);
+          if (nativeTab) {
+            children.push(this.withNormalizedTabId(tab, nativeTab));
+            nativeTabs = this.removeNativeTab(nativeTabs, nativeTab);
           }
         });
 
@@ -344,10 +685,28 @@ export class TabsView extends Disposable {
   }
 
   private isCorrespondingTab(tab: vscode.Tab, jsonTab: Tab): boolean {
-    try {
-      return jsonTab.id === getNormalizedTabId(tab);
-    } catch {
-      return false;
-    }
+    return matchesTabId(tab, jsonTab.id);
+  }
+
+  private findCorrespondingTab(
+    nativeTabs: readonly vscode.Tab[],
+    jsonTab: Tab,
+  ): vscode.Tab | undefined {
+    return nativeTabs.find(nativeTab => this.isCorrespondingTab(nativeTab, jsonTab));
+  }
+
+  private removeNativeTab(nativeTabs: readonly vscode.Tab[], nativeTab: vscode.Tab): vscode.Tab[] {
+    const tabId = getNormalizedTabId(nativeTab);
+    return nativeTabs.filter(tab => {
+      try {
+        return getNormalizedTabId(tab) !== tabId;
+      } catch {
+        return true;
+      }
+    });
+  }
+
+  private withNormalizedTabId(tab: Tab, nativeTab: vscode.Tab): Tab {
+    return { ...tab, id: getNormalizedTabId(nativeTab) };
   }
 }
