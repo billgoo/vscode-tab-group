@@ -2,6 +2,7 @@ export const enum TreeItemType {
   Tab,
   Group,
   Slot,
+  Folder,
 }
 
 export type Group = {
@@ -25,16 +26,32 @@ export type Slot = {
   groupId: string | null;
 };
 
-export function isTab(item: Tab | Group | Slot): item is Tab {
+export type Folder = {
+  readonly type: TreeItemType.Folder;
+  readonly id: string;
+  readonly label: string;
+  readonly groupId: string | null;
+  readonly children: Array<Folder | Tab>;
+};
+
+export type ViewMode = 'list' | 'tree';
+
+export type TreeElement = Tab | Group | Slot | Folder;
+
+export function isTab(item: TreeElement): item is Tab {
   return item.type === TreeItemType.Tab;
 }
 
-export function isGroup(item: Tab | Group | Slot): item is Group {
+export function isGroup(item: TreeElement): item is Group {
   return item.type === TreeItemType.Group;
 }
 
-export function isSlot(item: Tab | Group | Slot): item is Slot {
+export function isSlot(item: TreeElement): item is Slot {
   return item.type === TreeItemType.Slot;
+}
+
+export function isFolder(item: TreeElement): item is Folder {
+  return item.type === TreeItemType.Folder;
 }
 
 export type FilePathNode = {

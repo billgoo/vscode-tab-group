@@ -11,6 +11,7 @@ const useLocalCode = !process.env.CI && process.env.VSCODE_TEST_DOWNLOAD !== 'tr
 
 module.exports = defineConfig({
   files: 'out/test/e2e/**/*.test.js',
+  workspaceFolder: __dirname,
   download: {
     timeout: 120000,
   },

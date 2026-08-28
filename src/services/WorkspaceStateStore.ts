@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { Group, Tab, TreeItemType } from '../models/types';
+import { Group, Tab, TreeItemType, ViewMode } from '../models/types';
 import { SerialTaskQueue } from '../utils/async';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -8,6 +8,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isValidId(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0;
+}
+
+function isViewMode(value: unknown): value is ViewMode {
+  return value === 'list' || value === 'tree';
 }
 
 function isTabValue(value: unknown): value is Tab {
@@ -66,6 +70,7 @@ function isValidState(value: unknown): value is Array<Tab | Group> {
 export class WorkspaceStateStore {
   private static readonly stateKey = 'tabs.workspace.state.key';
   private static readonly recentTabsStateKey = 'tabs.workspace.recent-tabs.key';
+  private static readonly viewModeStateKey = 'tabs.workspace.view-mode.key';
 
   constructor(
     private readonly workspaceState: vscode.Memento,
@@ -95,6 +100,17 @@ export class WorkspaceStateStore {
   saveRecentTabs(tabIds: readonly string[]): Promise<void> {
     return this.writeQueue.run(() =>
       this.workspaceState.update(WorkspaceStateStore.recentTabsStateKey, [...tabIds]),
+    );
+  }
+
+  loadViewMode(): ViewMode | undefined {
+    const value = this.workspaceState.get<unknown>(WorkspaceStateStore.viewModeStateKey);
+    return isViewMode(value) ? value : undefined;
+  }
+
+  saveViewMode(viewMode: ViewMode): Promise<void> {
+    return this.writeQueue.run(() =>
+      this.workspaceState.update(WorkspaceStateStore.viewModeStateKey, viewMode),
     );
   }
 }

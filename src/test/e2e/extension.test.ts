@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import * as vscode from 'vscode';
 import { SavedGroup, SavedTextTab } from '../../models/SavedGroup';
-import { Group, isGroup, Tab, TreeItemType } from '../../models/types';
+import { Folder, Group, isFolder, isGroup, Tab, TreeItemType } from '../../models/types';
 import {
   getHandler,
   getNormalizedTabId,
@@ -67,6 +67,8 @@ suite('Tab Group extension', () => {
     assert.ok(commands.includes('tabsTreeView.group.changeColor'));
     assert.ok(commands.includes('tabsTreeView.sortTabsAscending'));
     assert.ok(commands.includes('tabsTreeView.sortTabsDescending'));
+    assert.ok(commands.includes('tabsTreeView.group.sortTabsAscending'));
+    assert.ok(commands.includes('tabsTreeView.group.sortTabsDescending'));
     assert.ok(commands.includes('tabsTreeView.group.save'));
     assert.ok(commands.includes('tabsTreeView.savedGroup.restore'));
     assert.ok(commands.includes('tabsTreeView.savedGroup.delete'));
@@ -77,11 +79,14 @@ suite('Tab Group extension', () => {
     assert.ok(commands.includes('tabsTreeView.savedGroups.collapseAll'));
     assert.ok(commands.includes('tabsTreeView.savedGroups.expandAll'));
     assert.ok(commands.includes('tabsTreeView.enableSortMode'));
+    assert.ok(commands.includes('tabsTreeView.viewAsList'));
+    assert.ok(commands.includes('tabsTreeView.viewAsTree'));
     assert.ok(commands.includes('tabsTreeView.reset'));
 
     const contributedCommands = extension.packageJSON.contributes.commands as Array<{
       command: string;
       icon?: string;
+      title?: string;
     }>;
     assert.equal(
       contributedCommands.find(command => command.command === 'tabsTreeView.sortTabsAscending')
@@ -104,6 +109,22 @@ suite('Tab Group extension', () => {
         command => command.command === 'tabsTreeView.savedGroups.sortDescending',
       )?.icon,
       '$(arrow-down)',
+    );
+    assert.equal(
+      contributedCommands.find(command => command.command === 'tabsTreeView.viewAsList')?.title,
+      'View as List',
+    );
+    assert.equal(
+      contributedCommands.find(command => command.command === 'tabsTreeView.viewAsList')?.icon,
+      '$(list-tree)',
+    );
+    assert.equal(
+      contributedCommands.find(command => command.command === 'tabsTreeView.viewAsTree')?.title,
+      'View as Tree',
+    );
+    assert.equal(
+      contributedCommands.find(command => command.command === 'tabsTreeView.viewAsTree')?.icon,
+      '$(list-flat)',
     );
 
     const contributedViews = extension.packageJSON.contributes.views.tabs as Array<{
@@ -185,14 +206,14 @@ suite('Tab Group extension', () => {
     assert.ok(
       itemContextMenus.some(
         menu =>
-          menu.command === 'tabsTreeView.sortTabsAscending' &&
+          menu.command === 'tabsTreeView.group.sortTabsAscending' &&
           menu.when === "view == tabsTreeView && viewItem == 'group-sort-ascending'",
       ),
     );
     assert.ok(
       itemContextMenus.some(
         menu =>
-          menu.command === 'tabsTreeView.sortTabsDescending' &&
+          menu.command === 'tabsTreeView.group.sortTabsDescending' &&
           menu.when === "view == tabsTreeView && viewItem == 'group-sort-descending'",
       ),
     );
@@ -219,10 +240,171 @@ suite('Tab Group extension', () => {
             'view =~ /^tabsTreeView/ && !tabGroup.sortMode:enabled && !tabGroup.sort:nextRootAscending',
       ),
     );
+    assert.ok(
+      viewTitleMenus.some(
+        menu =>
+          menu.command === 'tabsTreeView.viewAsList' &&
+          menu.when === 'view == tabsTreeView && tabGroup.viewMode == tree' &&
+          menu.group === 'navigation@50',
+      ),
+    );
+    assert.ok(
+      viewTitleMenus.some(
+        menu =>
+          menu.command === 'tabsTreeView.viewAsTree' &&
+          menu.when === 'view == tabsTreeView && tabGroup.viewMode == list' &&
+          menu.group === 'navigation@50',
+      ),
+    );
+    assert.ok(
+      viewTitleMenus.some(
+        menu =>
+          menu.command === 'tabsTreeView.enableSortMode' &&
+          menu.when ===
+            'view =~ /^tabsTreeView/ && tabGroup.viewMode == list && !tabGroup.sortMode:enabled',
+      ),
+    );
+    assert.ok(
+      viewTitleMenus.some(
+        menu =>
+          menu.command === 'tabsTreeView.disableSortMode' &&
+          menu.when ===
+            'view =~ /^tabsTreeView/ && tabGroup.viewMode == list && tabGroup.sortMode:enabled',
+      ),
+    );
+    const commandPaletteMenus = extension.packageJSON.contributes.menus.commandPalette as Array<{
+      command: string;
+      when?: string;
+    }>;
+    assert.ok(
+      commandPaletteMenus.some(
+        menu =>
+          menu.command === 'tabsTreeView.enableSortMode' &&
+          menu.when === 'tabGroup.viewMode == list && !tabGroup.sortMode:enabled',
+      ),
+    );
+    assert.ok(
+      commandPaletteMenus.some(
+        menu =>
+          menu.command === 'tabsTreeView.disableSortMode' &&
+          menu.when === 'tabGroup.viewMode == list && tabGroup.sortMode:enabled',
+      ),
+    );
     assert.equal(
       viewTitleMenus.some(menu => menu.command === 'tabsTreeView.savedGroup.restore'),
       false,
     );
+  });
+
+  test('derives nested folder trees for root and grouped tabs', async () => {
+    const extension = vscode.extensions.getExtension('jiapeiyao.tab-group');
+    assert.ok(extension, 'The Tab Group extension should be available to the extension host.');
+    await extension.activate();
+
+    const directoryName = `.tab-group-tree-${Date.now()}`;
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
+    assert.ok(workspaceRoot, 'The extension host should have a workspace folder.');
+    const directoryUri = vscode.Uri.joinPath(workspaceRoot, directoryName);
+    const externalDirectoryUri = vscode.Uri.joinPath(
+      vscode.Uri.file(tmpdir()),
+      `${directoryName}-external`,
+    );
+    const firstUri = vscode.Uri.joinPath(directoryUri, 'src', 'providers', 'TreeView.ts');
+    const groupedUri = vscode.Uri.joinPath(directoryUri, 'src', 'providers', 'TreeDataProvider.ts');
+    const externalUri = vscode.Uri.joinPath(externalDirectoryUri, 'init.sh');
+    const firstTab: Tab = { type: TreeItemType.Tab, groupId: null, id: firstUri.toString() };
+    const externalTab: Tab = {
+      type: TreeItemType.Tab,
+      groupId: null,
+      id: externalUri.toString(),
+    };
+    const groupId = `${directoryName}-group`;
+    const groupedTab: Tab = { type: TreeItemType.Tab, groupId, id: groupedUri.toString() };
+    const group: Group = {
+      type: TreeItemType.Group,
+      id: groupId,
+      colorId: 'charts.green',
+      label: 'Grouped files',
+      children: [groupedTab],
+      collapsed: false,
+    };
+    const treeDataProvider = new TreeDataProvider();
+
+    await vscode.workspace.fs.createDirectory(
+      vscode.Uri.joinPath(directoryUri, 'src', 'providers'),
+    );
+    await vscode.workspace.fs.createDirectory(externalDirectoryUri);
+
+    await Promise.all(
+      [firstUri, groupedUri, externalUri].map(uri =>
+        vscode.workspace.fs.writeFile(uri, Buffer.from(uri.fsPath)),
+      ),
+    );
+
+    try {
+      await Promise.all(
+        [firstUri, groupedUri, externalUri].map(uri =>
+          vscode.commands.executeCommand('vscode.open', uri, { preview: false }),
+        ),
+      );
+
+      treeDataProvider.setState([firstTab, externalTab, group]);
+      treeDataProvider.setViewMode('tree');
+
+      const rootItems = treeDataProvider.getChildren();
+      assert.ok(rootItems);
+      assert.equal(rootItems.length, 3);
+      assert.equal(isFolder(rootItems[0]), true);
+      assert.equal(rootItems[1], externalTab);
+      assert.equal(rootItems[2], group);
+
+      const rootDirectory = rootItems[0] as Folder;
+      const rootSource = rootDirectory.children[0] as Folder;
+      const rootProviders = rootSource.children[0] as Folder;
+      assert.equal(rootDirectory.label, directoryName);
+      assert.equal(rootSource.label, 'src');
+      assert.equal(rootProviders.label, 'providers');
+      assert.equal(rootProviders.children[0], firstTab);
+      const firstParent = treeDataProvider.getParent(firstTab);
+      assert.ok(firstParent && isFolder(firstParent));
+      assert.equal(firstParent.id, rootProviders.id);
+      const rootParent = treeDataProvider.getParent(rootProviders);
+      assert.ok(rootParent && isFolder(rootParent));
+      assert.equal(rootParent.id, rootSource.id);
+      assert.equal(treeDataProvider.getParent(externalTab), undefined);
+      assert.equal(treeDataProvider.getTreeItem(externalTab).tooltip, externalUri.fsPath);
+
+      const groupItems = treeDataProvider.getChildren(group);
+      assert.ok(groupItems);
+      assert.equal(groupItems.length, 1);
+      const groupDirectory = groupItems[0] as Folder;
+      const groupSource = groupDirectory.children[0] as Folder;
+      const groupProviders = groupSource.children[0] as Folder;
+      assert.equal(groupDirectory.label, directoryName);
+      assert.equal(groupSource.label, 'src');
+      assert.equal(groupDirectory.groupId, group.id);
+      assert.equal(groupProviders.children[0], groupedTab);
+      const groupedParent = treeDataProvider.getParent(groupedTab);
+      assert.ok(groupedParent && isFolder(groupedParent));
+      assert.equal(groupedParent.id, groupProviders.id);
+
+      assert.ok(treeDataProvider.getExpandableItems().length >= 6);
+      treeDataProvider.toggleSortMode(true);
+      assert.equal(treeDataProvider.isSortMode(), false);
+
+      await vscode.commands.executeCommand('tabsTreeView.viewAsList');
+      assert.equal(getContext(ContextKeys.ViewMode), 'list');
+      await vscode.commands.executeCommand('tabsTreeView.viewAsTree');
+      assert.equal(getContext(ContextKeys.ViewMode), 'tree');
+      await vscode.commands.executeCommand('tabsTreeView.enableSortMode');
+      assert.equal(getContext(ContextKeys.SortMode), false);
+    } finally {
+      await vscode.commands.executeCommand('tabsTreeView.viewAsList');
+      treeDataProvider.dispose();
+      await closeTabs([firstTab.id, externalTab.id, groupedTab.id]);
+      await vscode.workspace.fs.delete(directoryUri, { useTrash: false, recursive: true });
+      await vscode.workspace.fs.delete(externalDirectoryUri, { useTrash: false, recursive: true });
+    }
   });
 
   test('keeps root and group URI sort directions independent', async () => {
@@ -268,12 +450,24 @@ suite('Tab Group extension', () => {
     assert.equal(treeDataProvider.getTreeItem(firstGroup).contextValue, 'group-sort-descending');
     assert.equal(treeDataProvider.getTreeItem(secondGroup).contextValue, 'group-sort-descending');
 
-    await vscode.commands.executeCommand('tabsTreeView.sortTabsAscending');
-    assert.equal(getContext(ContextKeys.NextRootSortAscending), false);
-    await vscode.commands.executeCommand('tabsTreeView.sortTabsAscending', firstGroup);
-    assert.equal(getContext(ContextKeys.NextRootSortAscending), false);
     await vscode.commands.executeCommand('tabsTreeView.sortTabsDescending');
     assert.equal(getContext(ContextKeys.NextRootSortAscending), true);
+    await vscode.commands.executeCommand('tabsTreeView.sortTabsAscending', firstGroup);
+    assert.equal(getContext(ContextKeys.NextRootSortAscending), false);
+    await vscode.commands.executeCommand('tabsTreeView.group.sortTabsAscending', firstGroup);
+    assert.equal(getContext(ContextKeys.NextRootSortAscending), false);
+    await vscode.commands.executeCommand('tabsTreeView.sortTabsDescending', firstGroup);
+    assert.equal(getContext(ContextKeys.NextRootSortAscending), true);
+
+    const folder: Folder = {
+      type: TreeItemType.Folder,
+      id: 'folder:root',
+      label: 'root',
+      groupId: null,
+      children: [],
+    };
+    await vscode.commands.executeCommand('tabsTreeView.sortTabsAscending', folder);
+    assert.equal(getContext(ContextKeys.NextRootSortAscending), false);
 
     treeDataProvider.dispose();
   });
@@ -515,10 +709,13 @@ suite('Tab Group extension', () => {
 
   test('sorts root tabs and group children by URI without moving groups', async () => {
     const prefix = `tab-group-sort-${Date.now()}`;
-    const alphaUri = vscode.Uri.file(join(tmpdir(), `${prefix}-alpha.txt`));
-    const bravoUri = vscode.Uri.file(join(tmpdir(), `${prefix}-bravo.txt`));
-    const deltaUri = vscode.Uri.file(join(tmpdir(), `${prefix}-delta.txt`));
-    const zuluUri = vscode.Uri.file(join(tmpdir(), `${prefix}-zulu.txt`));
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
+    assert.ok(workspaceRoot, 'The extension host should have a workspace folder.');
+    const directoryUri = vscode.Uri.joinPath(workspaceRoot, prefix);
+    const alphaUri = vscode.Uri.joinPath(directoryUri, 'alpha.txt');
+    const bravoUri = vscode.Uri.joinPath(directoryUri, 'bravo.txt');
+    const deltaUri = vscode.Uri.joinPath(directoryUri, 'delta.txt');
+    const zuluUri = vscode.Uri.joinPath(directoryUri, 'zulu.txt');
     const rootZuluTab: Tab = { type: TreeItemType.Tab, groupId: null, id: zuluUri.toString() };
     const rootAlphaTab: Tab = { type: TreeItemType.Tab, groupId: null, id: alphaUri.toString() };
     const group: Group = {
@@ -542,6 +739,7 @@ suite('Tab Group extension', () => {
     group.children = [groupedDeltaTab, groupedBravoTab];
     const treeDataProvider = new TreeDataProvider();
 
+    await vscode.workspace.fs.createDirectory(directoryUri);
     await Promise.all(
       [alphaUri, bravoUri, deltaUri, zuluUri].map(uri =>
         vscode.workspace.fs.writeFile(uri, Buffer.from(uri.fsPath)),
@@ -554,14 +752,52 @@ suite('Tab Group extension', () => {
       }
 
       treeDataProvider.setState([rootZuluTab, group, rootAlphaTab]);
+      treeDataProvider.setViewMode('tree');
+      const initialRootItems = treeDataProvider.getChildren();
+      assert.ok(initialRootItems);
+      assert.equal(isFolder(initialRootItems[0]), true);
+      const initialRootFolder = initialRootItems[0] as Folder;
+      assert.deepStrictEqual(initialRootFolder.children, [rootZuluTab, rootAlphaTab]);
 
       assert.equal(treeDataProvider.sortTabs('ascending'), true);
       assert.deepStrictEqual(treeDataProvider.getState(), [rootAlphaTab, group, rootZuluTab]);
       assert.deepStrictEqual(group.children, [groupedBravoTab, groupedDeltaTab]);
+      const ascendingRootItems = treeDataProvider.getChildren();
+      assert.ok(ascendingRootItems);
+      assert.equal(isFolder(ascendingRootItems[0]), true);
+      assert.deepStrictEqual((ascendingRootItems[0] as Folder).children, [
+        rootAlphaTab,
+        rootZuluTab,
+      ]);
+      assert.deepStrictEqual(treeDataProvider.getChildren(initialRootFolder), [
+        rootAlphaTab,
+        rootZuluTab,
+      ]);
+      const ascendingGroupItems = treeDataProvider.getChildren(group);
+      assert.ok(ascendingGroupItems);
+      assert.equal(isFolder(ascendingGroupItems[0]), true);
+      assert.deepStrictEqual((ascendingGroupItems[0] as Folder).children, [
+        groupedBravoTab,
+        groupedDeltaTab,
+      ]);
 
       assert.equal(treeDataProvider.sortTabs('descending'), true);
       assert.deepStrictEqual(treeDataProvider.getState(), [rootZuluTab, group, rootAlphaTab]);
       assert.deepStrictEqual(group.children, [groupedDeltaTab, groupedBravoTab]);
+      const descendingRootItems = treeDataProvider.getChildren();
+      assert.ok(descendingRootItems);
+      assert.equal(isFolder(descendingRootItems[0]), true);
+      assert.deepStrictEqual((descendingRootItems[0] as Folder).children, [
+        rootZuluTab,
+        rootAlphaTab,
+      ]);
+      const descendingGroupItems = treeDataProvider.getChildren(group);
+      assert.ok(descendingGroupItems);
+      assert.equal(isFolder(descendingGroupItems[0]), true);
+      assert.deepStrictEqual((descendingGroupItems[0] as Folder).children, [
+        groupedDeltaTab,
+        groupedBravoTab,
+      ]);
 
       assert.equal(treeDataProvider.sortTabs('ascending', group), true);
       assert.deepStrictEqual(treeDataProvider.getState(), [rootZuluTab, group, rootAlphaTab]);
@@ -569,11 +805,7 @@ suite('Tab Group extension', () => {
     } finally {
       treeDataProvider.dispose();
       await closeTabs([rootAlphaTab.id, groupedBravoTab.id, groupedDeltaTab.id, rootZuluTab.id]);
-      await Promise.all(
-        [alphaUri, bravoUri, deltaUri, zuluUri].map(uri =>
-          vscode.workspace.fs.delete(uri, { useTrash: false }),
-        ),
-      );
+      await vscode.workspace.fs.delete(directoryUri, { useTrash: false, recursive: true });
     }
   });
 

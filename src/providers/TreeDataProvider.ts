@@ -4,13 +4,17 @@ import { join, sep } from 'node:path';
 import { Disposable } from '../utils/disposable';
 import {
   FilePathNode,
+  Folder,
   Group,
   isGroup,
+  isFolder,
   isSlot,
   isTab,
   Slot,
   Tab,
+  TreeElement,
   TreeItemType,
+  ViewMode,
 } from '../models/types';
 import { TreeState } from '../services/TreeState';
 import { getHandler, getNormalizedTabId } from './TabTypeHandler';
@@ -22,6 +26,7 @@ import {
   TabSortDirection,
   TabSortKey,
 } from '../utils/tabSort';
+import { createFileTree, FileTreeItem } from '../utils/fileTree';
 
 export function getNativeTabs(tab: Tab): vscode.Tab[] {
   const currentNativeTabs = vscode.window.tabGroups.all.flatMap(tabGroup => tabGroup.tabs);
@@ -36,9 +41,7 @@ export const RecentTabsTreeMimeType = 'application/vnd.code.tree.recenttabstreev
 
 export class TreeDataProvider
   extends Disposable
-  implements
-    vscode.TreeDataProvider<Tab | Group | Slot>,
-    vscode.TreeDragAndDropController<Tab | Group | Slot>
+  implements vscode.TreeDataProvider<TreeElement>, vscode.TreeDragAndDropController<TreeElement>
 {
   constructor() {
     super();
@@ -61,18 +64,36 @@ export class TreeDataProvider
   private filePathTree: Record<string, Record<string, FilePathNode>> = {};
 
   private sortMode = false;
+  private viewMode: ViewMode = 'list';
   private defaultNextGroupSortDirection: TabSortDirection = 'ascending';
   private nextGroupSortDirectionOverrides = new Map<string, TabSortDirection>();
 
   dropMimeTypes = [TabDropMimeType, RecentTabsTreeMimeType];
   dragMimeTypes = [TabDropMimeType];
 
-  getChildren(element?: Tab | Group): Array<Tab | Group | Slot> | null {
-    const children = this.treeState.getChildren(element);
+  getChildren(element?: TreeElement): Array<TreeElement> | null {
+    if (element && isFolder(element)) {
+      return this.getCurrentFolder(element)?.children ?? null;
+    }
 
-    if (this.sortMode && Array.isArray(children) && children.length > 0) {
+    if (element && isSlot(element)) {
+      return null;
+    }
+
+    const children = this.treeState.getChildren(element);
+    if (children === null) {
+      return null;
+    }
+
+    if (this.viewMode === 'tree') {
+      return element && isGroup(element)
+        ? createFileTree(element.children, tab => this.getTabPath(tab), element.id)
+        : this.createRootTree(children);
+    }
+
+    if (this.sortMode && children.length > 0) {
       const groupId = isGroup(children[0]) ? null : children[0].groupId;
-      const slottedChildren: Array<Tab | Group | Slot> = children.slice(0);
+      const slottedChildren: Array<TreeElement> = children.slice(0);
       slottedChildren.push({ type: TreeItemType.Slot, index: children.length, groupId });
       return slottedChildren;
     }
@@ -80,14 +101,18 @@ export class TreeDataProvider
     return children;
   }
 
-  getTreeItem(element: Tab | Group | Slot): vscode.TreeItem {
+  getTreeItem(element: TreeElement): vscode.TreeItem {
     if (element.type === TreeItemType.Tab) {
       const newTreeItem = this.createTabTreeItem(element);
       const tabId = element.id;
 
       newTreeItem.contextValue = element.groupId === null ? 'tab' : 'grouped-tab';
 
-      if (newTreeItem.resourceUri) {
+      const resourceUri = newTreeItem.resourceUri;
+      const isExternalResource =
+        resourceUri !== undefined && vscode.workspace.getWorkspaceFolder(resourceUri) === undefined;
+
+      if (resourceUri) {
         // use to update tab label if duplicated file name showing
         const filePathArray = tabId.split(sep);
         if (filePathArray.length > 1) {
@@ -104,6 +129,11 @@ export class TreeDataProvider
         this.treeItemMap[tabId] = newTreeItem;
       }
 
+      if (isExternalResource && this.treeItemMap[tabId].tooltip === undefined) {
+        this.treeItemMap[tabId].tooltip =
+          resourceUri.scheme === 'file' ? resourceUri.fsPath : resourceUri.toString();
+      }
+
       return this.treeItemMap[tabId];
     }
 
@@ -111,6 +141,24 @@ export class TreeDataProvider
       const treeItem = new vscode.TreeItem('');
       treeItem.iconPath = new vscode.ThemeIcon('indent');
       return treeItem;
+    }
+
+    if (element.type === TreeItemType.Folder) {
+      if (!this.treeItemMap[element.id]) {
+        const treeItem = new vscode.TreeItem(
+          element.label,
+          vscode.TreeItemCollapsibleState.Collapsed,
+        );
+        treeItem.id = element.id;
+        treeItem.contextValue = 'file-folder';
+        treeItem.iconPath = new vscode.ThemeIcon('folder');
+        this.treeItemMap[element.id] = treeItem;
+      } else {
+        const treeItem = this.treeItemMap[element.id];
+        treeItem.label = element.label;
+      }
+
+      return this.treeItemMap[element.id];
     }
 
     const groupColor = getGroupColorOption(element.colorId);
@@ -142,8 +190,12 @@ export class TreeDataProvider
     return this.treeItemMap[element.id];
   }
 
-  getParent(element: Tab | Group) {
-    return this.treeState.getParent(element);
+  getParent(element: TreeElement): TreeElement | undefined {
+    if (this.viewMode === 'tree' && (isTab(element) || isFolder(element))) {
+      return this.getTreeParent(element);
+    }
+
+    return isTab(element) || isGroup(element) ? this.treeState.getParent(element) : undefined;
   }
 
   private createTabTreeItem(tab: Tab): vscode.TreeItem {
@@ -162,29 +214,40 @@ export class TreeDataProvider
   }
 
   async handleDrag(
-    source: Array<Tab | Group | Slot>,
+    source: Array<TreeElement>,
     treeDataTransfer: vscode.DataTransfer,
     _token: vscode.CancellationToken,
   ): Promise<void> {
     treeDataTransfer.set(
       TabDropMimeType,
-      new vscode.DataTransferItem(source.filter(item => !isSlot(item))),
+      new vscode.DataTransferItem(source.filter(item => isTab(item) || isGroup(item))),
     );
   }
 
   async handleDrop(
-    target: Tab | Group | Slot | undefined,
+    target: TreeElement | undefined,
     treeDataTransfer: vscode.DataTransfer,
     _token: vscode.CancellationToken,
   ) {
     const draggeds: Array<Group | Tab> = (
       treeDataTransfer.get(TabDropMimeType)?.value ?? []
-    ).filter((tab: any) => tab !== target);
+    ).filter((item: unknown): item is Group | Tab => {
+      if (typeof item !== 'object' || item === null || item === target) {
+        return false;
+      }
+
+      const treeItem = item as TreeElement;
+      return isGroup(treeItem) || isTab(treeItem);
+    });
     if (draggeds.length === 0) {
       return;
     }
 
-    if (this.sortMode) {
+    if (target && isFolder(target)) {
+      return;
+    }
+
+    if (this.sortMode && this.viewMode === 'list') {
       if (!this.doHandleSorting(target, draggeds)) {
         return;
       }
@@ -376,8 +439,32 @@ export class TreeDataProvider
   }
 
   public toggleSortMode(sortMode: boolean) {
+    if (sortMode && this.viewMode === 'tree') {
+      return;
+    }
+
     this.sortMode = sortMode;
     this.triggerRerender();
+  }
+
+  public setViewMode(viewMode: ViewMode) {
+    if (this.viewMode === viewMode) {
+      return;
+    }
+
+    this.viewMode = viewMode;
+    if (viewMode === 'tree') {
+      this.sortMode = false;
+    }
+    this.triggerRerender();
+  }
+
+  public getViewMode(): ViewMode {
+    return this.viewMode;
+  }
+
+  public isSortMode(): boolean {
+    return this.sortMode;
   }
 
   public isAllCollapsed(): boolean {
@@ -387,6 +474,27 @@ export class TreeDataProvider
   public setCollapsedState(group: Group, collapsed: boolean) {
     this.treeState.setCollapsedState(group, collapsed);
     // sync data from tree view, so rerendering is not needed
+  }
+
+  public getExpandableItems(): Array<Group | Folder> {
+    const expandableItems: Array<Group | Folder> = [];
+
+    const collect = (items: readonly TreeElement[]) => {
+      items.forEach(item => {
+        if (isGroup(item)) {
+          if (item.children.length > 0) {
+            expandableItems.push(item);
+            collect(this.getChildren(item) ?? []);
+          }
+        } else if (isFolder(item) && item.children.length > 0) {
+          expandableItems.push(item);
+          collect(item.children);
+        }
+      });
+    };
+
+    collect(this.getChildren() ?? []);
+    return expandableItems;
   }
 
   private refreshFilePathTree() {
@@ -417,6 +525,96 @@ export class TreeDataProvider
         }
       }
     });
+  }
+
+  private createRootTree(children: Array<Tab | Group>): Array<TreeElement> {
+    const fileTree = createFileTree(children.filter(isTab), tab => this.getTabPath(tab), null);
+    const treeItems = [...children.filter(isGroup), ...fileTree].map(item => ({
+      item,
+      index: children.indexOf(isGroup(item) ? item : this.getFirstTab(item)),
+    }));
+
+    return treeItems.sort((left, right) => left.index - right.index).map(({ item }) => item);
+  }
+
+  private getFirstTab(item: FileTreeItem): Tab {
+    return isTab(item) ? item : this.getFirstTab(item.children[0]);
+  }
+
+  private getTreeParent(element: Tab | Folder): Group | Folder | undefined {
+    const group = element.groupId === null ? undefined : this.treeState.getGroup(element.groupId);
+    const fileTree = this.getFileTree(element.groupId);
+    return this.findFileTreeParent(fileTree, element) ?? group;
+  }
+
+  private getCurrentFolder(folder: Folder): Folder | undefined {
+    return this.findFileTreeFolder(this.getFileTree(folder.groupId), folder.id);
+  }
+
+  private getFileTree(groupId: string | null): FileTreeItem[] {
+    if (groupId === null) {
+      return createFileTree(
+        (this.treeState.getChildren() ?? []).filter(isTab),
+        tab => this.getTabPath(tab),
+        null,
+      );
+    }
+
+    const group = this.treeState.getGroup(groupId);
+    return group ? createFileTree(group.children, tab => this.getTabPath(tab), group.id) : [];
+  }
+
+  private findFileTreeFolder(items: readonly FileTreeItem[], folderId: string): Folder | undefined {
+    for (const item of items) {
+      if (!isFolder(item)) {
+        continue;
+      }
+
+      if (item.id === folderId) {
+        return item;
+      }
+
+      const folder = this.findFileTreeFolder(item.children, folderId);
+      if (folder) {
+        return folder;
+      }
+    }
+
+    return undefined;
+  }
+
+  private findFileTreeParent(
+    items: readonly FileTreeItem[],
+    target: Tab | Folder,
+  ): Folder | undefined {
+    for (const item of items) {
+      if (!isFolder(item)) {
+        continue;
+      }
+
+      if (item.children.some(child => child.id === target.id)) {
+        return item;
+      }
+
+      const parent = this.findFileTreeParent(item.children, target);
+      if (parent) {
+        return parent;
+      }
+    }
+
+    return undefined;
+  }
+
+  private getTabPath(tab: Tab): readonly string[] | undefined {
+    const resourceUri = this.createTabTreeItem(tab).resourceUri;
+    if (!resourceUri || !vscode.workspace.getWorkspaceFolder(resourceUri)) {
+      return undefined;
+    }
+
+    return vscode.workspace
+      .asRelativePath(resourceUri, false)
+      .split(/[\\/]/)
+      .filter(segment => segment.length > 0);
   }
 
   private getTabSortKeys(tabs: readonly Tab[]): Map<string, TabSortKey> | undefined {

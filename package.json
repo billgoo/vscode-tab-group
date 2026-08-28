@@ -110,6 +110,16 @@
         "icon": "$(arrow-down)"
       },
       {
+        "command": "tabsTreeView.group.sortTabsAscending",
+        "title": "Sort Group: A to Z",
+        "icon": "$(arrow-up)"
+      },
+      {
+        "command": "tabsTreeView.group.sortTabsDescending",
+        "title": "Sort Group: Z to A",
+        "icon": "$(arrow-down)"
+      },
+      {
         "command": "tabsTreeView.group.save",
         "title": "Save Group...",
         "icon": "$(save)"
@@ -165,6 +175,16 @@
         "icon": "$(check)"
       },
       {
+        "command": "tabsTreeView.viewAsList",
+        "title": "View as List",
+        "icon": "$(list-tree)"
+      },
+      {
+        "command": "tabsTreeView.viewAsTree",
+        "title": "View as Tree",
+        "icon": "$(list-flat)"
+      },
+      {
         "command": "tabsTreeView.collapseAll",
         "title": "Collapse All",
         "icon": "$(collapse-all)"
@@ -213,12 +233,12 @@
           "group": "inline@1"
         },
         {
-          "command": "tabsTreeView.sortTabsAscending",
+          "command": "tabsTreeView.group.sortTabsAscending",
           "when": "view == tabsTreeView && viewItem == 'group-sort-ascending'",
           "group": "inline@2"
         },
         {
-          "command": "tabsTreeView.sortTabsDescending",
+          "command": "tabsTreeView.group.sortTabsDescending",
           "when": "view == tabsTreeView && viewItem == 'group-sort-descending'",
           "group": "inline@2"
         },
@@ -281,13 +301,23 @@
         },
         {
           "command": "tabsTreeView.enableSortMode",
-          "when": "view =~ /^tabsTreeView/ && !tabGroup.sortMode:enabled",
+          "when": "view =~ /^tabsTreeView/ && tabGroup.viewMode == list && !tabGroup.sortMode:enabled",
           "group": "navigation@1"
         },
         {
           "command": "tabsTreeView.disableSortMode",
-          "when": "view =~ /^tabsTreeView/ && tabGroup.sortMode:enabled",
+          "when": "view =~ /^tabsTreeView/ && tabGroup.viewMode == list && tabGroup.sortMode:enabled",
           "group": "navigation@1"
+        },
+        {
+          "command": "tabsTreeView.viewAsList",
+          "when": "view == tabsTreeView && tabGroup.viewMode == tree",
+          "group": "navigation@50"
+        },
+        {
+          "command": "tabsTreeView.viewAsTree",
+          "when": "view == tabsTreeView && tabGroup.viewMode == list",
+          "group": "navigation@50"
         },
         {
           "command": "tabsTreeView.group.changeColor",
@@ -318,6 +348,16 @@
           "command": "tabsTreeView.reset",
           "when": "view =~ /^tabsTreeView/",
           "group": "navigation@9"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "tabsTreeView.enableSortMode",
+          "when": "tabGroup.viewMode == list && !tabGroup.sortMode:enabled"
+        },
+        {
+          "command": "tabsTreeView.disableSortMode",
+          "when": "tabGroup.viewMode == list && tabGroup.sortMode:enabled"
         }
       ]
     }
