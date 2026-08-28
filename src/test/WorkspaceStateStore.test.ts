@@ -83,6 +83,28 @@ describe('WorkspaceStateStore', () => {
     expect(createStore({ tabId: 'first' }).loadRecentTabs()).toBeUndefined();
   });
 
+  test('loads a supported view mode', () => {
+    expect(createStore('tree').loadViewMode()).toBe('tree');
+    expect(createStore('list').loadViewMode()).toBe('list');
+  });
+
+  test('ignores an unsupported view mode', () => {
+    expect(createStore('grid').loadViewMode()).toBeUndefined();
+  });
+
+  test('saves the selected view mode', async () => {
+    const update = jest.fn(async (_key: string, _value: unknown) => undefined);
+    const workspaceState = {
+      get: jest.fn(),
+      update,
+    } as unknown as Memento;
+    const workspaceStateStore = new WorkspaceStateStore(workspaceState);
+
+    await workspaceStateStore.saveViewMode('tree');
+
+    expect(update).toHaveBeenCalledWith('tabs.workspace.view-mode.key', 'tree');
+  });
+
   test('serializes writes shared by workspace state stores and recovers after failure', async () => {
     const events: string[] = [];
     let releaseFirstWrite!: () => void;

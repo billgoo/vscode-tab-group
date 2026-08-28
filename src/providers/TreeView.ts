@@ -5,7 +5,7 @@ import { SavedGroupsStore } from '../services/SavedGroupsStore';
 import { RecentTabs } from '../services/RecentTabs';
 import { ExclusiveHandle } from '../utils/event';
 import { asPromise } from '../utils/async';
-import { Group, isGroup, Tab, TreeItemType } from '../models/types';
+import { Group, isGroup, Tab, TreeElement, TreeItemType, ViewMode } from '../models/types';
 import { SavedGroup, SavedTab } from '../models/SavedGroup';
 import { getNativeTabs, TreeDataProvider } from './TreeDataProvider';
 import { RecentTabsTreeDataProvider } from './RecentTabsTreeDataProvider';
@@ -60,12 +60,16 @@ export class TabsView extends Disposable {
     );
 
     const initialState = this.initializeState();
+    const initialViewMode = this.workspaceStateStore.loadViewMode() ?? 'list';
 
     this.recentTabs.setState(this.workspaceStateStore.loadRecentTabs() ?? []);
     this.saveState(initialState);
     this.treeDataProvider.setState(initialState);
+    this.treeDataProvider.setViewMode(initialViewMode);
     this.refreshRecentTabs(this.getActiveNativeTab());
 
+    setContext(ContextKeys.SortMode, false);
+    setContext(ContextKeys.ViewMode, initialViewMode);
     setContext(ContextKeys.AllCollapsed, this.treeDataProvider.isAllCollapsed());
     setContext(ContextKeys.SavedGroupsAllExpanded, false);
     setContext(ContextKeys.NextSavedGroupsSortAscending, true);
@@ -239,6 +243,10 @@ export class TabsView extends Disposable {
 
     this._register(
       vscode.commands.registerCommand('tabsTreeView.enableSortMode', () => {
+        if (this.treeDataProvider.getViewMode() !== 'list') {
+          return;
+        }
+
         setContext(ContextKeys.SortMode, true);
         view.title = (view.title ?? '') + ' (Sorting)';
         this.treeDataProvider.toggleSortMode(true);
@@ -251,6 +259,18 @@ export class TabsView extends Disposable {
         view.title = (view.title ?? '').replace(' (Sorting)', '');
         this.treeDataProvider.toggleSortMode(false);
       }),
+    );
+
+    this._register(
+      vscode.commands.registerCommand('tabsTreeView.viewAsList', () =>
+        this.setViewMode(view, 'list'),
+      ),
+    );
+
+    this._register(
+      vscode.commands.registerCommand('tabsTreeView.viewAsTree', () =>
+        this.setViewMode(view, 'tree'),
+      ),
     );
 
     this._register(
@@ -306,25 +326,23 @@ export class TabsView extends Disposable {
 
     this._register(
       vscode.commands.registerCommand('tabsTreeView.collapseAll', async () => {
-        const firstExpandableGroup = this.treeDataProvider
-          .getState()
-          .find(item => isGroup(item) && item.children.length > 0);
+        const firstExpandableItem = this.treeDataProvider.getExpandableItems()[0];
         await collapseAllTreeItems(
           view,
           () => vscode.commands.executeCommand('list.collapseAll'),
-          firstExpandableGroup,
+          firstExpandableItem,
         );
       }),
     );
 
     this._register(
       vscode.commands.registerCommand('tabsTreeView.expandAll', async () => {
-        const state = this.treeDataProvider.getState();
-        const firstExpandableGroup = state.find(item => isGroup(item) && item.children.length > 0);
-        if (firstExpandableGroup) {
-          await focusTreeItem(view, firstExpandableGroup);
+        const expandableItems = this.treeDataProvider.getExpandableItems();
+        const firstExpandableItem = expandableItems[0];
+        if (firstExpandableItem) {
+          await focusTreeItem(view, firstExpandableItem);
         }
-        await expandAllTreeItems(view, state, item => isGroup(item) && item.children.length > 0);
+        await expandAllTreeItems(view, expandableItems, () => true);
       }),
     );
 
@@ -690,6 +708,25 @@ export class TabsView extends Disposable {
 
   private getSavedGroups(): readonly SavedGroup[] {
     return this.savedGroupsStore.load() ?? [];
+  }
+
+  private async setViewMode(view: vscode.TreeView<TreeElement>, viewMode: ViewMode): Promise<void> {
+    if (this.treeDataProvider.getViewMode() === viewMode) {
+      return;
+    }
+
+    if (viewMode === 'tree' && this.treeDataProvider.isSortMode()) {
+      setContext(ContextKeys.SortMode, false);
+      view.title = (view.title ?? '').replace(' (Sorting)', '');
+      this.treeDataProvider.toggleSortMode(false);
+    }
+
+    this.treeDataProvider.setViewMode(viewMode);
+    await setContext(ContextKeys.ViewMode, viewMode);
+    void this.persist(
+      () => this.workspaceStateStore.saveViewMode(viewMode),
+      'Could not save tab view mode.',
+    );
   }
 
   private async saveSavedGroups(

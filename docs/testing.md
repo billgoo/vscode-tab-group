@@ -23,7 +23,7 @@ npm run package
 | `npm run lint`      | TypeScript style and static analysis.                                                                                                                                                                                                       |
 | `npm run test:unit` | Grouping, ungrouping, lifecycle, and pure utility behavior.                                                                                                                                                                                 |
 | `npm run compile`   | Strict TypeScript compilation.                                                                                                                                                                                                              |
-| `npm run test:e2e`  | Extension-host smoke test for activation, Recent Tabs, Saved Groups, root URI sorting across root and grouped tabs, group-name sorting, independent group URI sort controls, supported tab-input normalization, and opaque-input rejection. |
+| `npm run test:e2e`  | Extension-host smoke test for activation, List/Tree view switching, derived root and grouped folder trees, Recent Tabs, Saved Groups, root URI sorting across root and grouped tabs, group-name sorting, independent group URI sort controls, supported tab-input normalization, and opaque-input rejection. |
 | `npm run package`   | Production VSIX build and package contents.                                                                                                                                                                                                 |
 
 On macOS, `test:e2e` uses the installed VS Code application when available. Set `VSCODE_TEST_EXECUTABLE` to an executable path on another platform, or set `VSCODE_TEST_DOWNLOAD=true` to use a downloaded runtime. On headless Linux, run the command through `xvfb-run -a npm run test:e2e`.
@@ -52,6 +52,9 @@ Use `--skip-e2e` only when a local VS Code runtime is unavailable. CI and tag-ba
 
 ### Sorting And Toolbar
 
+- Open the Tabs view title **...** menu, choose **View as Tree**, and confirm resource-backed tabs appear under nested directory nodes inside the root and named groups.
+- Confirm the view menu now offers **View as List**, and switch back to verify the flat list is restored. Reload the window and confirm the selected view mode is retained.
+- In Tree view, confirm **Sort Mode** and its manual-sort icon are unavailable. Switch to List view and confirm they return; predefined URI sort actions remain available in both views.
 - Use the top-right **Sort Mode** action, reorder tabs or groups, and select **Done**.
 - Confirm ordering changes without changing group membership.
 - Try to drop a root tab into a group and a grouped tab onto the root while sorting; confirm both drops are ignored.
