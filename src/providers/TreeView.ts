@@ -40,6 +40,7 @@ export class TabsView extends Disposable {
   private readonly savedGroupsTreeDataProvider: SavedGroupsTreeDataProvider;
   private exclusiveHandle = new ExclusiveHandle();
   private selectedGroup: Group | undefined;
+  private expandedSavedGroupIds = new Set<string>();
 
   constructor(
     private readonly workspaceStateStore: WorkspaceStateStore,
@@ -59,6 +60,7 @@ export class TabsView extends Disposable {
     this.refreshRecentTabs(this.getActiveNativeTab());
 
     setContext(ContextKeys.AllCollapsed, this.treeDataProvider.isAllCollapsed());
+    setContext(ContextKeys.SavedGroupsAllExpanded, false);
     setContext(ContextKeys.SelectedGroup, false);
     setContext(ContextKeys.NextRootSortAscending, true);
 
@@ -76,7 +78,7 @@ export class TabsView extends Disposable {
         canSelectMany: true,
       }),
     );
-    this._register(
+    const savedGroupsView = this._register(
       vscode.window.createTreeView('savedGroupsTreeView', {
         treeDataProvider: this.savedGroupsTreeDataProvider,
       }),
@@ -296,6 +298,45 @@ export class TabsView extends Disposable {
     );
 
     this._register(
+      vscode.commands.registerCommand('tabsTreeView.savedGroups.collapseAll', async () => {
+        this.expandedSavedGroupIds.clear();
+        await setContext(ContextKeys.SavedGroupsAllExpanded, false);
+        await vscode.commands.executeCommand('list.collapseAll');
+      }),
+    );
+
+    this._register(
+      vscode.commands.registerCommand('tabsTreeView.savedGroups.expandAll', async () => {
+        this.expandedSavedGroupIds.clear();
+        for (const item of this.savedGroupsTreeDataProvider.getChildren()) {
+          if ('tabs' in item && item.tabs.length > 0) {
+            this.expandedSavedGroupIds.add(item.id);
+            savedGroupsView.reveal(item, { expand: true });
+          }
+        }
+        await this.updateSavedGroupsExpansionContext();
+      }),
+    );
+
+    this._register(
+      savedGroupsView.onDidExpandElement(element => {
+        if ('tabs' in element.element) {
+          this.expandedSavedGroupIds.add(element.element.id);
+          void this.updateSavedGroupsExpansionContext();
+        }
+      }),
+    );
+
+    this._register(
+      savedGroupsView.onDidCollapseElement(element => {
+        if ('tabs' in element.element) {
+          this.expandedSavedGroupIds.delete(element.element.id);
+          void this.updateSavedGroupsExpansionContext();
+        }
+      }),
+    );
+
+    this._register(
       view.onDidExpandElement(element => {
         if (isGroup(element.element)) {
           this.treeDataProvider.setCollapsedState(element.element, false);
@@ -323,6 +364,20 @@ export class TabsView extends Disposable {
     if (!group) {
       await setContext(ContextKeys.NextRootSortAscending, direction === 'descending');
     }
+  }
+
+  private async updateSavedGroupsExpansionContext(): Promise<void> {
+    const savedGroupIds = new Set(this.getSavedGroups().map(savedGroup => savedGroup.id));
+    for (const savedGroupId of this.expandedSavedGroupIds) {
+      if (!savedGroupIds.has(savedGroupId)) {
+        this.expandedSavedGroupIds.delete(savedGroupId);
+      }
+    }
+
+    const allExpanded =
+      savedGroupIds.size > 0 &&
+      [...savedGroupIds].every(savedGroupId => this.expandedSavedGroupIds.has(savedGroupId));
+    await setContext(ContextKeys.SavedGroupsAllExpanded, allExpanded);
   }
 
   private async saveGroup(group: Group): Promise<void> {
@@ -590,6 +645,7 @@ export class TabsView extends Disposable {
     try {
       await this.savedGroupsStore.save(savedGroups);
       this.savedGroupsTreeDataProvider.refresh();
+      void this.updateSavedGroupsExpansionContext();
       void vscode.window.showInformationMessage(successMessage);
     } catch (error) {
       console.error(failureMessage, error);

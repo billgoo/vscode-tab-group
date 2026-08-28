@@ -74,6 +74,7 @@ Use `--skip-e2e` only when a local VS Code runtime is unavailable. CI and tag-ba
 
 - Create a group containing at least two text files, then choose **Save Group...** from its context menu and enter a snapshot name.
 - Expand the **Saved Groups** panel, which starts collapsed, and confirm the saved snapshot name and tab count appear.
+- Use the single Saved Groups panel toolbar toggle to expand all snapshots and collapse them again.
 - Confirm the Tabs view title bar has no **Restore Saved Group...** action; restore controls appear in the **Saved Groups** panel and the Command Palette.
 - Expand the saved snapshot and confirm each saved file appears as a read-only child item.
 - Save two files with the same name from different folders and confirm their child items show the shortest distinguishing parent paths.

@@ -165,6 +165,16 @@
         "icon": "$(expand-all)"
       },
       {
+        "command": "tabsTreeView.savedGroups.collapseAll",
+        "title": "Collapse All Saved Groups",
+        "icon": "$(collapse-all)"
+      },
+      {
+        "command": "tabsTreeView.savedGroups.expandAll",
+        "title": "Expand All Saved Groups",
+        "icon": "$(expand-all)"
+      },
+      {
         "command": "tabsTreeView.reset",
         "title": "Reset All",
         "icon": "$(clear-all)"
@@ -238,6 +248,16 @@
           "command": "tabsTreeView.savedGroups.deleteAll",
           "when": "view == savedGroupsTreeView",
           "group": "navigation@1"
+        },
+        {
+          "command": "tabsTreeView.savedGroups.collapseAll",
+          "when": "view == savedGroupsTreeView && tabGroup.savedGroups:allExpanded",
+          "group": "navigation@2"
+        },
+        {
+          "command": "tabsTreeView.savedGroups.expandAll",
+          "when": "view == savedGroupsTreeView && !tabGroup.savedGroups:allExpanded",
+          "group": "navigation@2"
         },
         {
           "command": "tabsTreeView.enableSortMode",

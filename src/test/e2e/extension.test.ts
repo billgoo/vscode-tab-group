@@ -72,6 +72,8 @@ suite('Tab Group extension', () => {
     assert.ok(commands.includes('tabsTreeView.savedGroup.delete'));
     assert.ok(commands.includes('tabsTreeView.savedGroups.restoreAll'));
     assert.ok(commands.includes('tabsTreeView.savedGroups.deleteAll'));
+    assert.ok(commands.includes('tabsTreeView.savedGroups.collapseAll'));
+    assert.ok(commands.includes('tabsTreeView.savedGroups.expandAll'));
     assert.ok(commands.includes('tabsTreeView.enableSortMode'));
     assert.ok(commands.includes('tabsTreeView.reset'));
 
@@ -111,6 +113,20 @@ suite('Tab Group extension', () => {
         menu =>
           menu.command === 'tabsTreeView.savedGroups.restoreAll' &&
           menu.when === 'view == savedGroupsTreeView',
+      ),
+    );
+    assert.ok(
+      viewTitleMenus.some(
+        menu =>
+          menu.command === 'tabsTreeView.savedGroups.collapseAll' &&
+          menu.when === 'view == savedGroupsTreeView && tabGroup.savedGroups:allExpanded',
+      ),
+    );
+    assert.ok(
+      viewTitleMenus.some(
+        menu =>
+          menu.command === 'tabsTreeView.savedGroups.expandAll' &&
+          menu.when === 'view == savedGroupsTreeView && !tabGroup.savedGroups:allExpanded',
       ),
     );
     const itemContextMenus = extension.packageJSON.contributes.menus['view/item/context'] as Array<{
