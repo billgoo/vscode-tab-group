@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import { randomUUID } from 'node:crypto';
 import { getNormalizedTabId, matchesTabId, reopenSavedTab, toSavedTab } from './TabTypeHandler';
 import { WorkspaceStateStore } from '../services/WorkspaceStateStore';
 import { SavedGroupsStore } from '../services/SavedGroupsStore';
@@ -16,6 +15,7 @@ import { ContextKeys, setContext } from '../utils/context';
 import { getTabFileDecorationProvider } from '../decorators/TabFileDecorationProvider';
 import { GroupColorId, groupColorOptions } from '../utils/color';
 import { getSavedTabId, getSavedTabLabel } from '../utils/savedTab';
+import { createSavedGroupSnapshot, findSavedGroupForSource } from '../utils/savedGroup';
 import { TabSortDirection } from '../utils/tabSort';
 
 type GroupColorQuickPickItem = vscode.QuickPickItem & {
@@ -407,50 +407,17 @@ export class TabsView extends Disposable {
     }
 
     const savedGroups = this.getSavedGroups();
-    const existingGroup = savedGroups.find(savedGroup => savedGroup.sourceGroupId === group.id);
-    const name =
-      existingGroup?.name ??
-      (
-        await vscode.window.showInputBox({
-          placeHolder: 'Name this saved group',
-          value: group.label,
-        })
-      )?.trim();
-    if (!name) {
-      return;
-    }
-
-    const groupWithSameName = savedGroups.find(savedGroup => savedGroup.name === name);
-    if (!existingGroup && groupWithSameName) {
-      const choice = await vscode.window.showWarningMessage(
-        `Replace the saved tab group "${name}"?`,
-        { modal: true },
-        'Replace',
-      );
-      if (choice !== 'Replace') {
-        return;
-      }
-    }
-
-    const groupToReplace = existingGroup ?? groupWithSameName;
-
-    const savedGroup: SavedGroup = {
-      id: groupToReplace?.id ?? randomUUID(),
-      sourceGroupId: group.id,
-      name,
-      groupLabel: group.label,
-      colorId: group.colorId,
-      collapsed: group.collapsed,
-      tabs,
-    };
+    const existingGroup = findSavedGroupForSource(savedGroups, group.id);
+    const savedGroup = createSavedGroupSnapshot(group, tabs, savedGroups);
+    const groupToReplace = existingGroup;
     const nextSavedGroups = groupToReplace
       ? savedGroups.map(candidate => (candidate.id === groupToReplace.id ? savedGroup : candidate))
       : [...savedGroups, savedGroup];
 
     await this.saveSavedGroups(
       nextSavedGroups,
-      `${existingGroup ? 'Updated' : 'Saved'} tab group "${name}".`,
-      `Could not save tab group "${name}".`,
+      `${existingGroup ? 'Updated' : 'Saved'} tab group "${savedGroup.name}".`,
+      `Could not save tab group "${savedGroup.name}".`,
     );
   }
 

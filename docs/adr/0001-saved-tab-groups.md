@@ -16,7 +16,7 @@ Persist named Saved Tab Groups as versioned snapshots in `ExtensionContext.works
 
 - Keep snapshots separate from the live Tabs and Recent Tabs state.
 - Store typed, full-resource reopen descriptors for supported text, text-diff, custom-editor, notebook, and notebook-diff tabs.
-- Give each live group at most one snapshot. Saving that group again updates the snapshot in place.
+- Give each live group at most one snapshot, using the live group's stable ID as the snapshot ID. Derive the display name from the group label, falling back to the ID when the label is empty or already used. Saving that group again updates the snapshot in place without prompting for a name.
 - Restore an exact snapshot: reuse matching open tabs, reopen missing tabs, restore saved metadata and order, and return live-only tabs to the root list.
 - Show snapshots in a collapsed Saved Groups panel. Users can inspect saved files, restore or delete one snapshot, and restore or delete all snapshots.
 - Use stable tree item IDs so Saved Groups expansion and selection survive refreshes.
@@ -35,6 +35,7 @@ Persist named Saved Tab Groups as versioned snapshots in `ExtensionContext.works
 ### Trade-offs
 
 - Snapshots are not shared automatically across workspaces or VS Code profiles.
+- Saved snapshot names are derived automatically; custom names from older snapshots are preserved when those snapshots are updated.
 - Restoring a snapshot intentionally removes tabs added to its source group after the snapshot was saved.
 - A missing file or unavailable provider yields a partial restore warning; the snapshot is kept.
 - Terminal, webview, unknown, untitled, and unsaved editor content are not recoverable through public VS Code APIs.
