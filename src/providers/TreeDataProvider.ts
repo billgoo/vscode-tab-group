@@ -73,7 +73,7 @@ export class TreeDataProvider
 
   getChildren(element?: TreeElement): Array<TreeElement> | null {
     if (element && isFolder(element)) {
-      return element.children;
+      return this.getCurrentFolder(element)?.children ?? null;
     }
 
     if (element && isSlot(element)) {
@@ -108,7 +108,11 @@ export class TreeDataProvider
 
       newTreeItem.contextValue = element.groupId === null ? 'tab' : 'grouped-tab';
 
-      if (newTreeItem.resourceUri) {
+      const resourceUri = newTreeItem.resourceUri;
+      const isExternalResource =
+        resourceUri !== undefined && vscode.workspace.getWorkspaceFolder(resourceUri) === undefined;
+
+      if (resourceUri) {
         // use to update tab label if duplicated file name showing
         const filePathArray = tabId.split(sep);
         if (filePathArray.length > 1) {
@@ -123,6 +127,11 @@ export class TreeDataProvider
 
       if (!this.treeItemMap[tabId]) {
         this.treeItemMap[tabId] = newTreeItem;
+      }
+
+      if (isExternalResource && this.treeItemMap[tabId].tooltip === undefined) {
+        this.treeItemMap[tabId].tooltip =
+          resourceUri.scheme === 'file' ? resourceUri.fsPath : resourceUri.toString();
       }
 
       return this.treeItemMap[tabId];
@@ -534,14 +543,44 @@ export class TreeDataProvider
 
   private getTreeParent(element: Tab | Folder): Group | Folder | undefined {
     const group = element.groupId === null ? undefined : this.treeState.getGroup(element.groupId);
-    const fileTree = group
-      ? createFileTree(group.children, tab => this.getTabPath(tab), group.id)
-      : createFileTree(
-          (this.treeState.getChildren() ?? []).filter(isTab),
-          tab => this.getTabPath(tab),
-          null,
-        );
+    const fileTree = this.getFileTree(element.groupId);
     return this.findFileTreeParent(fileTree, element) ?? group;
+  }
+
+  private getCurrentFolder(folder: Folder): Folder | undefined {
+    return this.findFileTreeFolder(this.getFileTree(folder.groupId), folder.id);
+  }
+
+  private getFileTree(groupId: string | null): FileTreeItem[] {
+    if (groupId === null) {
+      return createFileTree(
+        (this.treeState.getChildren() ?? []).filter(isTab),
+        tab => this.getTabPath(tab),
+        null,
+      );
+    }
+
+    const group = this.treeState.getGroup(groupId);
+    return group ? createFileTree(group.children, tab => this.getTabPath(tab), group.id) : [];
+  }
+
+  private findFileTreeFolder(items: readonly FileTreeItem[], folderId: string): Folder | undefined {
+    for (const item of items) {
+      if (!isFolder(item)) {
+        continue;
+      }
+
+      if (item.id === folderId) {
+        return item;
+      }
+
+      const folder = this.findFileTreeFolder(item.children, folderId);
+      if (folder) {
+        return folder;
+      }
+    }
+
+    return undefined;
   }
 
   private findFileTreeParent(
@@ -568,7 +607,7 @@ export class TreeDataProvider
 
   private getTabPath(tab: Tab): readonly string[] | undefined {
     const resourceUri = this.createTabTreeItem(tab).resourceUri;
-    if (!resourceUri) {
+    if (!resourceUri || !vscode.workspace.getWorkspaceFolder(resourceUri)) {
       return undefined;
     }
 

@@ -52,7 +52,7 @@ Use `--skip-e2e` only when a local VS Code runtime is unavailable. CI and tag-ba
 
 ### Sorting And Toolbar
 
-- Open the Tabs view title **...** menu, choose **View as Tree**, and confirm resource-backed tabs appear under nested directory nodes inside the root and named groups.
+- Open the Tabs view title **...** menu, choose **View as Tree**, and confirm resource-backed tabs appear under nested directory nodes inside the root and named groups. Open a resource outside the current workspace and confirm it remains a direct tab item instead of exposing its absolute parent directories; hover it and confirm its full location is available in the tooltip.
 - Confirm the view menu now offers **View as List**, and switch back to verify the flat list is restored. Reload the window and confirm the selected view mode is retained.
 - In Tree view, confirm **Sort Mode** and its manual-sort icon are unavailable. Switch to List view and confirm they return; predefined URI sort actions remain available in both views.
 - Use the top-right **Sort Mode** action, reorder tabs or groups, and select **Done**.

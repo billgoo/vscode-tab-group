@@ -54,23 +54,6 @@ function createSavedTextTab(uri: vscode.Uri): SavedTextTab {
   return { kind: 'text', id: uri.toString(), uri: uri.toString() };
 }
 
-function findFolder(folder: Folder, label: string): Folder | undefined {
-  if (folder.label === label) {
-    return folder;
-  }
-
-  for (const child of folder.children) {
-    if (isFolder(child)) {
-      const match = findFolder(child, label);
-      if (match) {
-        return match;
-      }
-    }
-  }
-
-  return undefined;
-}
-
 suite('Tab Group extension', () => {
   test('activates and registers its tab-group commands', async () => {
     const extension = vscode.extensions.getExtension('jiapeiyao.tab-group');
@@ -317,10 +300,22 @@ suite('Tab Group extension', () => {
     await extension.activate();
 
     const directoryName = `.tab-group-tree-${Date.now()}`;
-    const directoryUri = vscode.Uri.joinPath(vscode.Uri.file(tmpdir()), directoryName);
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
+    assert.ok(workspaceRoot, 'The extension host should have a workspace folder.');
+    const directoryUri = vscode.Uri.joinPath(workspaceRoot, directoryName);
+    const externalDirectoryUri = vscode.Uri.joinPath(
+      vscode.Uri.file(tmpdir()),
+      `${directoryName}-external`,
+    );
     const firstUri = vscode.Uri.joinPath(directoryUri, 'src', 'providers', 'TreeView.ts');
     const groupedUri = vscode.Uri.joinPath(directoryUri, 'src', 'providers', 'TreeDataProvider.ts');
+    const externalUri = vscode.Uri.joinPath(externalDirectoryUri, 'init.sh');
     const firstTab: Tab = { type: TreeItemType.Tab, groupId: null, id: firstUri.toString() };
+    const externalTab: Tab = {
+      type: TreeItemType.Tab,
+      groupId: null,
+      id: externalUri.toString(),
+    };
     const groupId = `${directoryName}-group`;
     const groupedTab: Tab = { type: TreeItemType.Tab, groupId, id: groupedUri.toString() };
     const group: Group = {
@@ -333,32 +328,38 @@ suite('Tab Group extension', () => {
     };
     const treeDataProvider = new TreeDataProvider();
 
+    await vscode.workspace.fs.createDirectory(
+      vscode.Uri.joinPath(directoryUri, 'src', 'providers'),
+    );
+    await vscode.workspace.fs.createDirectory(externalDirectoryUri);
+
     await Promise.all(
-      [firstUri, groupedUri].map(uri =>
+      [firstUri, groupedUri, externalUri].map(uri =>
         vscode.workspace.fs.writeFile(uri, Buffer.from(uri.fsPath)),
       ),
     );
 
     try {
       await Promise.all(
-        [firstUri, groupedUri].map(uri =>
+        [firstUri, groupedUri, externalUri].map(uri =>
           vscode.commands.executeCommand('vscode.open', uri, { preview: false }),
         ),
       );
 
-      treeDataProvider.setState([firstTab, group]);
+      treeDataProvider.setState([firstTab, externalTab, group]);
       treeDataProvider.setViewMode('tree');
 
       const rootItems = treeDataProvider.getChildren();
       assert.ok(rootItems);
-      assert.equal(rootItems.length, 2);
+      assert.equal(rootItems.length, 3);
       assert.equal(isFolder(rootItems[0]), true);
-      assert.equal(rootItems[1], group);
+      assert.equal(rootItems[1], externalTab);
+      assert.equal(rootItems[2], group);
 
-      const rootDirectory = findFolder(rootItems[0] as Folder, directoryName);
-      assert.ok(rootDirectory);
+      const rootDirectory = rootItems[0] as Folder;
       const rootSource = rootDirectory.children[0] as Folder;
       const rootProviders = rootSource.children[0] as Folder;
+      assert.equal(rootDirectory.label, directoryName);
       assert.equal(rootSource.label, 'src');
       assert.equal(rootProviders.label, 'providers');
       assert.equal(rootProviders.children[0], firstTab);
@@ -368,13 +369,17 @@ suite('Tab Group extension', () => {
       const rootParent = treeDataProvider.getParent(rootProviders);
       assert.ok(rootParent && isFolder(rootParent));
       assert.equal(rootParent.id, rootSource.id);
+      assert.equal(treeDataProvider.getParent(externalTab), undefined);
+      assert.equal(treeDataProvider.getTreeItem(externalTab).tooltip, externalUri.fsPath);
 
       const groupItems = treeDataProvider.getChildren(group);
       assert.ok(groupItems);
       assert.equal(groupItems.length, 1);
-      const groupDirectory = findFolder(groupItems[0] as Folder, directoryName);
-      assert.ok(groupDirectory);
-      const groupProviders = (groupDirectory.children[0] as Folder).children[0] as Folder;
+      const groupDirectory = groupItems[0] as Folder;
+      const groupSource = groupDirectory.children[0] as Folder;
+      const groupProviders = groupSource.children[0] as Folder;
+      assert.equal(groupDirectory.label, directoryName);
+      assert.equal(groupSource.label, 'src');
       assert.equal(groupDirectory.groupId, group.id);
       assert.equal(groupProviders.children[0], groupedTab);
       const groupedParent = treeDataProvider.getParent(groupedTab);
@@ -394,8 +399,9 @@ suite('Tab Group extension', () => {
     } finally {
       await vscode.commands.executeCommand('tabsTreeView.viewAsList');
       treeDataProvider.dispose();
-      await closeTabs([firstTab.id, groupedTab.id]);
+      await closeTabs([firstTab.id, externalTab.id, groupedTab.id]);
       await vscode.workspace.fs.delete(directoryUri, { useTrash: false, recursive: true });
+      await vscode.workspace.fs.delete(externalDirectoryUri, { useTrash: false, recursive: true });
     }
   });
 
@@ -689,10 +695,13 @@ suite('Tab Group extension', () => {
 
   test('sorts root tabs and group children by URI without moving groups', async () => {
     const prefix = `tab-group-sort-${Date.now()}`;
-    const alphaUri = vscode.Uri.file(join(tmpdir(), `${prefix}-alpha.txt`));
-    const bravoUri = vscode.Uri.file(join(tmpdir(), `${prefix}-bravo.txt`));
-    const deltaUri = vscode.Uri.file(join(tmpdir(), `${prefix}-delta.txt`));
-    const zuluUri = vscode.Uri.file(join(tmpdir(), `${prefix}-zulu.txt`));
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
+    assert.ok(workspaceRoot, 'The extension host should have a workspace folder.');
+    const directoryUri = vscode.Uri.joinPath(workspaceRoot, prefix);
+    const alphaUri = vscode.Uri.joinPath(directoryUri, 'alpha.txt');
+    const bravoUri = vscode.Uri.joinPath(directoryUri, 'bravo.txt');
+    const deltaUri = vscode.Uri.joinPath(directoryUri, 'delta.txt');
+    const zuluUri = vscode.Uri.joinPath(directoryUri, 'zulu.txt');
     const rootZuluTab: Tab = { type: TreeItemType.Tab, groupId: null, id: zuluUri.toString() };
     const rootAlphaTab: Tab = { type: TreeItemType.Tab, groupId: null, id: alphaUri.toString() };
     const group: Group = {
@@ -716,6 +725,7 @@ suite('Tab Group extension', () => {
     group.children = [groupedDeltaTab, groupedBravoTab];
     const treeDataProvider = new TreeDataProvider();
 
+    await vscode.workspace.fs.createDirectory(directoryUri);
     await Promise.all(
       [alphaUri, bravoUri, deltaUri, zuluUri].map(uri =>
         vscode.workspace.fs.writeFile(uri, Buffer.from(uri.fsPath)),
@@ -728,14 +738,52 @@ suite('Tab Group extension', () => {
       }
 
       treeDataProvider.setState([rootZuluTab, group, rootAlphaTab]);
+      treeDataProvider.setViewMode('tree');
+      const initialRootItems = treeDataProvider.getChildren();
+      assert.ok(initialRootItems);
+      assert.equal(isFolder(initialRootItems[0]), true);
+      const initialRootFolder = initialRootItems[0] as Folder;
+      assert.deepStrictEqual(initialRootFolder.children, [rootZuluTab, rootAlphaTab]);
 
       assert.equal(treeDataProvider.sortTabs('ascending'), true);
       assert.deepStrictEqual(treeDataProvider.getState(), [rootAlphaTab, group, rootZuluTab]);
       assert.deepStrictEqual(group.children, [groupedBravoTab, groupedDeltaTab]);
+      const ascendingRootItems = treeDataProvider.getChildren();
+      assert.ok(ascendingRootItems);
+      assert.equal(isFolder(ascendingRootItems[0]), true);
+      assert.deepStrictEqual((ascendingRootItems[0] as Folder).children, [
+        rootAlphaTab,
+        rootZuluTab,
+      ]);
+      assert.deepStrictEqual(treeDataProvider.getChildren(initialRootFolder), [
+        rootAlphaTab,
+        rootZuluTab,
+      ]);
+      const ascendingGroupItems = treeDataProvider.getChildren(group);
+      assert.ok(ascendingGroupItems);
+      assert.equal(isFolder(ascendingGroupItems[0]), true);
+      assert.deepStrictEqual((ascendingGroupItems[0] as Folder).children, [
+        groupedBravoTab,
+        groupedDeltaTab,
+      ]);
 
       assert.equal(treeDataProvider.sortTabs('descending'), true);
       assert.deepStrictEqual(treeDataProvider.getState(), [rootZuluTab, group, rootAlphaTab]);
       assert.deepStrictEqual(group.children, [groupedDeltaTab, groupedBravoTab]);
+      const descendingRootItems = treeDataProvider.getChildren();
+      assert.ok(descendingRootItems);
+      assert.equal(isFolder(descendingRootItems[0]), true);
+      assert.deepStrictEqual((descendingRootItems[0] as Folder).children, [
+        rootZuluTab,
+        rootAlphaTab,
+      ]);
+      const descendingGroupItems = treeDataProvider.getChildren(group);
+      assert.ok(descendingGroupItems);
+      assert.equal(isFolder(descendingGroupItems[0]), true);
+      assert.deepStrictEqual((descendingGroupItems[0] as Folder).children, [
+        groupedDeltaTab,
+        groupedBravoTab,
+      ]);
 
       assert.equal(treeDataProvider.sortTabs('ascending', group), true);
       assert.deepStrictEqual(treeDataProvider.getState(), [rootZuluTab, group, rootAlphaTab]);
@@ -743,11 +791,7 @@ suite('Tab Group extension', () => {
     } finally {
       treeDataProvider.dispose();
       await closeTabs([rootAlphaTab.id, groupedBravoTab.id, groupedDeltaTab.id, rootZuluTab.id]);
-      await Promise.all(
-        [alphaUri, bravoUri, deltaUri, zuluUri].map(uri =>
-          vscode.workspace.fs.delete(uri, { useTrash: false }),
-        ),
-      );
+      await vscode.workspace.fs.delete(directoryUri, { useTrash: false, recursive: true });
     }
   });
 
