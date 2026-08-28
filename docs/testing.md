@@ -18,13 +18,13 @@ npm run test:e2e
 npm run package
 ```
 
-| Command             | Coverage                                                                                                                                                                                   |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `npm run lint`      | TypeScript style and static analysis.                                                                                                                                                      |
-| `npm run test:unit` | Grouping, ungrouping, lifecycle, and pure utility behavior.                                                                                                                                |
-| `npm run compile`   | Strict TypeScript compilation.                                                                                                                                                             |
-| `npm run test:e2e`  | Extension-host smoke test for activation, Recent Tabs, the expandable Saved Groups panel, saved-tab commands and reopening, supported tab-input normalization, and opaque-input rejection. |
-| `npm run package`   | Production VSIX build and package contents.                                                                                                                                                |
+| Command             | Coverage                                                                                                                                                                                                                                    |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run lint`      | TypeScript style and static analysis.                                                                                                                                                                                                       |
+| `npm run test:unit` | Grouping, ungrouping, lifecycle, and pure utility behavior.                                                                                                                                                                                 |
+| `npm run compile`   | Strict TypeScript compilation.                                                                                                                                                                                                              |
+| `npm run test:e2e`  | Extension-host smoke test for activation, Recent Tabs, Saved Groups, root URI sorting across root and grouped tabs, group-name sorting, independent group URI sort controls, supported tab-input normalization, and opaque-input rejection. |
+| `npm run package`   | Production VSIX build and package contents.                                                                                                                                                                                                 |
 
 On macOS, `test:e2e` uses the installed VS Code application when available. Set `VSCODE_TEST_EXECUTABLE` to an executable path on another platform, or set `VSCODE_TEST_DOWNLOAD=true` to use a downloaded runtime. On headless Linux, run the command through `xvfb-run -a npm run test:e2e`.
 
@@ -55,6 +55,11 @@ Use `--skip-e2e` only when a local VS Code runtime is unavailable. CI and tag-ba
 - Use the top-right **Sort Mode** action, reorder tabs or groups, and select **Done**.
 - Confirm ordering changes without changing group membership.
 - Try to drop a root tab into a group and a grouped tab onto the root while sorting; confirm both drops are ignored.
+- Use the view-title ascending sort control to sort root tabs and every group's tabs by File URI A-Z, and root groups by name A-Z, then confirm it changes to the descending control and reverses all three orders on the next click.
+- Use a group sort control and confirm it sorts only that group's children and changes only that group's next-sort direction.
+- Sort one group, then confirm the view-title sort direction is unchanged and another group retains its own direction.
+- Run a root sort after changing a group direction and confirm every group control resets to the root's next-sort direction.
+- Confirm root tabs keep their root positions, group membership is unchanged, tabs in other groups are unchanged, and VS Code's native editor-tab order is unchanged.
 - Use **Collapse All** and **Expand All** when available.
 - Use **Reset All** and confirm that groups are removed while open tabs remain listed at the root.
 
@@ -69,6 +74,8 @@ Use `--skip-e2e` only when a local VS Code runtime is unavailable. CI and tag-ba
 
 - Create a group containing at least two text files, then choose **Save Group...** from its context menu and enter a snapshot name.
 - Expand the **Saved Groups** panel, which starts collapsed, and confirm the saved snapshot name and tab count appear.
+- Use the single Saved Groups panel toolbar toggle to expand all snapshots and collapse them again.
+- Confirm the Tabs view title bar has no **Restore Saved Group...** action; restore controls appear in the **Saved Groups** panel and the Command Palette.
 - Expand the saved snapshot and confirm each saved file appears as a read-only child item.
 - Save two files with the same name from different folders and confirm their child items show the shortest distinguishing parent paths.
 - Remove one tab from the same live group, save it again, and confirm the existing snapshot updates its tab count instead of creating a second snapshot.

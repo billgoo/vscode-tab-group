@@ -10,8 +10,9 @@ Organize editor tabs into persistent, named groups from the Tab Group activity-b
 - Choose a distinct color for each group.
 - Drag tabs to the view background to ungroup them.
 - Use Sort Mode to reorder tabs and groups without changing group membership.
+- Sort root tabs by file URI, root groups by name, and each group's tabs by file URI.
 - Rename, close, ungroup, or dissolve a group from its context menu.
-- Collapse and expand all groups.
+- Collapse and expand all live groups, or toggle all saved snapshots in the Saved Groups panel.
 - Preserve group membership, order, names, colors, and collapsed state in workspace state.
 - Save named group snapshots, shown in a collapsed Saved Groups panel, and restore their supported tabs after they are closed.
 - Show an unsaved-file decoration for text editors.
@@ -24,11 +25,11 @@ Open the **Tab Group** activity-bar view. Drag tabs directly to group them. When
 
 ![Sorting grouped tabs](docs/assets/sort.gif)
 
-Dropping an item onto another inserts it immediately before the target. In Sort Mode, tabs and groups can only be reordered within their current parent, so sorting never changes group membership. The **Recent Tabs** view lists ungrouped tabs by most recent activation; drag a tab from it onto a group in the **Tabs** view to organize it.
+Dropping an item onto another inserts it immediately before the target. In Sort Mode, tabs and groups can only be reordered within their current parent, so sorting never changes group membership. The view-title sort control orders root tabs by File URI, every group's tabs by File URI, and root groups by name. A group sort control orders only that group's tabs by File URI. Each control switches to the opposite direction after it is used. Group controls toggle independently, while a root sort resets every group control to its next direction. Root tabs and groups reorder only among their existing root positions. Sorting changes the Tabs tree only; it does not reorder VS Code's editor tabs. The **Recent Tabs** view lists ungrouped tabs by most recent activation; drag a tab from it onto a group in the **Tabs** view to organize it.
 
 ![Saved Groups panel](docs/assets/saved-groups.gif)
 
-Use **Save Group...** from a group context menu to create a snapshot. Saving the same live group again updates its existing snapshot and keeps its name. Expand the **Saved Groups** panel to see snapshots and their tab counts, then expand a snapshot to inspect its saved files. Duplicate file names show the shortest distinguishing parent path. Use its folder action to restore one snapshot or its trash action to remove it from saved workspace storage. The panel toolbar also provides **Restore All Saved Groups** and **Delete All Saved Groups**. **Restore Saved Group...** remains available in the Tabs view title actions and Command Palette.
+Use **Save Group...** from a group context menu to create a snapshot. Saving the same live group again updates its existing snapshot and keeps its name. Expand the **Saved Groups** panel to see snapshots and their tab counts, then expand a snapshot to inspect its saved files. Duplicate file names show the shortest distinguishing parent path. Use the panel toolbar's single toggle to expand or collapse all snapshots, restore all snapshots, or delete all snapshots. Use a snapshot's folder action to restore it or its trash action to remove it from saved workspace storage. **Restore Saved Group...** is also available from the Command Palette.
 
 ## Tab support
 

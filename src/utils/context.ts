@@ -3,7 +3,9 @@ import { asPromise } from './async';
 
 export const enum ContextKeys {
   SortMode = 'tabGroup.sortMode:enabled',
+  NextRootSortAscending = 'tabGroup.sort:nextRootAscending',
   AllCollapsed = 'tabGroup.groups:allCollapsed',
+  SavedGroupsAllExpanded = 'tabGroup.savedGroups:allExpanded',
   SelectedGroup = 'tabGroup.selectedGroup',
 }
 

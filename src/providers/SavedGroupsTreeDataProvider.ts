@@ -37,6 +37,10 @@ export class SavedGroupsTreeDataProvider
       : element.tabs.map(savedTab => ({ savedGroup: element, savedTab }));
   }
 
+  getParent(element: SavedGroupsTreeItem): SavedGroupsTreeItem | undefined {
+    return isSavedTabTreeItem(element) ? element.savedGroup : undefined;
+  }
+
   getTreeItem(element: SavedGroupsTreeItem): vscode.TreeItem {
     if (isSavedTabTreeItem(element)) {
       return this.createSavedTabTreeItem(element.savedGroup, element.savedTab);

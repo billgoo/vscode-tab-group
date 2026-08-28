@@ -16,6 +16,12 @@ import { TreeState } from '../services/TreeState';
 import { getHandler, getNormalizedTabId } from './TabTypeHandler';
 import { GroupColorId, getGroupColorOption } from '../utils/color';
 import { findLongestCommonFilePathPrefixIndex } from '../utils/filePath';
+import {
+  compareSortStrings,
+  compareTabSortKeys,
+  TabSortDirection,
+  TabSortKey,
+} from '../utils/tabSort';
 
 export function getNativeTabs(tab: Tab): vscode.Tab[] {
   const currentNativeTabs = vscode.window.tabGroups.all.flatMap(tabGroup => tabGroup.tabs);
@@ -55,6 +61,8 @@ export class TreeDataProvider
   private filePathTree: Record<string, Record<string, FilePathNode>> = {};
 
   private sortMode = false;
+  private defaultNextGroupSortDirection: TabSortDirection = 'ascending';
+  private nextGroupSortDirectionOverrides = new Map<string, TabSortDirection>();
 
   dropMimeTypes = [TabDropMimeType, RecentTabsTreeMimeType];
   dragMimeTypes = [TabDropMimeType];
@@ -113,7 +121,7 @@ export class TreeDataProvider
           ? vscode.TreeItemCollapsibleState.Collapsed
           : vscode.TreeItemCollapsibleState.Expanded,
       );
-      treeItem.contextValue = 'group';
+      treeItem.contextValue = this.getGroupContextValue(element);
       treeItem.iconPath = new vscode.ThemeIcon(
         'layout-sidebar-left',
         groupColor ? new vscode.ThemeColor(groupColor.themeColorId) : undefined,
@@ -123,6 +131,7 @@ export class TreeDataProvider
     } else {
       const treeItem = this.treeItemMap[element.id];
       treeItem.label = element.label;
+      treeItem.contextValue = this.getGroupContextValue(element);
       treeItem.iconPath = new vscode.ThemeIcon(
         'layout-sidebar-left',
         groupColor ? new vscode.ThemeColor(groupColor.themeColorId) : undefined,
@@ -325,6 +334,43 @@ export class TreeDataProvider
     return restoredGroup;
   }
 
+  public sortTabs(direction: TabSortDirection, group?: Group): boolean {
+    const directionChanged = this.setNextGroupSortDirection(direction, group);
+    const tabs = group
+      ? this.treeState.getGroup(group.id)?.children
+      : this.getLeafNodes(this.treeState.getState());
+    if (!tabs) {
+      if (directionChanged) {
+        this.triggerRerender();
+      }
+      return false;
+    }
+
+    const sortKeys = this.getTabSortKeys(tabs);
+    const changed = sortKeys
+      ? group
+        ? this.treeState.sortTabs(
+            (leftTab, rightTab) =>
+              compareTabSortKeys(sortKeys.get(leftTab.id)!, sortKeys.get(rightTab.id)!, direction),
+            group.id,
+          )
+        : this.treeState.sortAllTabs((leftTab, rightTab) =>
+            compareTabSortKeys(sortKeys.get(leftTab.id)!, sortKeys.get(rightTab.id)!, direction),
+          )
+      : false;
+    const groupsChanged =
+      !group &&
+      this.treeState.sortGroups((leftGroup, rightGroup) =>
+        compareSortStrings(leftGroup.label, rightGroup.label, direction),
+      );
+    if (changed || groupsChanged) {
+      this.triggerStateChange();
+    } else if (directionChanged) {
+      this.triggerRerender();
+    }
+    return changed || groupsChanged;
+  }
+
   public toggleSortMode(sortMode: boolean) {
     this.sortMode = sortMode;
     this.triggerRerender();
@@ -367,6 +413,50 @@ export class TreeDataProvider
         }
       }
     });
+  }
+
+  private getTabSortKeys(tabs: readonly Tab[]): Map<string, TabSortKey> | undefined {
+    const sortKeys = new Map<string, TabSortKey>();
+    for (const tab of tabs) {
+      const nativeTab = getNativeTabs(tab)[0];
+      const handler = nativeTab && getHandler(nativeTab);
+      if (!handler) {
+        return undefined;
+      }
+      sortKeys.set(tab.id, handler.getSortKey(nativeTab));
+    }
+    return sortKeys;
+  }
+
+  private getGroupContextValue(group: Group): string {
+    return `group-sort-${this.getNextGroupSortDirection(group.id)}`;
+  }
+
+  private getNextGroupSortDirection(groupId: string): TabSortDirection {
+    return this.nextGroupSortDirectionOverrides.get(groupId) ?? this.defaultNextGroupSortDirection;
+  }
+
+  private setNextGroupSortDirection(direction: TabSortDirection, group?: Group): boolean {
+    const nextDirection: TabSortDirection = direction === 'ascending' ? 'descending' : 'ascending';
+    if (!group) {
+      const changed =
+        this.defaultNextGroupSortDirection !== nextDirection ||
+        this.nextGroupSortDirectionOverrides.size > 0;
+      this.defaultNextGroupSortDirection = nextDirection;
+      this.nextGroupSortDirectionOverrides.clear();
+      return changed;
+    }
+
+    if (this.getNextGroupSortDirection(group.id) === nextDirection) {
+      return false;
+    }
+
+    if (nextDirection === this.defaultNextGroupSortDirection) {
+      this.nextGroupSortDirectionOverrides.delete(group.id);
+    } else {
+      this.nextGroupSortDirectionOverrides.set(group.id, nextDirection);
+    }
+    return true;
   }
 
   private getLeafNodes(root: Array<Tab | Group>): Array<Tab> {

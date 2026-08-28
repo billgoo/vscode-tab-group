@@ -20,6 +20,7 @@ import {
 import { RecentTabs } from '../../services/RecentTabs';
 import { SavedGroupsTreeDataProvider } from '../../providers/SavedGroupsTreeDataProvider';
 import { SavedGroupsStore } from '../../services/SavedGroupsStore';
+import { ContextKeys, getContext } from '../../utils/context';
 
 function getOpenTabIds(): Set<string> {
   return new Set(
@@ -64,13 +65,32 @@ suite('Tab Group extension', () => {
     assert.ok(commands.includes('tabsTreeView.tab.ungroup'));
     assert.ok(commands.includes('tabsTreeView.group.rename'));
     assert.ok(commands.includes('tabsTreeView.group.changeColor'));
+    assert.ok(commands.includes('tabsTreeView.sortTabsAscending'));
+    assert.ok(commands.includes('tabsTreeView.sortTabsDescending'));
     assert.ok(commands.includes('tabsTreeView.group.save'));
     assert.ok(commands.includes('tabsTreeView.savedGroup.restore'));
     assert.ok(commands.includes('tabsTreeView.savedGroup.delete'));
     assert.ok(commands.includes('tabsTreeView.savedGroups.restoreAll'));
     assert.ok(commands.includes('tabsTreeView.savedGroups.deleteAll'));
+    assert.ok(commands.includes('tabsTreeView.savedGroups.collapseAll'));
+    assert.ok(commands.includes('tabsTreeView.savedGroups.expandAll'));
     assert.ok(commands.includes('tabsTreeView.enableSortMode'));
     assert.ok(commands.includes('tabsTreeView.reset'));
+
+    const contributedCommands = extension.packageJSON.contributes.commands as Array<{
+      command: string;
+      icon?: string;
+    }>;
+    assert.equal(
+      contributedCommands.find(command => command.command === 'tabsTreeView.sortTabsAscending')
+        ?.icon,
+      '$(arrow-up)',
+    );
+    assert.equal(
+      contributedCommands.find(command => command.command === 'tabsTreeView.sortTabsDescending')
+        ?.icon,
+      '$(arrow-down)',
+    );
 
     const contributedViews = extension.packageJSON.contributes.views.tabs as Array<{
       id: string;
@@ -87,6 +107,7 @@ suite('Tab Group extension', () => {
     const viewTitleMenus = extension.packageJSON.contributes.menus['view/title'] as Array<{
       command: string;
       when?: string;
+      group?: string;
     }>;
     assert.ok(
       viewTitleMenus.some(
@@ -98,10 +119,166 @@ suite('Tab Group extension', () => {
     assert.ok(
       viewTitleMenus.some(
         menu =>
+          menu.command === 'tabsTreeView.savedGroups.collapseAll' &&
+          menu.when === 'view == savedGroupsTreeView && tabGroup.savedGroups:allExpanded',
+      ),
+    );
+    assert.ok(
+      viewTitleMenus.some(
+        menu =>
+          menu.command === 'tabsTreeView.savedGroups.expandAll' &&
+          menu.when === 'view == savedGroupsTreeView && !tabGroup.savedGroups:allExpanded',
+      ),
+    );
+    assert.equal(
+      viewTitleMenus.find(menu => menu.command === 'tabsTreeView.savedGroups.expandAll')?.group,
+      'navigation@0',
+    );
+    assert.equal(
+      viewTitleMenus.find(menu => menu.command === 'tabsTreeView.savedGroups.collapseAll')?.group,
+      'navigation@0',
+    );
+    assert.equal(
+      viewTitleMenus.find(menu => menu.command === 'tabsTreeView.savedGroups.restoreAll')?.group,
+      'navigation@1',
+    );
+    assert.equal(
+      viewTitleMenus.find(menu => menu.command === 'tabsTreeView.savedGroups.deleteAll')?.group,
+      'navigation@2',
+    );
+    const itemContextMenus = extension.packageJSON.contributes.menus['view/item/context'] as Array<{
+      command: string;
+      when?: string;
+    }>;
+    assert.ok(
+      itemContextMenus.some(
+        menu =>
+          menu.command === 'tabsTreeView.sortTabsAscending' &&
+          menu.when === "view == tabsTreeView && viewItem == 'group-sort-ascending'",
+      ),
+    );
+    assert.ok(
+      itemContextMenus.some(
+        menu =>
+          menu.command === 'tabsTreeView.sortTabsDescending' &&
+          menu.when === "view == tabsTreeView && viewItem == 'group-sort-descending'",
+      ),
+    );
+    assert.ok(
+      viewTitleMenus.some(
+        menu =>
           menu.command === 'tabsTreeView.savedGroups.deleteAll' &&
           menu.when === 'view == savedGroupsTreeView',
       ),
     );
+    assert.ok(
+      viewTitleMenus.some(
+        menu =>
+          menu.command === 'tabsTreeView.sortTabsAscending' &&
+          menu.when ===
+            'view =~ /^tabsTreeView/ && !tabGroup.sortMode:enabled && tabGroup.sort:nextRootAscending',
+      ),
+    );
+    assert.ok(
+      viewTitleMenus.some(
+        menu =>
+          menu.command === 'tabsTreeView.sortTabsDescending' &&
+          menu.when ===
+            'view =~ /^tabsTreeView/ && !tabGroup.sortMode:enabled && !tabGroup.sort:nextRootAscending',
+      ),
+    );
+    assert.equal(
+      viewTitleMenus.some(menu => menu.command === 'tabsTreeView.savedGroup.restore'),
+      false,
+    );
+  });
+
+  test('keeps root and group URI sort directions independent', async () => {
+    const extension = vscode.extensions.getExtension('jiapeiyao.tab-group');
+    const firstGroup: Group = {
+      type: TreeItemType.Group,
+      id: 'first-group',
+      colorId: 'charts.green',
+      label: 'First group',
+      children: [{ type: TreeItemType.Tab, groupId: 'first-group', id: 'first-group-tab' }],
+      collapsed: false,
+    };
+    const secondGroup: Group = {
+      type: TreeItemType.Group,
+      id: 'second-group',
+      colorId: 'charts.blue',
+      label: 'Second group',
+      children: [{ type: TreeItemType.Tab, groupId: 'second-group', id: 'second-group-tab' }],
+      collapsed: false,
+    };
+    const treeDataProvider = new TreeDataProvider();
+
+    assert.ok(extension, 'The Tab Group extension should be available to the extension host.');
+    await extension.activate();
+
+    treeDataProvider.setState([firstGroup, secondGroup]);
+    assert.equal(getContext(ContextKeys.NextRootSortAscending), true);
+    assert.equal(treeDataProvider.getTreeItem(firstGroup).contextValue, 'group-sort-ascending');
+    assert.equal(treeDataProvider.getTreeItem(secondGroup).contextValue, 'group-sort-ascending');
+
+    treeDataProvider.sortTabs('ascending', firstGroup);
+    assert.equal(getContext(ContextKeys.NextRootSortAscending), true);
+    assert.equal(treeDataProvider.getTreeItem(firstGroup).contextValue, 'group-sort-descending');
+    assert.equal(treeDataProvider.getTreeItem(secondGroup).contextValue, 'group-sort-ascending');
+
+    treeDataProvider.sortTabs('ascending', secondGroup);
+    treeDataProvider.sortTabs('descending', firstGroup);
+    assert.equal(treeDataProvider.getTreeItem(firstGroup).contextValue, 'group-sort-ascending');
+    assert.equal(treeDataProvider.getTreeItem(secondGroup).contextValue, 'group-sort-descending');
+
+    treeDataProvider.sortTabs('ascending');
+    assert.equal(getContext(ContextKeys.NextRootSortAscending), true);
+    assert.equal(treeDataProvider.getTreeItem(firstGroup).contextValue, 'group-sort-descending');
+    assert.equal(treeDataProvider.getTreeItem(secondGroup).contextValue, 'group-sort-descending');
+
+    await vscode.commands.executeCommand('tabsTreeView.sortTabsAscending');
+    assert.equal(getContext(ContextKeys.NextRootSortAscending), false);
+    await vscode.commands.executeCommand('tabsTreeView.sortTabsAscending', firstGroup);
+    assert.equal(getContext(ContextKeys.NextRootSortAscending), false);
+    await vscode.commands.executeCommand('tabsTreeView.sortTabsDescending');
+    assert.equal(getContext(ContextKeys.NextRootSortAscending), true);
+
+    treeDataProvider.dispose();
+  });
+
+  test('refreshes a group sort icon when its tabs are already sorted', async () => {
+    const uri = vscode.Uri.file(join(tmpdir(), `tab-group-sort-noop-${Date.now()}.txt`));
+    const groupId = `tab-group-sort-noop-${Date.now()}`;
+    const group: Group = {
+      type: TreeItemType.Group,
+      id: groupId,
+      colorId: 'charts.green',
+      label: 'Group',
+      children: [{ type: TreeItemType.Tab, groupId, id: uri.toString() }],
+      collapsed: false,
+    };
+    const treeDataProvider = new TreeDataProvider();
+    let refreshes = 0;
+
+    await vscode.workspace.fs.writeFile(uri, Buffer.from(uri.fsPath));
+    await vscode.commands.executeCommand('vscode.open', uri, { preview: false });
+
+    try {
+      treeDataProvider.setState([group]);
+      treeDataProvider.onDidChangeTreeData(() => refreshes++);
+
+      assert.equal(treeDataProvider.sortTabs('ascending', group), false);
+      assert.equal(treeDataProvider.getTreeItem(group).contextValue, 'group-sort-descending');
+      assert.equal(refreshes, 1);
+
+      assert.equal(treeDataProvider.sortTabs('descending', group), false);
+      assert.equal(treeDataProvider.getTreeItem(group).contextValue, 'group-sort-ascending');
+      assert.equal(refreshes, 2);
+    } finally {
+      treeDataProvider.dispose();
+      await closeTabs([uri.toString()]);
+      await vscode.workspace.fs.delete(uri, { useTrash: false });
+    }
   });
 
   test('recognizes notebook editor tabs', async () => {
@@ -236,6 +413,8 @@ suite('Tab Group extension', () => {
 
     const savedTabs = provider.getChildren(savedGroup);
     assert.equal(savedTabs.length, 2);
+    assert.equal(provider.getParent(savedGroup), undefined);
+    assert.equal(provider.getParent(savedTabs[0]), savedGroup);
     const firstSavedTabTreeItem = provider.getTreeItem(savedTabs[0]);
     assert.equal(firstSavedTabTreeItem.contextValue, 'saved-tab');
     assert.equal(firstSavedTabTreeItem.id, 'saved-tab:saved-group:event-publisher-role');
@@ -299,6 +478,125 @@ suite('Tab Group extension', () => {
     assert.deepStrictEqual(group.children, [groupedTab]);
 
     cancellation.dispose();
+    treeDataProvider.dispose();
+  });
+
+  test('sorts root tabs and group children by URI without moving groups', async () => {
+    const prefix = `tab-group-sort-${Date.now()}`;
+    const alphaUri = vscode.Uri.file(join(tmpdir(), `${prefix}-alpha.txt`));
+    const bravoUri = vscode.Uri.file(join(tmpdir(), `${prefix}-bravo.txt`));
+    const deltaUri = vscode.Uri.file(join(tmpdir(), `${prefix}-delta.txt`));
+    const zuluUri = vscode.Uri.file(join(tmpdir(), `${prefix}-zulu.txt`));
+    const rootZuluTab: Tab = { type: TreeItemType.Tab, groupId: null, id: zuluUri.toString() };
+    const rootAlphaTab: Tab = { type: TreeItemType.Tab, groupId: null, id: alphaUri.toString() };
+    const group: Group = {
+      type: TreeItemType.Group,
+      id: `${prefix}-group`,
+      colorId: 'charts.green',
+      label: 'Group',
+      children: [],
+      collapsed: false,
+    };
+    const groupedDeltaTab: Tab = {
+      type: TreeItemType.Tab,
+      groupId: group.id,
+      id: deltaUri.toString(),
+    };
+    const groupedBravoTab: Tab = {
+      type: TreeItemType.Tab,
+      groupId: group.id,
+      id: bravoUri.toString(),
+    };
+    group.children = [groupedDeltaTab, groupedBravoTab];
+    const treeDataProvider = new TreeDataProvider();
+
+    await Promise.all(
+      [alphaUri, bravoUri, deltaUri, zuluUri].map(uri =>
+        vscode.workspace.fs.writeFile(uri, Buffer.from(uri.fsPath)),
+      ),
+    );
+
+    try {
+      for (const uri of [alphaUri, bravoUri, deltaUri, zuluUri]) {
+        await vscode.commands.executeCommand('vscode.open', uri, { preview: false });
+      }
+
+      treeDataProvider.setState([rootZuluTab, group, rootAlphaTab]);
+
+      assert.equal(treeDataProvider.sortTabs('ascending'), true);
+      assert.deepStrictEqual(treeDataProvider.getState(), [rootAlphaTab, group, rootZuluTab]);
+      assert.deepStrictEqual(group.children, [groupedBravoTab, groupedDeltaTab]);
+
+      assert.equal(treeDataProvider.sortTabs('descending'), true);
+      assert.deepStrictEqual(treeDataProvider.getState(), [rootZuluTab, group, rootAlphaTab]);
+      assert.deepStrictEqual(group.children, [groupedDeltaTab, groupedBravoTab]);
+
+      assert.equal(treeDataProvider.sortTabs('ascending', group), true);
+      assert.deepStrictEqual(treeDataProvider.getState(), [rootZuluTab, group, rootAlphaTab]);
+      assert.deepStrictEqual(group.children, [groupedBravoTab, groupedDeltaTab]);
+    } finally {
+      treeDataProvider.dispose();
+      await closeTabs([rootAlphaTab.id, groupedBravoTab.id, groupedDeltaTab.id, rootZuluTab.id]);
+      await Promise.all(
+        [alphaUri, bravoUri, deltaUri, zuluUri].map(uri =>
+          vscode.workspace.fs.delete(uri, { useTrash: false }),
+        ),
+      );
+    }
+  });
+
+  test('sorts root groups by name in both directions without moving root tabs', () => {
+    const firstRootTab: Tab = { type: TreeItemType.Tab, groupId: null, id: 'first-root' };
+    const secondRootTab: Tab = { type: TreeItemType.Tab, groupId: null, id: 'second-root' };
+    const zuluGroup: Group = {
+      type: TreeItemType.Group,
+      id: 'zulu-group',
+      colorId: 'charts.green',
+      label: 'Zulu',
+      children: [],
+      collapsed: false,
+    };
+    const alphaGroup: Group = {
+      type: TreeItemType.Group,
+      id: 'alpha-group',
+      colorId: 'charts.blue',
+      label: 'Alpha',
+      children: [],
+      collapsed: false,
+    };
+    const treeDataProvider = new TreeDataProvider();
+
+    zuluGroup.children = [
+      { type: TreeItemType.Tab, groupId: zuluGroup.id, id: 'zulu-group-child' },
+    ];
+    alphaGroup.children = [
+      { type: TreeItemType.Tab, groupId: alphaGroup.id, id: 'alpha-group-child' },
+    ];
+
+    treeDataProvider.setState([firstRootTab, zuluGroup, secondRootTab, alphaGroup]);
+
+    assert.equal(treeDataProvider.sortTabs('ascending'), true);
+    assert.deepStrictEqual(treeDataProvider.getState(), [
+      firstRootTab,
+      alphaGroup,
+      secondRootTab,
+      zuluGroup,
+    ]);
+    assert.deepStrictEqual(zuluGroup.children, [
+      { type: TreeItemType.Tab, groupId: zuluGroup.id, id: 'zulu-group-child' },
+    ]);
+    assert.deepStrictEqual(alphaGroup.children, [
+      { type: TreeItemType.Tab, groupId: alphaGroup.id, id: 'alpha-group-child' },
+    ]);
+
+    assert.equal(treeDataProvider.sortTabs('descending'), true);
+    assert.deepStrictEqual(treeDataProvider.getState(), [
+      firstRootTab,
+      zuluGroup,
+      secondRootTab,
+      alphaGroup,
+    ]);
+
     treeDataProvider.dispose();
   });
 

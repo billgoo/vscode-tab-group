@@ -16,6 +16,7 @@ import { ContextKeys, setContext } from '../utils/context';
 import { getTabFileDecorationProvider } from '../decorators/TabFileDecorationProvider';
 import { GroupColorId, groupColorOptions } from '../utils/color';
 import { getSavedTabId, getSavedTabLabel } from '../utils/savedTab';
+import { TabSortDirection } from '../utils/tabSort';
 
 type GroupColorQuickPickItem = vscode.QuickPickItem & {
   colorId: GroupColorId;
@@ -39,6 +40,7 @@ export class TabsView extends Disposable {
   private readonly savedGroupsTreeDataProvider: SavedGroupsTreeDataProvider;
   private exclusiveHandle = new ExclusiveHandle();
   private selectedGroup: Group | undefined;
+  private expandedSavedGroupIds = new Set<string>();
 
   constructor(
     private readonly workspaceStateStore: WorkspaceStateStore,
@@ -58,7 +60,9 @@ export class TabsView extends Disposable {
     this.refreshRecentTabs(this.getActiveNativeTab());
 
     setContext(ContextKeys.AllCollapsed, this.treeDataProvider.isAllCollapsed());
+    setContext(ContextKeys.SavedGroupsAllExpanded, false);
     setContext(ContextKeys.SelectedGroup, false);
+    setContext(ContextKeys.NextRootSortAscending, true);
 
     const view = this._register(
       vscode.window.createTreeView('tabsTreeView', {
@@ -74,7 +78,7 @@ export class TabsView extends Disposable {
         canSelectMany: true,
       }),
     );
-    this._register(
+    const savedGroupsView = this._register(
       vscode.window.createTreeView('savedGroupsTreeView', {
         treeDataProvider: this.savedGroupsTreeDataProvider,
       }),
@@ -142,6 +146,18 @@ export class TabsView extends Disposable {
           this.treeDataProvider.setGroupColor(targetGroup, selectedColor.colorId);
         }
       }),
+    );
+
+    this._register(
+      vscode.commands.registerCommand('tabsTreeView.sortTabsAscending', (group?: Group) =>
+        this.sortTabs('ascending', group),
+      ),
+    );
+
+    this._register(
+      vscode.commands.registerCommand('tabsTreeView.sortTabsDescending', (group?: Group) =>
+        this.sortTabs('descending', group),
+      ),
     );
 
     this._register(
@@ -282,6 +298,52 @@ export class TabsView extends Disposable {
     );
 
     this._register(
+      vscode.commands.registerCommand('tabsTreeView.savedGroups.collapseAll', async () => {
+        this.expandedSavedGroupIds.clear();
+        await setContext(ContextKeys.SavedGroupsAllExpanded, false);
+        const savedGroups = this.savedGroupsTreeDataProvider.getChildren();
+        if (savedGroups.length > 0) {
+          await savedGroupsView.reveal(savedGroups[0], { focus: true, select: false });
+        }
+        await vscode.commands.executeCommand('list.collapseAll');
+      }),
+    );
+
+    this._register(
+      vscode.commands.registerCommand('tabsTreeView.savedGroups.expandAll', async () => {
+        this.expandedSavedGroupIds.clear();
+        const savedGroups = this.savedGroupsTreeDataProvider.getChildren();
+        await Promise.all(
+          savedGroups.map(async item => {
+            if ('tabs' in item && item.tabs.length > 0) {
+              await savedGroupsView.reveal(item, { expand: true, select: false });
+              this.expandedSavedGroupIds.add(item.id);
+            }
+          }),
+        );
+        await this.updateSavedGroupsExpansionContext();
+      }),
+    );
+
+    this._register(
+      savedGroupsView.onDidExpandElement(element => {
+        if ('tabs' in element.element) {
+          this.expandedSavedGroupIds.add(element.element.id);
+          void this.updateSavedGroupsExpansionContext();
+        }
+      }),
+    );
+
+    this._register(
+      savedGroupsView.onDidCollapseElement(element => {
+        if ('tabs' in element.element) {
+          this.expandedSavedGroupIds.delete(element.element.id);
+          void this.updateSavedGroupsExpansionContext();
+        }
+      }),
+    );
+
+    this._register(
       view.onDidExpandElement(element => {
         if (isGroup(element.element)) {
           this.treeDataProvider.setCollapsedState(element.element, false);
@@ -303,6 +365,27 @@ export class TabsView extends Disposable {
   }
 
   private __tabsview_construct_end() {}
+
+  private async sortTabs(direction: TabSortDirection, group?: Group): Promise<void> {
+    this.treeDataProvider.sortTabs(direction, group);
+    if (!group) {
+      await setContext(ContextKeys.NextRootSortAscending, direction === 'descending');
+    }
+  }
+
+  private async updateSavedGroupsExpansionContext(): Promise<void> {
+    const savedGroupIds = new Set(this.getSavedGroups().map(savedGroup => savedGroup.id));
+    for (const savedGroupId of this.expandedSavedGroupIds) {
+      if (!savedGroupIds.has(savedGroupId)) {
+        this.expandedSavedGroupIds.delete(savedGroupId);
+      }
+    }
+
+    const allExpanded =
+      savedGroupIds.size > 0 &&
+      [...savedGroupIds].every(savedGroupId => this.expandedSavedGroupIds.has(savedGroupId));
+    await setContext(ContextKeys.SavedGroupsAllExpanded, allExpanded);
+  }
 
   private async saveGroup(group: Group): Promise<void> {
     const tabs: SavedTab[] = [];
@@ -569,6 +652,7 @@ export class TabsView extends Disposable {
     try {
       await this.savedGroupsStore.save(savedGroups);
       this.savedGroupsTreeDataProvider.refresh();
+      void this.updateSavedGroupsExpansionContext();
       void vscode.window.showInformationMessage(successMessage);
     } catch (error) {
       console.error(failureMessage, error);
