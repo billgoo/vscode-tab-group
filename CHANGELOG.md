@@ -1,5 +1,18 @@
 # Change Log
 
+## 3.0.1
+
+- Enhancements:
+  - Add Recent Tabs for ungrouped tabs, with most-recently-activated ordering.
+  - Add notebook and notebook-diff tab support with stable identities.
+  - Add configurable group colors.
+  - Add Saved Groups snapshots with restore, delete, and workspace persistence support.
+  - Add release automation that validates, packages, and attaches VSIX files to GitHub Releases.
+- Fix bugs:
+  - Preserve existing tab and group state while native tabs are opened, closed, or reloaded.
+  - Avoid duplicate tree entries when native tab events repeat an already tracked tab.
+  - Migrate legacy custom-editor and notebook identities without losing existing workspace state.
+
 ## 3.0.0
 
 - Refactors:
