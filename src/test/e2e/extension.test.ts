@@ -689,6 +689,33 @@ suite('Tab Group extension', () => {
     ]);
   });
 
+  test('saves the same live group twice without asking for a snapshot name', async () => {
+    const extension = vscode.extensions.getExtension('jiapeiyao.tab-group');
+    const uri = vscode.Uri.file(join(tmpdir(), `tab-group-save-without-name-${Date.now()}.txt`));
+    const groupId = `tab-group-save-without-name-${Date.now()}`;
+    const group: Group = {
+      type: TreeItemType.Group,
+      id: groupId,
+      colorId: 'charts.green',
+      label: 'Automatically named group',
+      children: [{ type: TreeItemType.Tab, groupId, id: uri.toString() }],
+      collapsed: false,
+    };
+
+    assert.ok(extension, 'The Tab Group extension should be available to the extension host.');
+    await extension.activate();
+    await vscode.workspace.fs.writeFile(uri, Buffer.from('saved group test'));
+    await vscode.commands.executeCommand('vscode.open', uri, { preview: false });
+
+    try {
+      await vscode.commands.executeCommand('tabsTreeView.group.save', group);
+      await vscode.commands.executeCommand('tabsTreeView.group.save', group);
+    } finally {
+      await closeTabs([uri.toString()]);
+      await vscode.workspace.fs.delete(uri, { useTrash: false });
+    }
+  });
+
   test('reopens every saved text tab instead of replacing a previous tab', async () => {
     const prefix = `tab-group-saved-tabs-${Date.now()}`;
     const firstUri = vscode.Uri.file(join(tmpdir(), `${prefix}-first.txt`));

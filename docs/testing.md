@@ -72,7 +72,9 @@ Use `--skip-e2e` only when a local VS Code runtime is unavailable. CI and tag-ba
 
 ### Saved Tab Groups
 
-- Create a group containing at least two text files, then choose **Save Group...** from its context menu and enter a snapshot name.
+- Create a group containing at least two text files, then choose **Save Group...** from its context menu and confirm no name prompt appears.
+- Save an unnamed group and confirm the snapshot uses the live group's ID as its stable identity and displays **untitled**.
+- Rename the live group and confirm its saved snapshot title changes from **untitled** or the previous name to the new group name.
 - Expand the **Saved Groups** panel, which starts collapsed, and confirm the saved snapshot name and tab count appear.
 - Use the single Saved Groups panel toolbar toggle to expand all snapshots and collapse them again.
 - Confirm the Tabs view title bar has no **Restore Saved Group...** action; restore controls appear in the **Saved Groups** panel and the Command Palette.

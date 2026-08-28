@@ -128,7 +128,6 @@ export function isSavedGroupsState(value: unknown): value is SavedGroupsState {
     .filter((sourceGroupId): sourceGroupId is string => sourceGroupId !== undefined);
   return (
     new Set(value.groups.map(group => group.id)).size === value.groups.length &&
-    new Set(value.groups.map(group => group.name)).size === value.groups.length &&
     new Set(sourceGroupIds).size === sourceGroupIds.length
   );
 }
