@@ -26,6 +26,10 @@ Run `npm run package` to compile the extension and create an installable `.vsix`
 
 `.github/workflows/ci.yml` runs lint, unit tests, extension-host tests, and packaging on Ubuntu, macOS, and Windows for pull requests and pushes to `main`. The Ubuntu job uploads the built VSIX as a workflow artifact.
 
+## Dependency Updates
+
+Dependabot is configured in [.github/dependabot.yml](../.github/dependabot.yml) to open weekly grouped updates for npm dependencies and GitHub Actions. A repository administrator must enable **Dependabot version updates** under **Settings** -> **Code security and analysis** for these configured updates to run.
+
 ## Marketplace Release
 
 1. Choose the next semantic version. This repository uses bare version tags such as `2.0.5`.
