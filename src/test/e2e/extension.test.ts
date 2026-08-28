@@ -227,6 +227,13 @@ suite('Tab Group extension', () => {
     assert.ok(
       viewTitleMenus.some(
         menu =>
+          menu.command === 'tabsTreeView.reset' &&
+          menu.when === 'view =~ /^tabsTreeView/ && tabGroup.groups:hasGroups',
+      ),
+    );
+    assert.ok(
+      viewTitleMenus.some(
+        menu =>
           menu.command === 'tabsTreeView.sortTabsAscending' &&
           menu.when ===
             'view =~ /^tabsTreeView/ && !tabGroup.sortMode:enabled && tabGroup.sort:nextRootAscending',

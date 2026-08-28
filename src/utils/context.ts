@@ -7,6 +7,7 @@ export const enum ContextKeys {
   NextRootSortAscending = 'tabGroup.sort:nextRootAscending',
   NextSavedGroupsSortAscending = 'tabGroup.savedGroups.sort:nextAscending',
   AllCollapsed = 'tabGroup.groups:allCollapsed',
+  HasGroups = 'tabGroup.groups:hasGroups',
   SavedGroupsAllExpanded = 'tabGroup.savedGroups:allExpanded',
   SelectedGroup = 'tabGroup.selectedGroup',
 }

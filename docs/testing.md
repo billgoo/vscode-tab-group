@@ -65,7 +65,7 @@ Use `--skip-e2e` only when a local VS Code runtime is unavailable. CI and tag-ba
 - In the Saved Groups panel, use the sort control in both directions and confirm snapshots are ordered by name and the selected direction changes for the next click.
 - Confirm root tabs keep their root positions, group membership is unchanged, tabs in other groups are unchanged, and VS Code's native editor-tab order is unchanged.
 - Use **Collapse All** and **Expand All** when available.
-- Use **Reset All** and confirm that groups are removed while open tabs remain listed at the root.
+- When groups exist, use **Reset All**, confirm the warning, and verify that cancelling leaves the groups unchanged. Confirming removes groups while open tabs remain listed at the root. After all groups are removed, confirm the **Reset All** action is hidden.
 
 ### Persistence And Synchronization
 
