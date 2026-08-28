@@ -301,6 +301,10 @@ export class TabsView extends Disposable {
       vscode.commands.registerCommand('tabsTreeView.savedGroups.collapseAll', async () => {
         this.expandedSavedGroupIds.clear();
         await setContext(ContextKeys.SavedGroupsAllExpanded, false);
+        const savedGroups = this.savedGroupsTreeDataProvider.getChildren();
+        if (savedGroups.length > 0) {
+          await savedGroupsView.reveal(savedGroups[0], { focus: true, select: false });
+        }
         await vscode.commands.executeCommand('list.collapseAll');
       }),
     );
@@ -308,12 +312,15 @@ export class TabsView extends Disposable {
     this._register(
       vscode.commands.registerCommand('tabsTreeView.savedGroups.expandAll', async () => {
         this.expandedSavedGroupIds.clear();
-        for (const item of this.savedGroupsTreeDataProvider.getChildren()) {
-          if ('tabs' in item && item.tabs.length > 0) {
-            this.expandedSavedGroupIds.add(item.id);
-            savedGroupsView.reveal(item, { expand: true });
-          }
-        }
+        const savedGroups = this.savedGroupsTreeDataProvider.getChildren();
+        await Promise.all(
+          savedGroups.map(async item => {
+            if ('tabs' in item && item.tabs.length > 0) {
+              await savedGroupsView.reveal(item, { expand: true, select: false });
+              this.expandedSavedGroupIds.add(item.id);
+            }
+          }),
+        );
         await this.updateSavedGroupsExpansionContext();
       }),
     );

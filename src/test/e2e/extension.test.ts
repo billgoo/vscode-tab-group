@@ -107,6 +107,7 @@ suite('Tab Group extension', () => {
     const viewTitleMenus = extension.packageJSON.contributes.menus['view/title'] as Array<{
       command: string;
       when?: string;
+      group?: string;
     }>;
     assert.ok(
       viewTitleMenus.some(
@@ -128,6 +129,22 @@ suite('Tab Group extension', () => {
           menu.command === 'tabsTreeView.savedGroups.expandAll' &&
           menu.when === 'view == savedGroupsTreeView && !tabGroup.savedGroups:allExpanded',
       ),
+    );
+    assert.equal(
+      viewTitleMenus.find(menu => menu.command === 'tabsTreeView.savedGroups.expandAll')?.group,
+      'navigation@0',
+    );
+    assert.equal(
+      viewTitleMenus.find(menu => menu.command === 'tabsTreeView.savedGroups.collapseAll')?.group,
+      'navigation@0',
+    );
+    assert.equal(
+      viewTitleMenus.find(menu => menu.command === 'tabsTreeView.savedGroups.restoreAll')?.group,
+      'navigation@1',
+    );
+    assert.equal(
+      viewTitleMenus.find(menu => menu.command === 'tabsTreeView.savedGroups.deleteAll')?.group,
+      'navigation@2',
     );
     const itemContextMenus = extension.packageJSON.contributes.menus['view/item/context'] as Array<{
       command: string;
@@ -396,6 +413,8 @@ suite('Tab Group extension', () => {
 
     const savedTabs = provider.getChildren(savedGroup);
     assert.equal(savedTabs.length, 2);
+    assert.equal(provider.getParent(savedGroup), undefined);
+    assert.equal(provider.getParent(savedTabs[0]), savedGroup);
     const firstSavedTabTreeItem = provider.getTreeItem(savedTabs[0]);
     assert.equal(firstSavedTabTreeItem.contextValue, 'saved-tab');
     assert.equal(firstSavedTabTreeItem.id, 'saved-tab:saved-group:event-publisher-role');

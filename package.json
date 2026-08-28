@@ -242,22 +242,22 @@
         {
           "command": "tabsTreeView.savedGroups.restoreAll",
           "when": "view == savedGroupsTreeView",
-          "group": "navigation@0"
+          "group": "navigation@1"
         },
         {
           "command": "tabsTreeView.savedGroups.deleteAll",
           "when": "view == savedGroupsTreeView",
-          "group": "navigation@1"
+          "group": "navigation@2"
         },
         {
           "command": "tabsTreeView.savedGroups.collapseAll",
           "when": "view == savedGroupsTreeView && tabGroup.savedGroups:allExpanded",
-          "group": "navigation@2"
+          "group": "navigation@0"
         },
         {
           "command": "tabsTreeView.savedGroups.expandAll",
           "when": "view == savedGroupsTreeView && !tabGroup.savedGroups:allExpanded",
-          "group": "navigation@2"
+          "group": "navigation@0"
         },
         {
           "command": "tabsTreeView.enableSortMode",
