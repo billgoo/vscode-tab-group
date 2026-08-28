@@ -12,28 +12,39 @@ export function findSavedGroupForSource(
   );
 }
 
+export function getSavedGroupName(label: string): string {
+  const name = label.trim();
+  return name || 'untitled';
+}
+
 export function createSavedGroupSnapshot(
   group: SavedGroupSource,
   tabs: readonly SavedTab[],
-  savedGroups: readonly SavedGroup[],
 ): SavedGroup {
-  const existingGroup = findSavedGroupForSource(savedGroups, group.id);
-  const usedNames = new Set(
-    savedGroups
-      .filter(savedGroup => savedGroup.id !== existingGroup?.id)
-      .map(savedGroup => savedGroup.name),
-  );
-  const label = group.label.trim();
-  const name =
-    existingGroup?.name ?? (label.length > 0 && !usedNames.has(label) ? label : group.id);
-
   return {
     id: group.id,
     sourceGroupId: group.id,
-    name,
+    name: getSavedGroupName(group.label),
     groupLabel: group.label,
     colorId: group.colorId,
     collapsed: group.collapsed,
     tabs: [...tabs],
   };
+}
+
+export function updateSavedGroupSnapshotName(
+  savedGroups: readonly SavedGroup[],
+  sourceGroupId: string,
+  label: string,
+): readonly SavedGroup[] {
+  const savedGroup = findSavedGroupForSource(savedGroups, sourceGroupId);
+  if (!savedGroup) {
+    return savedGroups;
+  }
+
+  return savedGroups.map(candidate =>
+    candidate.id === savedGroup.id
+      ? { ...candidate, name: getSavedGroupName(label), groupLabel: label }
+      : candidate,
+  );
 }

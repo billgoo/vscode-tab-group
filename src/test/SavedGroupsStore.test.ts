@@ -90,6 +90,20 @@ describe('SavedGroupsStore', () => {
     expect(createStore({ version: 1, groups: [legacyGroup] }).load()).toEqual([legacyGroup]);
   });
 
+  test('allows duplicate display names for distinct snapshots', () => {
+    const firstGroup = createSavedGroup();
+    const secondGroup = {
+      ...firstGroup,
+      id: 'other-saved-group',
+      sourceGroupId: 'other-live-group',
+    };
+
+    expect(createStore({ version: 1, groups: [firstGroup, secondGroup] }).load()).toEqual([
+      firstGroup,
+      secondGroup,
+    ]);
+  });
+
   test('saves groups in a versioned state envelope', async () => {
     const update = jest.fn(async () => {});
     const workspaceState = {

@@ -15,7 +15,12 @@ import { ContextKeys, setContext } from '../utils/context';
 import { getTabFileDecorationProvider } from '../decorators/TabFileDecorationProvider';
 import { GroupColorId, groupColorOptions } from '../utils/color';
 import { getSavedTabId, getSavedTabLabel } from '../utils/savedTab';
-import { createSavedGroupSnapshot, findSavedGroupForSource } from '../utils/savedGroup';
+import {
+  createSavedGroupSnapshot,
+  findSavedGroupForSource,
+  getSavedGroupName,
+  updateSavedGroupSnapshotName,
+} from '../utils/savedGroup';
 import { TabSortDirection } from '../utils/tabSort';
 
 type GroupColorQuickPickItem = vscode.QuickPickItem & {
@@ -115,14 +120,17 @@ export class TabsView extends Disposable {
     );
 
     this._register(
-      vscode.commands.registerCommand('tabsTreeView.group.rename', (group: Group) => {
-        vscode.window
-          .showInputBox({ placeHolder: 'Name this Group', value: group.label })
-          .then(input => {
-            if (input) {
-              this.treeDataProvider.renameGroup(group, input);
-            }
-          });
+      vscode.commands.registerCommand('tabsTreeView.group.rename', async (group: Group) => {
+        const input = await vscode.window.showInputBox({
+          placeHolder: 'Name this Group',
+          value: group.label,
+        });
+        if (input === undefined) {
+          return;
+        }
+
+        this.treeDataProvider.renameGroup(group, input.trim());
+        await this.updateSavedGroupName(group);
       }),
     );
 
@@ -408,7 +416,7 @@ export class TabsView extends Disposable {
 
     const savedGroups = this.getSavedGroups();
     const existingGroup = findSavedGroupForSource(savedGroups, group.id);
-    const savedGroup = createSavedGroupSnapshot(group, tabs, savedGroups);
+    const savedGroup = createSavedGroupSnapshot(group, tabs);
     const groupToReplace = existingGroup;
     const nextSavedGroups = groupToReplace
       ? savedGroups.map(candidate => (candidate.id === groupToReplace.id ? savedGroup : candidate))
@@ -419,6 +427,32 @@ export class TabsView extends Disposable {
       `${existingGroup ? 'Updated' : 'Saved'} tab group "${savedGroup.name}".`,
       `Could not save tab group "${savedGroup.name}".`,
     );
+  }
+
+  private async updateSavedGroupName(group: Group): Promise<void> {
+    const savedGroups = this.getSavedGroups();
+    const existingGroup = findSavedGroupForSource(savedGroups, group.id);
+    if (!existingGroup) {
+      return;
+    }
+
+    const nextName = getSavedGroupName(group.label);
+    if (existingGroup.name === nextName && existingGroup.groupLabel === group.label) {
+      return;
+    }
+
+    try {
+      await this.savedGroupsStore.save(
+        updateSavedGroupSnapshotName(savedGroups, group.id, group.label),
+      );
+      this.savedGroupsTreeDataProvider.refresh();
+      void this.updateSavedGroupsExpansionContext();
+    } catch (error) {
+      console.error(`Could not update saved tab group "${existingGroup.name}".`, error);
+      void vscode.window.showErrorMessage(
+        `Could not update saved tab group "${existingGroup.name}".`,
+      );
+    }
   }
 
   private async restoreSavedGroup(selectedSavedGroup?: SavedGroup): Promise<void> {
