@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { Group, Tab, TreeItemType } from '../models/types';
+import { SerialTaskQueue } from '../utils/async';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -66,15 +67,20 @@ export class WorkspaceStateStore {
   private static readonly stateKey = 'tabs.workspace.state.key';
   private static readonly recentTabsStateKey = 'tabs.workspace.recent-tabs.key';
 
-  constructor(private readonly workspaceState: vscode.Memento) {}
+  constructor(
+    private readonly workspaceState: vscode.Memento,
+    private readonly writeQueue = new SerialTaskQueue(),
+  ) {}
 
   load(): Array<Tab | Group> | undefined {
     const value = this.workspaceState.get<unknown>(WorkspaceStateStore.stateKey);
     return isValidState(value) ? value : undefined;
   }
 
-  save(state: Array<Tab | Group>): Thenable<void> {
-    return this.workspaceState.update(WorkspaceStateStore.stateKey, state);
+  save(state: Array<Tab | Group>): Promise<void> {
+    return this.writeQueue.run(() =>
+      this.workspaceState.update(WorkspaceStateStore.stateKey, state),
+    );
   }
 
   loadRecentTabs(): string[] | undefined {
@@ -86,7 +92,9 @@ export class WorkspaceStateStore {
     return value.filter((tabId): tabId is string => typeof tabId === 'string');
   }
 
-  saveRecentTabs(tabIds: readonly string[]): Thenable<void> {
-    return this.workspaceState.update(WorkspaceStateStore.recentTabsStateKey, [...tabIds]);
+  saveRecentTabs(tabIds: readonly string[]): Promise<void> {
+    return this.writeQueue.run(() =>
+      this.workspaceState.update(WorkspaceStateStore.recentTabsStateKey, [...tabIds]),
+    );
   }
 }

@@ -72,6 +72,8 @@ suite('Tab Group extension', () => {
     assert.ok(commands.includes('tabsTreeView.savedGroup.delete'));
     assert.ok(commands.includes('tabsTreeView.savedGroups.restoreAll'));
     assert.ok(commands.includes('tabsTreeView.savedGroups.deleteAll'));
+    assert.ok(commands.includes('tabsTreeView.savedGroups.sortAscending'));
+    assert.ok(commands.includes('tabsTreeView.savedGroups.sortDescending'));
     assert.ok(commands.includes('tabsTreeView.savedGroups.collapseAll'));
     assert.ok(commands.includes('tabsTreeView.savedGroups.expandAll'));
     assert.ok(commands.includes('tabsTreeView.enableSortMode'));
@@ -89,6 +91,18 @@ suite('Tab Group extension', () => {
     assert.equal(
       contributedCommands.find(command => command.command === 'tabsTreeView.sortTabsDescending')
         ?.icon,
+      '$(arrow-down)',
+    );
+    assert.equal(
+      contributedCommands.find(
+        command => command.command === 'tabsTreeView.savedGroups.sortAscending',
+      )?.icon,
+      '$(arrow-up)',
+    );
+    assert.equal(
+      contributedCommands.find(
+        command => command.command === 'tabsTreeView.savedGroups.sortDescending',
+      )?.icon,
       '$(arrow-down)',
     );
 
@@ -140,11 +154,29 @@ suite('Tab Group extension', () => {
     );
     assert.equal(
       viewTitleMenus.find(menu => menu.command === 'tabsTreeView.savedGroups.restoreAll')?.group,
-      'navigation@1',
+      'navigation@2',
     );
     assert.equal(
       viewTitleMenus.find(menu => menu.command === 'tabsTreeView.savedGroups.deleteAll')?.group,
-      'navigation@2',
+      'navigation@3',
+    );
+    assert.ok(
+      viewTitleMenus.some(
+        menu =>
+          menu.command === 'tabsTreeView.savedGroups.sortAscending' &&
+          menu.when === 'view == savedGroupsTreeView && tabGroup.savedGroups.sort:nextAscending',
+      ),
+    );
+    assert.ok(
+      viewTitleMenus.some(
+        menu =>
+          menu.command === 'tabsTreeView.savedGroups.sortDescending' &&
+          menu.when === 'view == savedGroupsTreeView && !tabGroup.savedGroups.sort:nextAscending',
+      ),
+    );
+    assert.equal(
+      viewTitleMenus.find(menu => menu.command === 'tabsTreeView.savedGroups.sortAscending')?.group,
+      'navigation@1',
     );
     const itemContextMenus = extension.packageJSON.contributes.menus['view/item/context'] as Array<{
       command: string;
@@ -596,6 +628,44 @@ suite('Tab Group extension', () => {
       secondRootTab,
       alphaGroup,
     ]);
+
+    treeDataProvider.dispose();
+  });
+
+  test('sorts unnamed groups by their visible color label', () => {
+    const yellowGroup: Group = {
+      type: TreeItemType.Group,
+      id: 'yellow-group',
+      colorId: 'charts.yellow',
+      label: 'b',
+      children: [{ type: TreeItemType.Tab, groupId: 'yellow-group', id: 'yellow-tab' }],
+      collapsed: false,
+    };
+    const greenGroup: Group = {
+      type: TreeItemType.Group,
+      id: 'green-group',
+      colorId: 'charts.green',
+      label: 'aa',
+      children: [{ type: TreeItemType.Tab, groupId: 'green-group', id: 'green-tab' }],
+      collapsed: false,
+    };
+    const blueGroup: Group = {
+      type: TreeItemType.Group,
+      id: 'blue-group',
+      colorId: 'charts.blue',
+      label: '',
+      children: [{ type: TreeItemType.Tab, groupId: 'blue-group', id: 'blue-tab' }],
+      collapsed: false,
+    };
+    const treeDataProvider = new TreeDataProvider();
+
+    treeDataProvider.setState([yellowGroup, greenGroup, blueGroup]);
+
+    assert.equal(treeDataProvider.sortTabs('ascending'), true);
+    assert.deepStrictEqual(treeDataProvider.getState(), [greenGroup, yellowGroup, blueGroup]);
+
+    assert.equal(treeDataProvider.sortTabs('descending'), true);
+    assert.deepStrictEqual(treeDataProvider.getState(), [blueGroup, yellowGroup, greenGroup]);
 
     treeDataProvider.dispose();
   });

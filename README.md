@@ -11,6 +11,7 @@ Organize editor tabs into persistent, named groups from the Tab Group activity-b
 - Drag tabs to the view background to ungroup them.
 - Use Sort Mode to reorder tabs and groups without changing group membership.
 - Sort root tabs by file URI, root groups by name, and each group's tabs by file URI.
+- Sort saved groups by name from the Saved Groups panel.
 - Rename, close, ungroup, or dissolve a group from its context menu.
 - Collapse and expand all live groups, or toggle all saved snapshots in the Saved Groups panel.
 - Preserve group membership, order, names, colors, and collapsed state in workspace state.
@@ -29,7 +30,7 @@ Dropping an item onto another inserts it immediately before the target. In Sort 
 
 ![Saved Groups panel](docs/assets/saved-groups.gif)
 
-Use **Save Group...** from a group context menu to create or update a snapshot without entering a name. The snapshot uses the live group's ID as its stable identity and its group label as the display name, showing **untitled** when the group has no name. Renaming a live group automatically updates the title of its saved snapshot. Saving the same live group again updates its existing snapshot. Expand the **Saved Groups** panel to see snapshots and their tab counts, then expand a snapshot to inspect its saved files. Duplicate file names show the shortest distinguishing parent path. Use the panel toolbar's single toggle to expand or collapse all snapshots, restore all snapshots, or delete all snapshots. Use a snapshot's folder action to restore it or its trash action to remove it from saved workspace storage. **Restore Saved Group...** is also available from the Command Palette.
+Use **Save Group...** from a group context menu to create or update a snapshot without entering a name. The snapshot uses the live group's ID as its stable identity and its group label as the display name, showing **untitled** when the group has no name. Renaming a live group automatically updates the title of its saved snapshot. Saving the same live group again updates its existing snapshot. Expand the **Saved Groups** panel to see snapshots and their tab counts, then expand a snapshot to inspect its saved files. Duplicate file names show the shortest distinguishing parent path. Use the panel toolbar to sort snapshots by name, expand or collapse all snapshots, restore all snapshots, or delete all snapshots. Saved snapshot order is persisted, and when snapshots share a tab, **Restore All Saved Groups** gives that tab to the first snapshot shown in the panel. Use a snapshot's folder action to restore it or its trash action to remove it from saved workspace storage. **Restore Saved Group...** is also available from the Command Palette.
 
 ## Tab support
 

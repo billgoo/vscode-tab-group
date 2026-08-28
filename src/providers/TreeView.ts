@@ -16,12 +16,14 @@ import { getTabFileDecorationProvider } from '../decorators/TabFileDecorationPro
 import { GroupColorId, groupColorOptions } from '../utils/color';
 import { getSavedTabId, getSavedTabLabel } from '../utils/savedTab';
 import {
-  createSavedGroupSnapshot,
   findSavedGroupForSource,
   getSavedGroupName,
+  sortSavedGroups as sortSavedGroupSnapshots,
+  upsertSavedGroupSnapshot,
   updateSavedGroupSnapshotName,
 } from '../utils/savedGroup';
 import { TabSortDirection } from '../utils/tabSort';
+import { collapseAllTreeItems, expandAllTreeItems, focusTreeItem } from '../utils/treePanel';
 
 type GroupColorQuickPickItem = vscode.QuickPickItem & {
   colorId: GroupColorId;
@@ -66,6 +68,7 @@ export class TabsView extends Disposable {
 
     setContext(ContextKeys.AllCollapsed, this.treeDataProvider.isAllCollapsed());
     setContext(ContextKeys.SavedGroupsAllExpanded, false);
+    setContext(ContextKeys.NextSavedGroupsSortAscending, true);
     setContext(ContextKeys.SelectedGroup, false);
     setContext(ContextKeys.NextRootSortAscending, true);
 
@@ -202,6 +205,18 @@ export class TabsView extends Disposable {
     );
 
     this._register(
+      vscode.commands.registerCommand('tabsTreeView.savedGroups.sortAscending', () =>
+        this.sortSavedGroups('ascending'),
+      ),
+    );
+
+    this._register(
+      vscode.commands.registerCommand('tabsTreeView.savedGroups.sortDescending', () =>
+        this.sortSavedGroups('descending'),
+      ),
+    );
+
+    this._register(
       vscode.commands.registerCommand('tabsTreeView.group.cancelGroup', (group: Group) =>
         this.treeDataProvider.cancelGroup(group),
       ),
@@ -290,18 +305,26 @@ export class TabsView extends Disposable {
     );
 
     this._register(
-      vscode.commands.registerCommand('tabsTreeView.collapseAll', () =>
-        vscode.commands.executeCommand('list.collapseAll'),
-      ),
+      vscode.commands.registerCommand('tabsTreeView.collapseAll', async () => {
+        const firstExpandableGroup = this.treeDataProvider
+          .getState()
+          .find(item => isGroup(item) && item.children.length > 0);
+        await collapseAllTreeItems(
+          view,
+          () => vscode.commands.executeCommand('list.collapseAll'),
+          firstExpandableGroup,
+        );
+      }),
     );
 
     this._register(
-      vscode.commands.registerCommand('tabsTreeView.expandAll', () => {
-        for (const item of this.treeDataProvider.getState()) {
-          if (isGroup(item) && item.children.length > 0) {
-            view.reveal(item, { expand: true });
-          }
+      vscode.commands.registerCommand('tabsTreeView.expandAll', async () => {
+        const state = this.treeDataProvider.getState();
+        const firstExpandableGroup = state.find(item => isGroup(item) && item.children.length > 0);
+        if (firstExpandableGroup) {
+          await focusTreeItem(view, firstExpandableGroup);
         }
+        await expandAllTreeItems(view, state, item => isGroup(item) && item.children.length > 0);
       }),
     );
 
@@ -310,10 +333,12 @@ export class TabsView extends Disposable {
         this.expandedSavedGroupIds.clear();
         await setContext(ContextKeys.SavedGroupsAllExpanded, false);
         const savedGroups = this.savedGroupsTreeDataProvider.getChildren();
-        if (savedGroups.length > 0) {
-          await savedGroupsView.reveal(savedGroups[0], { focus: true, select: false });
-        }
-        await vscode.commands.executeCommand('list.collapseAll');
+        const firstSavedGroup = savedGroups.find(item => 'tabs' in item && item.tabs.length > 0);
+        await collapseAllTreeItems(
+          savedGroupsView,
+          () => vscode.commands.executeCommand('list.collapseAll'),
+          firstSavedGroup,
+        );
       }),
     );
 
@@ -321,13 +346,20 @@ export class TabsView extends Disposable {
       vscode.commands.registerCommand('tabsTreeView.savedGroups.expandAll', async () => {
         this.expandedSavedGroupIds.clear();
         const savedGroups = this.savedGroupsTreeDataProvider.getChildren();
-        await Promise.all(
-          savedGroups.map(async item => {
-            if ('tabs' in item && item.tabs.length > 0) {
-              await savedGroupsView.reveal(item, { expand: true, select: false });
+        const firstSavedGroup = savedGroups.find(item => 'tabs' in item && item.tabs.length > 0);
+        if (firstSavedGroup) {
+          await focusTreeItem(savedGroupsView, firstSavedGroup);
+        }
+        await expandAllTreeItems(
+          savedGroupsView,
+          savedGroups,
+          item => 'tabs' in item && item.tabs.length > 0,
+          { select: false },
+          item => {
+            if ('tabs' in item) {
               this.expandedSavedGroupIds.add(item.id);
             }
-          }),
+          },
         );
         await this.updateSavedGroupsExpansionContext();
       }),
@@ -381,6 +413,29 @@ export class TabsView extends Disposable {
     }
   }
 
+  private async sortSavedGroups(direction: TabSortDirection): Promise<void> {
+    const savedGroups = this.getSavedGroups();
+    const sortedSavedGroups = sortSavedGroupSnapshots(savedGroups, direction);
+    const changed = sortedSavedGroups.some(
+      (savedGroup, index) => savedGroup !== savedGroups[index],
+    );
+
+    if (!changed) {
+      await setContext(ContextKeys.NextSavedGroupsSortAscending, direction === 'descending');
+      return;
+    }
+
+    const saved = await this.persistSavedGroups(
+      sortedSavedGroups,
+      'Could not sort saved tab groups.',
+    );
+    if (!saved) {
+      return;
+    }
+
+    await setContext(ContextKeys.NextSavedGroupsSortAscending, direction === 'descending');
+  }
+
   private async updateSavedGroupsExpansionContext(): Promise<void> {
     const savedGroupIds = new Set(this.getSavedGroups().map(savedGroup => savedGroup.id));
     for (const savedGroupId of this.expandedSavedGroupIds) {
@@ -415,16 +470,15 @@ export class TabsView extends Disposable {
     }
 
     const savedGroups = this.getSavedGroups();
-    const existingGroup = findSavedGroupForSource(savedGroups, group.id);
-    const savedGroup = createSavedGroupSnapshot(group, tabs);
-    const groupToReplace = existingGroup;
-    const nextSavedGroups = groupToReplace
-      ? savedGroups.map(candidate => (candidate.id === groupToReplace.id ? savedGroup : candidate))
-      : [...savedGroups, savedGroup];
+    const {
+      savedGroup,
+      savedGroups: nextSavedGroups,
+      updated,
+    } = upsertSavedGroupSnapshot(savedGroups, group, tabs);
 
     await this.saveSavedGroups(
       nextSavedGroups,
-      `${existingGroup ? 'Updated' : 'Saved'} tab group "${savedGroup.name}".`,
+      `${updated ? 'Updated' : 'Saved'} tab group "${savedGroup.name}".`,
       `Could not save tab group "${savedGroup.name}".`,
     );
   }
@@ -441,17 +495,12 @@ export class TabsView extends Disposable {
       return;
     }
 
-    try {
-      await this.savedGroupsStore.save(
-        updateSavedGroupSnapshotName(savedGroups, group.id, group.label),
-      );
-      this.savedGroupsTreeDataProvider.refresh();
-      void this.updateSavedGroupsExpansionContext();
-    } catch (error) {
-      console.error(`Could not update saved tab group "${existingGroup.name}".`, error);
-      void vscode.window.showErrorMessage(
-        `Could not update saved tab group "${existingGroup.name}".`,
-      );
+    const saved = await this.persistSavedGroups(
+      updateSavedGroupSnapshotName(savedGroups, group.id, group.label),
+      `Could not update saved tab group "${existingGroup.name}".`,
+    );
+    if (!saved) {
+      return;
     }
   }
 
@@ -650,15 +699,27 @@ export class TabsView extends Disposable {
     successMessage: string,
     failureMessage: string,
   ): Promise<void> {
-    try {
-      await this.savedGroupsStore.save(savedGroups);
-      this.savedGroupsTreeDataProvider.refresh();
-      void this.updateSavedGroupsExpansionContext();
-      void vscode.window.showInformationMessage(successMessage);
-    } catch (error) {
-      console.error(failureMessage, error);
-      void vscode.window.showErrorMessage(failureMessage);
+    const saved = await this.persistSavedGroups(savedGroups, failureMessage);
+    if (!saved) {
+      return;
     }
+
+    void vscode.window.showInformationMessage(successMessage);
+  }
+
+  private async persistSavedGroups(
+    savedGroups: readonly SavedGroup[],
+    failureMessage: string,
+  ): Promise<boolean> {
+    const snapshot = [...savedGroups];
+    const saved = await this.persist(() => this.savedGroupsStore.save(snapshot), failureMessage);
+    if (!saved) {
+      return false;
+    }
+
+    this.savedGroupsTreeDataProvider.refresh();
+    void this.updateSavedGroupsExpansionContext();
+    return true;
   }
 
   private findNativeTab(tabId: string): vscode.Tab | undefined {
@@ -719,13 +780,34 @@ export class TabsView extends Disposable {
   }
 
   private saveState(state: Array<Tab | Group>): void {
-    void this.workspaceStateStore.save(state);
+    const snapshot = state.map(item =>
+      isGroup(item) ? { ...item, children: item.children.map(tab => ({ ...tab })) } : { ...item },
+    );
+    void this.persist(
+      () => this.workspaceStateStore.save(snapshot),
+      'Could not save tab group state.',
+    );
   }
 
   private saveRecentTabs(): void {
-    void this.workspaceStateStore
-      .saveRecentTabs(this.recentTabs.getState())
-      .then(undefined, error => console.error('Failed to save recent tabs', error));
+    const snapshot = this.recentTabs.getState();
+    void this.persist(
+      () => this.workspaceStateStore.saveRecentTabs(snapshot),
+      'Could not save recent tabs.',
+    );
+  }
+
+  private persist(task: () => PromiseLike<void>, failureMessage: string): Promise<boolean> {
+    return Promise.resolve()
+      .then(task)
+      .then(
+        () => true,
+        error => {
+          console.error(failureMessage, error);
+          void vscode.window.showErrorMessage(failureMessage);
+          return false;
+        },
+      );
   }
 
   private refreshRecentTabs(activeTab: vscode.Tab | undefined): void {

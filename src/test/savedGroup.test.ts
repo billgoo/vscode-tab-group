@@ -1,7 +1,12 @@
 import { describe, expect, test } from '@jest/globals';
 import { SavedGroup } from '../models/SavedGroup';
 import { Group, TreeItemType } from '../models/types';
-import { createSavedGroupSnapshot, updateSavedGroupSnapshotName } from '../utils/savedGroup';
+import {
+  createSavedGroupSnapshot,
+  sortSavedGroups,
+  updateSavedGroupSnapshotName,
+  upsertSavedGroupSnapshot,
+} from '../utils/savedGroup';
 
 function createGroup(overrides: Partial<Group> = {}): Group {
   return {
@@ -34,6 +39,53 @@ describe('saved group snapshots', () => {
 
   test('uses untitled for an unnamed group', () => {
     expect(createSavedGroupSnapshot(createGroup({ label: '   ' }), tabs).name).toBe('untitled');
+  });
+
+  test('sorts saved groups by display name in both directions', () => {
+    const zuluGroup: SavedGroup = {
+      ...createSavedGroupSnapshot(createGroup({ id: 'zulu', label: 'Zulu' }), tabs),
+    };
+    const alphaGroup: SavedGroup = {
+      ...createSavedGroupSnapshot(createGroup({ id: 'alpha', label: 'alpha' }), tabs),
+    };
+    const bravoGroup: SavedGroup = {
+      ...createSavedGroupSnapshot(createGroup({ id: 'bravo', label: 'Bravo' }), tabs),
+    };
+
+    expect(
+      sortSavedGroups([zuluGroup, alphaGroup, bravoGroup], 'ascending').map(group => group.id),
+    ).toEqual(['alpha', 'bravo', 'zulu']);
+    expect(
+      sortSavedGroups([zuluGroup, alphaGroup, bravoGroup], 'descending').map(group => group.id),
+    ).toEqual(['zulu', 'bravo', 'alpha']);
+  });
+
+  test('updates an existing snapshot for the same live group', () => {
+    const existingGroup: SavedGroup = {
+      id: 'legacy-snapshot',
+      sourceGroupId: 'live-group',
+      name: 'Old name',
+      groupLabel: 'Old label',
+      colorId: 'charts.blue',
+      collapsed: true,
+      tabs,
+    };
+
+    const snapshotUpdate = upsertSavedGroupSnapshot(
+      [existingGroup],
+      createGroup({ label: 'Updated label' }),
+      tabs,
+    );
+
+    expect(snapshotUpdate).toMatchObject({
+      savedGroup: {
+        id: 'live-group',
+        sourceGroupId: 'live-group',
+        name: 'Updated label',
+      },
+      updated: true,
+    });
+    expect(snapshotUpdate.savedGroups).toEqual([snapshotUpdate.savedGroup]);
   });
 
   test('updates a saved snapshot title from the live group name', () => {
