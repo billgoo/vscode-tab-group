@@ -27,11 +27,11 @@ jobs:
     name: Build tagged release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           ref: ${{ env.RELEASE_TAG }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: npm
@@ -47,7 +47,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "${tag_commit}"
           test "${RELEASE_TAG#v}" = "${package_version}"
       - run: npm run package
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: tab-group-${{ env.RELEASE_TAG }}-vsix
           path: '*.vsix'
@@ -61,7 +61,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: tab-group-${{ env.RELEASE_TAG }}-vsix
           path: release
@@ -85,15 +85,15 @@ jobs:
       name: marketplace-publish
       url: https://marketplace.visualstudio.com/items?itemName=jiapeiyao.tab-group
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ env.RELEASE_TAG }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: npm
       - run: npm ci --ignore-scripts
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: tab-group-${{ env.RELEASE_TAG }}-vsix
           path: release
