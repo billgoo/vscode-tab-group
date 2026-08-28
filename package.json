@@ -110,6 +110,16 @@
         "icon": "$(arrow-down)"
       },
       {
+        "command": "tabsTreeView.group.sortTabsAscending",
+        "title": "Sort Group: A to Z",
+        "icon": "$(arrow-up)"
+      },
+      {
+        "command": "tabsTreeView.group.sortTabsDescending",
+        "title": "Sort Group: Z to A",
+        "icon": "$(arrow-down)"
+      },
+      {
         "command": "tabsTreeView.group.save",
         "title": "Save Group...",
         "icon": "$(save)"
@@ -223,12 +233,12 @@
           "group": "inline@1"
         },
         {
-          "command": "tabsTreeView.sortTabsAscending",
+          "command": "tabsTreeView.group.sortTabsAscending",
           "when": "view == tabsTreeView && viewItem == 'group-sort-ascending'",
           "group": "inline@2"
         },
         {
-          "command": "tabsTreeView.sortTabsDescending",
+          "command": "tabsTreeView.group.sortTabsDescending",
           "when": "view == tabsTreeView && viewItem == 'group-sort-descending'",
           "group": "inline@2"
         },

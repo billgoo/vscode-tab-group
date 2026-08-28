@@ -164,15 +164,31 @@ export class TabsView extends Disposable {
     );
 
     this._register(
-      vscode.commands.registerCommand('tabsTreeView.sortTabsAscending', (target?: TreeElement) =>
-        this.sortTabs('ascending', target),
+      vscode.commands.registerCommand('tabsTreeView.sortTabsAscending', () =>
+        this.sortTabs('ascending'),
       ),
     );
 
     this._register(
-      vscode.commands.registerCommand('tabsTreeView.sortTabsDescending', (target?: TreeElement) =>
-        this.sortTabs('descending', target),
+      vscode.commands.registerCommand('tabsTreeView.sortTabsDescending', () =>
+        this.sortTabs('descending'),
       ),
+    );
+
+    this._register(
+      vscode.commands.registerCommand('tabsTreeView.group.sortTabsAscending', (group?: Group) => {
+        if (group) {
+          return this.sortTabs('ascending', group);
+        }
+      }),
+    );
+
+    this._register(
+      vscode.commands.registerCommand('tabsTreeView.group.sortTabsDescending', (group?: Group) => {
+        if (group) {
+          return this.sortTabs('descending', group);
+        }
+      }),
     );
 
     this._register(

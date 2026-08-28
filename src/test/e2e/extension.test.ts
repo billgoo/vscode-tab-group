@@ -67,6 +67,8 @@ suite('Tab Group extension', () => {
     assert.ok(commands.includes('tabsTreeView.group.changeColor'));
     assert.ok(commands.includes('tabsTreeView.sortTabsAscending'));
     assert.ok(commands.includes('tabsTreeView.sortTabsDescending'));
+    assert.ok(commands.includes('tabsTreeView.group.sortTabsAscending'));
+    assert.ok(commands.includes('tabsTreeView.group.sortTabsDescending'));
     assert.ok(commands.includes('tabsTreeView.group.save'));
     assert.ok(commands.includes('tabsTreeView.savedGroup.restore'));
     assert.ok(commands.includes('tabsTreeView.savedGroup.delete'));
@@ -204,14 +206,14 @@ suite('Tab Group extension', () => {
     assert.ok(
       itemContextMenus.some(
         menu =>
-          menu.command === 'tabsTreeView.sortTabsAscending' &&
+          menu.command === 'tabsTreeView.group.sortTabsAscending' &&
           menu.when === "view == tabsTreeView && viewItem == 'group-sort-ascending'",
       ),
     );
     assert.ok(
       itemContextMenus.some(
         menu =>
-          menu.command === 'tabsTreeView.sortTabsDescending' &&
+          menu.command === 'tabsTreeView.group.sortTabsDescending' &&
           menu.when === "view == tabsTreeView && viewItem == 'group-sort-descending'",
       ),
     );
@@ -448,11 +450,13 @@ suite('Tab Group extension', () => {
     assert.equal(treeDataProvider.getTreeItem(firstGroup).contextValue, 'group-sort-descending');
     assert.equal(treeDataProvider.getTreeItem(secondGroup).contextValue, 'group-sort-descending');
 
-    await vscode.commands.executeCommand('tabsTreeView.sortTabsAscending');
-    assert.equal(getContext(ContextKeys.NextRootSortAscending), false);
+    await vscode.commands.executeCommand('tabsTreeView.sortTabsDescending');
+    assert.equal(getContext(ContextKeys.NextRootSortAscending), true);
     await vscode.commands.executeCommand('tabsTreeView.sortTabsAscending', firstGroup);
     assert.equal(getContext(ContextKeys.NextRootSortAscending), false);
-    await vscode.commands.executeCommand('tabsTreeView.sortTabsDescending');
+    await vscode.commands.executeCommand('tabsTreeView.group.sortTabsAscending', firstGroup);
+    assert.equal(getContext(ContextKeys.NextRootSortAscending), false);
+    await vscode.commands.executeCommand('tabsTreeView.sortTabsDescending', firstGroup);
     assert.equal(getContext(ContextKeys.NextRootSortAscending), true);
 
     const folder: Folder = {
