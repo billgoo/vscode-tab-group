@@ -72,6 +72,7 @@ export class TabsView extends Disposable {
     setContext(ContextKeys.ViewMode, initialViewMode);
     setContext(ContextKeys.AllCollapsed, this.treeDataProvider.isAllCollapsed());
     setContext(ContextKeys.HasGroups, initialState.some(isGroup));
+    setContext(ContextKeys.HasSavedGroups, this.getSavedGroups().length > 0);
     setContext(ContextKeys.SavedGroupsAllExpanded, false);
     setContext(ContextKeys.NextSavedGroupsSortAscending, true);
     setContext(ContextKeys.SelectedGroup, false);
@@ -783,6 +784,7 @@ export class TabsView extends Disposable {
       return false;
     }
 
+    void setContext(ContextKeys.HasSavedGroups, snapshot.length > 0);
     this.savedGroupsTreeDataProvider.refresh();
     void this.updateSavedGroupsExpansionContext();
     return true;

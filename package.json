@@ -271,7 +271,7 @@
       "view/title": [
         {
           "command": "tabsTreeView.savedGroups.deleteAll",
-          "when": "view == savedGroupsTreeView",
+          "when": "view == savedGroupsTreeView && tabGroup.savedGroups:hasGroups",
           "group": "navigation@3"
         },
         {
