@@ -425,16 +425,14 @@ export class TabsView extends Disposable {
       return;
     }
 
-    const saved = await this.persist(
-      () => this.savedGroupsStore.save(sortedSavedGroups),
+    const saved = await this.persistSavedGroups(
+      sortedSavedGroups,
       'Could not sort saved tab groups.',
     );
     if (!saved) {
       return;
     }
 
-    this.savedGroupsTreeDataProvider.refresh();
-    void this.updateSavedGroupsExpansionContext();
     await setContext(ContextKeys.NextSavedGroupsSortAscending, direction === 'descending');
   }
 
@@ -497,19 +495,13 @@ export class TabsView extends Disposable {
       return;
     }
 
-    const saved = await this.persist(
-      () =>
-        this.savedGroupsStore.save(
-          updateSavedGroupSnapshotName(savedGroups, group.id, group.label),
-        ),
+    const saved = await this.persistSavedGroups(
+      updateSavedGroupSnapshotName(savedGroups, group.id, group.label),
       `Could not update saved tab group "${existingGroup.name}".`,
     );
     if (!saved) {
       return;
     }
-
-    this.savedGroupsTreeDataProvider.refresh();
-    void this.updateSavedGroupsExpansionContext();
   }
 
   private async restoreSavedGroup(selectedSavedGroup?: SavedGroup): Promise<void> {
@@ -707,15 +699,27 @@ export class TabsView extends Disposable {
     successMessage: string,
     failureMessage: string,
   ): Promise<void> {
-    const snapshot = [...savedGroups];
-    const saved = await this.persist(() => this.savedGroupsStore.save(snapshot), failureMessage);
+    const saved = await this.persistSavedGroups(savedGroups, failureMessage);
     if (!saved) {
       return;
     }
 
+    void vscode.window.showInformationMessage(successMessage);
+  }
+
+  private async persistSavedGroups(
+    savedGroups: readonly SavedGroup[],
+    failureMessage: string,
+  ): Promise<boolean> {
+    const snapshot = [...savedGroups];
+    const saved = await this.persist(() => this.savedGroupsStore.save(snapshot), failureMessage);
+    if (!saved) {
+      return false;
+    }
+
     this.savedGroupsTreeDataProvider.refresh();
     void this.updateSavedGroupsExpansionContext();
-    void vscode.window.showInformationMessage(successMessage);
+    return true;
   }
 
   private findNativeTab(tabId: string): vscode.Tab | undefined {
