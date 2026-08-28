@@ -164,14 +164,14 @@ export class TabsView extends Disposable {
     );
 
     this._register(
-      vscode.commands.registerCommand('tabsTreeView.sortTabsAscending', (group?: Group) =>
-        this.sortTabs('ascending', group),
+      vscode.commands.registerCommand('tabsTreeView.sortTabsAscending', (target?: TreeElement) =>
+        this.sortTabs('ascending', target),
       ),
     );
 
     this._register(
-      vscode.commands.registerCommand('tabsTreeView.sortTabsDescending', (group?: Group) =>
-        this.sortTabs('descending', group),
+      vscode.commands.registerCommand('tabsTreeView.sortTabsDescending', (target?: TreeElement) =>
+        this.sortTabs('descending', target),
       ),
     );
 
@@ -422,7 +422,8 @@ export class TabsView extends Disposable {
     );
   }
 
-  private async sortTabs(direction: TabSortDirection, group?: Group): Promise<void> {
+  private async sortTabs(direction: TabSortDirection, target?: TreeElement): Promise<void> {
+    const group = target && isGroup(target) ? target : undefined;
     this.treeDataProvider.sortTabs(direction, group);
     if (!group) {
       await setContext(ContextKeys.NextRootSortAscending, direction === 'descending');

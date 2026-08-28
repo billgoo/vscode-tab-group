@@ -455,6 +455,16 @@ suite('Tab Group extension', () => {
     await vscode.commands.executeCommand('tabsTreeView.sortTabsDescending');
     assert.equal(getContext(ContextKeys.NextRootSortAscending), true);
 
+    const folder: Folder = {
+      type: TreeItemType.Folder,
+      id: 'folder:root',
+      label: 'root',
+      groupId: null,
+      children: [],
+    };
+    await vscode.commands.executeCommand('tabsTreeView.sortTabsAscending', folder);
+    assert.equal(getContext(ContextKeys.NextRootSortAscending), false);
+
     treeDataProvider.dispose();
   });
 
