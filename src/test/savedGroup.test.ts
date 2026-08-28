@@ -1,7 +1,11 @@
 import { describe, expect, test } from '@jest/globals';
 import { SavedGroup } from '../models/SavedGroup';
 import { Group, TreeItemType } from '../models/types';
-import { createSavedGroupSnapshot, updateSavedGroupSnapshotName } from '../utils/savedGroup';
+import {
+  createSavedGroupSnapshot,
+  updateSavedGroupSnapshotName,
+  upsertSavedGroupSnapshot,
+} from '../utils/savedGroup';
 
 function createGroup(overrides: Partial<Group> = {}): Group {
   return {
@@ -34,6 +38,34 @@ describe('saved group snapshots', () => {
 
   test('uses untitled for an unnamed group', () => {
     expect(createSavedGroupSnapshot(createGroup({ label: '   ' }), tabs).name).toBe('untitled');
+  });
+
+  test('updates an existing snapshot for the same live group', () => {
+    const existingGroup: SavedGroup = {
+      id: 'legacy-snapshot',
+      sourceGroupId: 'live-group',
+      name: 'Old name',
+      groupLabel: 'Old label',
+      colorId: 'charts.blue',
+      collapsed: true,
+      tabs,
+    };
+
+    const snapshotUpdate = upsertSavedGroupSnapshot(
+      [existingGroup],
+      createGroup({ label: 'Updated label' }),
+      tabs,
+    );
+
+    expect(snapshotUpdate).toMatchObject({
+      savedGroup: {
+        id: 'live-group',
+        sourceGroupId: 'live-group',
+        name: 'Updated label',
+      },
+      updated: true,
+    });
+    expect(snapshotUpdate.savedGroups).toEqual([snapshotUpdate.savedGroup]);
   });
 
   test('updates a saved snapshot title from the live group name', () => {

@@ -16,12 +16,13 @@ import { getTabFileDecorationProvider } from '../decorators/TabFileDecorationPro
 import { GroupColorId, groupColorOptions } from '../utils/color';
 import { getSavedTabId, getSavedTabLabel } from '../utils/savedTab';
 import {
-  createSavedGroupSnapshot,
   findSavedGroupForSource,
   getSavedGroupName,
+  upsertSavedGroupSnapshot,
   updateSavedGroupSnapshotName,
 } from '../utils/savedGroup';
 import { TabSortDirection } from '../utils/tabSort';
+import { collapseAllTreeItems, expandAllTreeItems } from '../utils/treePanel';
 
 type GroupColorQuickPickItem = vscode.QuickPickItem & {
   colorId: GroupColorId;
@@ -291,18 +292,18 @@ export class TabsView extends Disposable {
 
     this._register(
       vscode.commands.registerCommand('tabsTreeView.collapseAll', () =>
-        vscode.commands.executeCommand('list.collapseAll'),
+        collapseAllTreeItems(view, () => vscode.commands.executeCommand('list.collapseAll')),
       ),
     );
 
     this._register(
-      vscode.commands.registerCommand('tabsTreeView.expandAll', () => {
-        for (const item of this.treeDataProvider.getState()) {
-          if (isGroup(item) && item.children.length > 0) {
-            view.reveal(item, { expand: true });
-          }
-        }
-      }),
+      vscode.commands.registerCommand('tabsTreeView.expandAll', () =>
+        expandAllTreeItems(
+          view,
+          this.treeDataProvider.getState(),
+          item => isGroup(item) && item.children.length > 0,
+        ),
+      ),
     );
 
     this._register(
@@ -310,10 +311,11 @@ export class TabsView extends Disposable {
         this.expandedSavedGroupIds.clear();
         await setContext(ContextKeys.SavedGroupsAllExpanded, false);
         const savedGroups = this.savedGroupsTreeDataProvider.getChildren();
-        if (savedGroups.length > 0) {
-          await savedGroupsView.reveal(savedGroups[0], { focus: true, select: false });
-        }
-        await vscode.commands.executeCommand('list.collapseAll');
+        await collapseAllTreeItems(
+          savedGroupsView,
+          () => vscode.commands.executeCommand('list.collapseAll'),
+          savedGroups[0],
+        );
       }),
     );
 
@@ -321,13 +323,16 @@ export class TabsView extends Disposable {
       vscode.commands.registerCommand('tabsTreeView.savedGroups.expandAll', async () => {
         this.expandedSavedGroupIds.clear();
         const savedGroups = this.savedGroupsTreeDataProvider.getChildren();
-        await Promise.all(
-          savedGroups.map(async item => {
-            if ('tabs' in item && item.tabs.length > 0) {
-              await savedGroupsView.reveal(item, { expand: true, select: false });
+        await expandAllTreeItems(
+          savedGroupsView,
+          savedGroups,
+          item => 'tabs' in item && item.tabs.length > 0,
+          { select: false },
+          item => {
+            if ('tabs' in item) {
               this.expandedSavedGroupIds.add(item.id);
             }
-          }),
+          },
         );
         await this.updateSavedGroupsExpansionContext();
       }),
@@ -415,16 +420,15 @@ export class TabsView extends Disposable {
     }
 
     const savedGroups = this.getSavedGroups();
-    const existingGroup = findSavedGroupForSource(savedGroups, group.id);
-    const savedGroup = createSavedGroupSnapshot(group, tabs);
-    const groupToReplace = existingGroup;
-    const nextSavedGroups = groupToReplace
-      ? savedGroups.map(candidate => (candidate.id === groupToReplace.id ? savedGroup : candidate))
-      : [...savedGroups, savedGroup];
+    const {
+      savedGroup,
+      savedGroups: nextSavedGroups,
+      updated,
+    } = upsertSavedGroupSnapshot(savedGroups, group, tabs);
 
     await this.saveSavedGroups(
       nextSavedGroups,
-      `${existingGroup ? 'Updated' : 'Saved'} tab group "${savedGroup.name}".`,
+      `${updated ? 'Updated' : 'Saved'} tab group "${savedGroup.name}".`,
       `Could not save tab group "${savedGroup.name}".`,
     );
   }

@@ -1,4 +1,5 @@
 import { Tab } from '../models/types';
+import { sortItems } from '../utils/treePanel';
 
 export class RecentTabs {
   private tabIds: string[] = [];
@@ -45,7 +46,7 @@ export class RecentTabs {
 
   public sort(tabs: readonly Tab[]): Tab[] {
     const tabIndex = new Map(this.tabIds.map((tabId, index) => [tabId, index]));
-    return tabs.slice().sort((leftTab, rightTab) => {
+    return sortItems(tabs, (leftTab, rightTab) => {
       const leftIndex = tabIndex.get(leftTab.id) ?? this.tabIds.length;
       const rightIndex = tabIndex.get(rightTab.id) ?? this.tabIds.length;
       return leftIndex - rightIndex;

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Group, Slot, TreeItemType, Tab, isGroup, isSlot, isTab } from '../models/types';
 import { safeRemove } from '../utils/Arrays';
 import { GroupColorId, getNextColorId } from '../utils/color';
+import { sortItemsInPlace } from '../utils/treePanel';
 
 export class TreeState {
   private root: Array<Tab | Group> = [];
@@ -257,13 +258,7 @@ export class TreeState {
   }
 
   private sortList<T>(items: T[], compare: (leftItem: T, rightItem: T) => number): boolean {
-    const sortedItems = items.slice().sort(compare);
-    if (sortedItems.every((item, index) => item === items[index])) {
-      return false;
-    }
-
-    items.splice(0, items.length, ...sortedItems);
-    return true;
+    return sortItemsInPlace(items, compare);
   }
 
   public moveTo(target: Tab | Group, draggeds: Array<Tab | Group>) {

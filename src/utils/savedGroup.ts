@@ -3,6 +3,12 @@ import { SavedGroup, SavedTab } from '../models/SavedGroup';
 
 type SavedGroupSource = Pick<Group, 'id' | 'label' | 'colorId' | 'collapsed'>;
 
+export type SavedGroupSnapshotUpsert = {
+  readonly savedGroups: readonly SavedGroup[];
+  readonly savedGroup: SavedGroup;
+  readonly updated: boolean;
+};
+
 export function findSavedGroupForSource(
   savedGroups: readonly SavedGroup[],
   sourceGroupId: string,
@@ -29,6 +35,22 @@ export function createSavedGroupSnapshot(
     colorId: group.colorId,
     collapsed: group.collapsed,
     tabs: [...tabs],
+  };
+}
+
+export function upsertSavedGroupSnapshot(
+  savedGroups: readonly SavedGroup[],
+  group: SavedGroupSource,
+  tabs: readonly SavedTab[],
+): SavedGroupSnapshotUpsert {
+  const existingGroup = findSavedGroupForSource(savedGroups, group.id);
+  const savedGroup = createSavedGroupSnapshot(group, tabs);
+  return {
+    savedGroups: existingGroup
+      ? savedGroups.map(candidate => (candidate.id === existingGroup.id ? savedGroup : candidate))
+      : [...savedGroups, savedGroup],
+    savedGroup,
+    updated: existingGroup !== undefined,
   };
 }
 
