@@ -3,6 +3,7 @@ import { SavedGroup } from '../models/SavedGroup';
 import { Group, TreeItemType } from '../models/types';
 import {
   createSavedGroupSnapshot,
+  sortSavedGroups,
   updateSavedGroupSnapshotName,
   upsertSavedGroupSnapshot,
 } from '../utils/savedGroup';
@@ -38,6 +39,25 @@ describe('saved group snapshots', () => {
 
   test('uses untitled for an unnamed group', () => {
     expect(createSavedGroupSnapshot(createGroup({ label: '   ' }), tabs).name).toBe('untitled');
+  });
+
+  test('sorts saved groups by display name in both directions', () => {
+    const zuluGroup: SavedGroup = {
+      ...createSavedGroupSnapshot(createGroup({ id: 'zulu', label: 'Zulu' }), tabs),
+    };
+    const alphaGroup: SavedGroup = {
+      ...createSavedGroupSnapshot(createGroup({ id: 'alpha', label: 'alpha' }), tabs),
+    };
+    const bravoGroup: SavedGroup = {
+      ...createSavedGroupSnapshot(createGroup({ id: 'bravo', label: 'Bravo' }), tabs),
+    };
+
+    expect(
+      sortSavedGroups([zuluGroup, alphaGroup, bravoGroup], 'ascending').map(group => group.id),
+    ).toEqual(['alpha', 'bravo', 'zulu']);
+    expect(
+      sortSavedGroups([zuluGroup, alphaGroup, bravoGroup], 'descending').map(group => group.id),
+    ).toEqual(['zulu', 'bravo', 'alpha']);
   });
 
   test('updates an existing snapshot for the same live group', () => {

@@ -361,7 +361,11 @@ export class TreeDataProvider
     const groupsChanged =
       !group &&
       this.treeState.sortGroups((leftGroup, rightGroup) =>
-        compareSortStrings(leftGroup.label, rightGroup.label, direction),
+        compareSortStrings(
+          this.getGroupSortLabel(leftGroup),
+          this.getGroupSortLabel(rightGroup),
+          direction,
+        ),
       );
     if (changed || groupsChanged) {
       this.triggerStateChange();
@@ -426,6 +430,10 @@ export class TreeDataProvider
       sortKeys.set(tab.id, handler.getSortKey(nativeTab));
     }
     return sortKeys;
+  }
+
+  private getGroupSortLabel(group: Group): string {
+    return group.label.trim() || getGroupColorOption(group.colorId)?.label || '';
   }
 
   private getGroupContextValue(group: Group): string {

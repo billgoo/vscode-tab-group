@@ -1,5 +1,6 @@
 import { Group } from '../models/types';
 import { SavedGroup, SavedTab } from '../models/SavedGroup';
+import { compareSortStrings, TabSortDirection } from './tabSort';
 
 type SavedGroupSource = Pick<Group, 'id' | 'label' | 'colorId' | 'collapsed'>;
 
@@ -21,6 +22,17 @@ export function findSavedGroupForSource(
 export function getSavedGroupName(label: string): string {
   const name = label.trim();
   return name || 'untitled';
+}
+
+export function sortSavedGroups(
+  savedGroups: readonly SavedGroup[],
+  direction: TabSortDirection,
+): SavedGroup[] {
+  return [...savedGroups].sort(
+    (leftGroup, rightGroup) =>
+      compareSortStrings(leftGroup.name, rightGroup.name, direction) ||
+      compareSortStrings(leftGroup.id, rightGroup.id, direction),
+  );
 }
 
 export function createSavedGroupSnapshot(

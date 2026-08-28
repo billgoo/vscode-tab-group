@@ -2,6 +2,7 @@ import { describe, expect, jest, test } from '@jest/globals';
 import {
   collapseAllTreeItems,
   expandAllTreeItems,
+  focusTreeItem,
   sortItems,
   sortItemsInPlace,
   TreePanelView,
@@ -77,5 +78,14 @@ describe('tree panel helpers', () => {
     expect(reveal.mock.invocationCallOrder[0]).toBeLessThan(
       collapseAll.mock.invocationCallOrder[0],
     );
+  });
+
+  test('focuses a tree panel item before expanding the panel', async () => {
+    const item: Item = { id: 'saved-group', expandable: true };
+    const { reveal, treeView } = createTreeView();
+
+    await focusTreeItem(treeView, item);
+
+    expect(reveal).toHaveBeenCalledWith(item, { focus: true, select: false });
   });
 });

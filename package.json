@@ -135,6 +135,16 @@
         "icon": "$(trash)"
       },
       {
+        "command": "tabsTreeView.savedGroups.sortAscending",
+        "title": "Sort Saved Groups: A to Z",
+        "icon": "$(arrow-up)"
+      },
+      {
+        "command": "tabsTreeView.savedGroups.sortDescending",
+        "title": "Sort Saved Groups: Z to A",
+        "icon": "$(arrow-down)"
+      },
+      {
         "command": "tabsTreeView.group.cancelGroup",
         "title": "Cancel Group",
         "icon": "$(array)"
@@ -240,14 +250,24 @@
       ],
       "view/title": [
         {
+          "command": "tabsTreeView.savedGroups.deleteAll",
+          "when": "view == savedGroupsTreeView",
+          "group": "navigation@3"
+        },
+        {
           "command": "tabsTreeView.savedGroups.restoreAll",
           "when": "view == savedGroupsTreeView",
+          "group": "navigation@2"
+        },
+        {
+          "command": "tabsTreeView.savedGroups.sortAscending",
+          "when": "view == savedGroupsTreeView && tabGroup.savedGroups.sort:nextAscending",
           "group": "navigation@1"
         },
         {
-          "command": "tabsTreeView.savedGroups.deleteAll",
-          "when": "view == savedGroupsTreeView",
-          "group": "navigation@2"
+          "command": "tabsTreeView.savedGroups.sortDescending",
+          "when": "view == savedGroupsTreeView && !tabGroup.savedGroups.sort:nextAscending",
+          "group": "navigation@1"
         },
         {
           "command": "tabsTreeView.savedGroups.collapseAll",

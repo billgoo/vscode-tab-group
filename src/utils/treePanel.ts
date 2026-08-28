@@ -22,6 +22,10 @@ export function sortItemsInPlace<T>(items: T[], compare: (left: T, right: T) => 
   return true;
 }
 
+export async function focusTreeItem<T>(treeView: TreePanelView<T>, item: T): Promise<void> {
+  await treeView.reveal(item, { focus: true, select: false });
+}
+
 export async function expandAllTreeItems<TElement, TItem extends TElement>(
   treeView: TreePanelView<TElement>,
   items: readonly TItem[],
@@ -43,7 +47,7 @@ export async function collapseAllTreeItems<TElement, TItem extends TElement>(
   focusItem?: TItem,
 ): Promise<void> {
   if (focusItem) {
-    await treeView.reveal(focusItem, { focus: true, select: false });
+    await focusTreeItem(treeView, focusItem);
   }
 
   await collapseAll();

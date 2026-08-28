@@ -59,6 +59,7 @@ Use `--skip-e2e` only when a local VS Code runtime is unavailable. CI and tag-ba
 - Use a group sort control and confirm it sorts only that group's children and changes only that group's next-sort direction.
 - Sort one group, then confirm the view-title sort direction is unchanged and another group retains its own direction.
 - Run a root sort after changing a group direction and confirm every group control resets to the root's next-sort direction.
+- In the Saved Groups panel, use the sort control in both directions and confirm snapshots are ordered by name and the selected direction changes for the next click.
 - Confirm root tabs keep their root positions, group membership is unchanged, tabs in other groups are unchanged, and VS Code's native editor-tab order is unchanged.
 - Use **Collapse All** and **Expand All** when available.
 - Use **Reset All** and confirm that groups are removed while open tabs remain listed at the root.
@@ -89,6 +90,7 @@ Use `--skip-e2e` only when a local VS Code runtime is unavailable. CI and tag-ba
 - Rename or remove one saved file, restore the snapshot, and confirm the available files reopen, a warning appears, and the snapshot remains available.
 - Use the snapshot's trash action in the **Saved Groups** panel, confirm deletion, and verify it no longer appears in the panel or restore picker.
 - Create two non-overlapping snapshots, use **Restore All Saved Groups** from the Saved Groups panel toolbar, and confirm both restore. When snapshots share a tab, confirm the shared tab remains in the first saved group shown in the panel.
+- Sort snapshots in the Saved Groups panel, then use **Restore All Saved Groups** and confirm the sorted first snapshot wins when snapshots share a tab.
 - Include a missing file in a snapshot, use **Restore All Saved Groups**, and confirm the final warning reports the failed saved tab.
 - Use **Delete All Saved Groups** from the panel toolbar, confirm deletion, and verify the panel and restore picker are empty.
 
