@@ -425,15 +425,17 @@ export class TabsView extends Disposable {
       return;
     }
 
-    try {
-      await this.savedGroupsStore.save(sortedSavedGroups);
-      this.savedGroupsTreeDataProvider.refresh();
-      void this.updateSavedGroupsExpansionContext();
-      await setContext(ContextKeys.NextSavedGroupsSortAscending, direction === 'descending');
-    } catch (error) {
-      console.error('Could not sort saved tab groups.', error);
-      void vscode.window.showErrorMessage('Could not sort saved tab groups.');
+    const saved = await this.persist(
+      () => this.savedGroupsStore.save(sortedSavedGroups),
+      'Could not sort saved tab groups.',
+    );
+    if (!saved) {
+      return;
     }
+
+    this.savedGroupsTreeDataProvider.refresh();
+    void this.updateSavedGroupsExpansionContext();
+    await setContext(ContextKeys.NextSavedGroupsSortAscending, direction === 'descending');
   }
 
   private async updateSavedGroupsExpansionContext(): Promise<void> {
@@ -495,18 +497,19 @@ export class TabsView extends Disposable {
       return;
     }
 
-    try {
-      await this.savedGroupsStore.save(
-        updateSavedGroupSnapshotName(savedGroups, group.id, group.label),
-      );
-      this.savedGroupsTreeDataProvider.refresh();
-      void this.updateSavedGroupsExpansionContext();
-    } catch (error) {
-      console.error(`Could not update saved tab group "${existingGroup.name}".`, error);
-      void vscode.window.showErrorMessage(
-        `Could not update saved tab group "${existingGroup.name}".`,
-      );
+    const saved = await this.persist(
+      () =>
+        this.savedGroupsStore.save(
+          updateSavedGroupSnapshotName(savedGroups, group.id, group.label),
+        ),
+      `Could not update saved tab group "${existingGroup.name}".`,
+    );
+    if (!saved) {
+      return;
     }
+
+    this.savedGroupsTreeDataProvider.refresh();
+    void this.updateSavedGroupsExpansionContext();
   }
 
   private async restoreSavedGroup(selectedSavedGroup?: SavedGroup): Promise<void> {
@@ -704,15 +707,15 @@ export class TabsView extends Disposable {
     successMessage: string,
     failureMessage: string,
   ): Promise<void> {
-    try {
-      await this.savedGroupsStore.save(savedGroups);
-      this.savedGroupsTreeDataProvider.refresh();
-      void this.updateSavedGroupsExpansionContext();
-      void vscode.window.showInformationMessage(successMessage);
-    } catch (error) {
-      console.error(failureMessage, error);
-      void vscode.window.showErrorMessage(failureMessage);
+    const snapshot = [...savedGroups];
+    const saved = await this.persist(() => this.savedGroupsStore.save(snapshot), failureMessage);
+    if (!saved) {
+      return;
     }
+
+    this.savedGroupsTreeDataProvider.refresh();
+    void this.updateSavedGroupsExpansionContext();
+    void vscode.window.showInformationMessage(successMessage);
   }
 
   private findNativeTab(tabId: string): vscode.Tab | undefined {
@@ -773,13 +776,34 @@ export class TabsView extends Disposable {
   }
 
   private saveState(state: Array<Tab | Group>): void {
-    void this.workspaceStateStore.save(state);
+    const snapshot = state.map(item =>
+      isGroup(item) ? { ...item, children: item.children.map(tab => ({ ...tab })) } : { ...item },
+    );
+    void this.persist(
+      () => this.workspaceStateStore.save(snapshot),
+      'Could not save tab group state.',
+    );
   }
 
   private saveRecentTabs(): void {
-    void this.workspaceStateStore
-      .saveRecentTabs(this.recentTabs.getState())
-      .then(undefined, error => console.error('Failed to save recent tabs', error));
+    const snapshot = this.recentTabs.getState();
+    void this.persist(
+      () => this.workspaceStateStore.saveRecentTabs(snapshot),
+      'Could not save recent tabs.',
+    );
+  }
+
+  private persist(task: () => PromiseLike<void>, failureMessage: string): Promise<boolean> {
+    return Promise.resolve()
+      .then(task)
+      .then(
+        () => true,
+        error => {
+          console.error(failureMessage, error);
+          void vscode.window.showErrorMessage(failureMessage);
+          return false;
+        },
+      );
   }
 
   private refreshRecentTabs(activeTab: vscode.Tab | undefined): void {
