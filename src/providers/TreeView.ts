@@ -404,8 +404,6 @@ export class TabsView extends Disposable {
     );
   }
 
-  private __tabsview_construct_end() {}
-
   private async sortTabs(direction: TabSortDirection, group?: Group): Promise<void> {
     this.treeDataProvider.sortTabs(direction, group);
     if (!group) {
