@@ -1,5 +1,5 @@
 import { Tab } from '../models/types';
-import { sortItems } from '../utils/treePanel';
+import { sortItems } from '../utils/Arrays';
 
 export class RecentTabs {
   private tabIds: string[] = [];

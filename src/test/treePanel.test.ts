@@ -1,10 +1,9 @@
 import { describe, expect, jest, test } from '@jest/globals';
+import { sortItems, sortItemsInPlace } from '../utils/Arrays';
 import {
   collapseAllTreeItems,
   expandAllTreeItems,
   focusTreeItem,
-  sortItems,
-  sortItemsInPlace,
   TreePanelView,
 } from '../utils/treePanel';
 
