@@ -4,6 +4,7 @@ import {
   collapseAllTreeItems,
   expandAllTreeItems,
   focusTreeItem,
+  TreePanelRevealOptions,
   TreePanelView,
 } from '../utils/treePanel';
 
@@ -13,7 +14,7 @@ type Item = {
 };
 
 function createTreeView() {
-  const reveal = jest.fn(async () => {});
+  const reveal = jest.fn(async (_item: Item, _options?: TreePanelRevealOptions) => {});
   const treeView: TreePanelView<Item> = { reveal };
   return { reveal, treeView };
 }

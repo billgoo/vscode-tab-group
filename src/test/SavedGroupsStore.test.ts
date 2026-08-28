@@ -105,7 +105,7 @@ describe('SavedGroupsStore', () => {
   });
 
   test('saves groups in a versioned state envelope', async () => {
-    const update = jest.fn(async () => {});
+    const update = jest.fn(async (_key: string, _value: unknown) => {});
     const workspaceState = {
       get: jest.fn(),
       update,
