@@ -271,7 +271,7 @@
       "view/title": [
         {
           "command": "tabsTreeView.savedGroups.deleteAll",
-          "when": "view == savedGroupsTreeView",
+          "when": "view == savedGroupsTreeView && tabGroup.savedGroups:hasGroups",
           "group": "navigation@3"
         },
         {
@@ -310,21 +310,6 @@
           "group": "navigation@1"
         },
         {
-          "command": "tabsTreeView.viewAsList",
-          "when": "view == tabsTreeView && tabGroup.viewMode == tree",
-          "group": "navigation@50"
-        },
-        {
-          "command": "tabsTreeView.viewAsTree",
-          "when": "view == tabsTreeView && tabGroup.viewMode == list",
-          "group": "navigation@50"
-        },
-        {
-          "command": "tabsTreeView.group.changeColor",
-          "when": "view =~ /^tabsTreeView/ && tabGroup.selectedGroup",
-          "group": "navigation@3"
-        },
-        {
           "command": "tabsTreeView.sortTabsAscending",
           "when": "view =~ /^tabsTreeView/ && !tabGroup.sortMode:enabled && tabGroup.sort:nextRootAscending",
           "group": "navigation@2"
@@ -333,6 +318,11 @@
           "command": "tabsTreeView.sortTabsDescending",
           "when": "view =~ /^tabsTreeView/ && !tabGroup.sortMode:enabled && !tabGroup.sort:nextRootAscending",
           "group": "navigation@2"
+        },
+        {
+          "command": "tabsTreeView.group.changeColor",
+          "when": "view =~ /^tabsTreeView/ && tabGroup.selectedGroup",
+          "group": "navigation@3"
         },
         {
           "command": "tabsTreeView.collapseAll",
@@ -345,9 +335,19 @@
           "group": "navigation@8"
         },
         {
-          "command": "tabsTreeView.reset",
-          "when": "view =~ /^tabsTreeView/",
+          "command": "tabsTreeView.viewAsList",
+          "when": "view == tabsTreeView && tabGroup.viewMode == tree",
           "group": "navigation@9"
+        },
+        {
+          "command": "tabsTreeView.viewAsTree",
+          "when": "view == tabsTreeView && tabGroup.viewMode == list",
+          "group": "navigation@9"
+        },
+        {
+          "command": "tabsTreeView.reset",
+          "when": "view =~ /^tabsTreeView/ && tabGroup.groups:hasGroups",
+          "group": "navigation@10"
         }
       ],
       "commandPalette": [

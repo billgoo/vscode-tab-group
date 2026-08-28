@@ -221,7 +221,14 @@ suite('Tab Group extension', () => {
       viewTitleMenus.some(
         menu =>
           menu.command === 'tabsTreeView.savedGroups.deleteAll' &&
-          menu.when === 'view == savedGroupsTreeView',
+          menu.when === 'view == savedGroupsTreeView && tabGroup.savedGroups:hasGroups',
+      ),
+    );
+    assert.ok(
+      viewTitleMenus.some(
+        menu =>
+          menu.command === 'tabsTreeView.reset' &&
+          menu.when === 'view =~ /^tabsTreeView/ && tabGroup.groups:hasGroups',
       ),
     );
     assert.ok(

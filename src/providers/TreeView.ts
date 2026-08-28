@@ -71,6 +71,8 @@ export class TabsView extends Disposable {
     setContext(ContextKeys.SortMode, false);
     setContext(ContextKeys.ViewMode, initialViewMode);
     setContext(ContextKeys.AllCollapsed, this.treeDataProvider.isAllCollapsed());
+    setContext(ContextKeys.HasGroups, initialState.some(isGroup));
+    setContext(ContextKeys.HasSavedGroups, this.getSavedGroups().length > 0);
     setContext(ContextKeys.SavedGroupsAllExpanded, false);
     setContext(ContextKeys.NextSavedGroupsSortAscending, true);
     setContext(ContextKeys.SelectedGroup, false);
@@ -249,7 +251,20 @@ export class TabsView extends Disposable {
     );
 
     this._register(
-      vscode.commands.registerCommand('tabsTreeView.reset', () => {
+      vscode.commands.registerCommand('tabsTreeView.reset', async () => {
+        if (!this.treeDataProvider.getState().some(isGroup)) {
+          return;
+        }
+
+        const choice = await vscode.window.showWarningMessage(
+          'Reset all live tab groups? This removes group membership and custom ordering. Open tabs and saved groups will remain.',
+          { modal: true },
+          'Reset All',
+        );
+        if (choice !== 'Reset All') {
+          return;
+        }
+
         this.selectedGroup = undefined;
         setContext(ContextKeys.SelectedGroup, false);
         const initialState = this.mergeState([], this.getNativeTabs());
@@ -769,6 +784,7 @@ export class TabsView extends Disposable {
       return false;
     }
 
+    void setContext(ContextKeys.HasSavedGroups, snapshot.length > 0);
     this.savedGroupsTreeDataProvider.refresh();
     void this.updateSavedGroupsExpansionContext();
     return true;
@@ -835,6 +851,7 @@ export class TabsView extends Disposable {
     const snapshot = state.map(item =>
       isGroup(item) ? { ...item, children: item.children.map(tab => ({ ...tab })) } : { ...item },
     );
+    void setContext(ContextKeys.HasGroups, snapshot.some(isGroup));
     void this.persist(
       () => this.workspaceStateStore.save(snapshot),
       'Could not save tab group state.',
