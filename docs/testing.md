@@ -18,13 +18,13 @@ npm run test:e2e
 npm run package
 ```
 
-| Command             | Coverage                                                                                                                                                                                                                                    |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run lint`      | TypeScript style and static analysis.                                                                                                                                                                                                       |
-| `npm run test:unit` | Grouping, ungrouping, lifecycle, and pure utility behavior.                                                                                                                                                                                 |
-| `npm run compile`   | Strict TypeScript compilation.                                                                                                                                                                                                              |
-| `npm run test:e2e`  | Extension-host smoke test for activation, List/Tree view switching, derived root and grouped folder trees, Recent Tabs, Saved Groups, root URI sorting across root and grouped tabs, group-name sorting, independent group URI sort controls, supported tab-input normalization, and opaque-input rejection. |
-| `npm run package`   | Production VSIX build and package contents.                                                                                                                                                                                                 |
+| Command             | Coverage                                                                                                                                                                                                                                                                                                                                             |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run lint`      | TypeScript style and static analysis.                                                                                                                                                                                                                                                                                                                |
+| `npm run test:unit` | Grouping, ungrouping, lifecycle, and pure utility behavior.                                                                                                                                                                                                                                                                                          |
+| `npm run compile`   | Strict TypeScript compilation.                                                                                                                                                                                                                                                                                                                       |
+| `npm run test:e2e`  | Extension-host smoke test for activation, List/Tree view switching, derived root and grouped folder trees, Recent Tabs, Saved Groups, root URI sorting across root and grouped tabs, group-name sorting, independent group URI sort controls, input-less system-tab listing and mixed snapshot filtering, plus webview and terminal-input rejection. |
+| `npm run package`   | Production VSIX build and package contents.                                                                                                                                                                                                                                                                                                          |
 
 On macOS, `test:e2e` uses the installed VS Code application when available. Set `VSCODE_TEST_EXECUTABLE` to an executable path on another platform, or set `VSCODE_TEST_DOWNLOAD=true` to use a downloaded runtime. On headless Linux, run the command through `xvfb-run -a npm run test:e2e`.
 
@@ -89,7 +89,7 @@ Use `--skip-e2e` only when a local VS Code runtime is unavailable. CI and tag-ba
 - Remove one tab from the same live group, save it again, and confirm the existing snapshot updates its tab count instead of creating a second snapshot.
 - Close both native editor tabs and confirm the live group disappears from the Tabs view.
 - Use the snapshot's folder action and confirm both files reopen in a group with the saved label, color, order, and collapsed state.
-- Add another tab to that live group, restore the snapshot again, and confirm the extra tab returns to the root list while the restored group matches the snapshot exactly.
+- Add another restorable tab to that live group, restore the snapshot again, and confirm the extra tab returns to the root list while the restored group matches the snapshot.
 - Restore the snapshot when one of its files is already open and confirm the file is reused instead of duplicated.
 - Run **Developer: Reload Window** and confirm the snapshot remains available in the restore picker.
 - Rename or remove one saved file, restore the snapshot, and confirm the available files reopen, a warning appears, and the snapshot remains available.
@@ -113,7 +113,11 @@ Use `--skip-e2e` only when a local VS Code runtime is unavailable. CI and tag-ba
 ### Supported Tab Inputs
 
 - Confirm text editors, text diffs, custom editors, notebooks, and notebook diffs can be listed, grouped, selected, reopened from the Tab Group view, and restored from a saved group when their provider is available.
-- Confirm terminal and webview panel tabs are omitted because the public VS Code API does not expose a stable per-instance identity and reopen operation for them.
+- Open Settings, Keyboard Shortcuts, and an extension detail page. Confirm each appears in the Tabs tree and can be grouped or closed while it remains open.
+- Create a group containing a text editor and an input-less system editor tab, save it, and confirm the snapshot retains the text editor while reporting the skipped live-only tab.
+- Restore that snapshot while the live group still contains the system editor tab, and confirm the system tab remains in the restored group while added restorable tabs return to the root list.
+- Create a group containing only input-less system editor tabs and confirm saving reports that it contains no restorable tabs.
+- Confirm terminal and webview panel tabs, plus unknown inputs without a stable current-session identity, are omitted.
 
 ### Packaged Extension
 

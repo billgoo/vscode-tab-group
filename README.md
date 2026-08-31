@@ -19,7 +19,7 @@ Organize editor tabs into persistent, named groups from the Tab Group activity-b
 - Preserve group membership, order, names, colors, and collapsed state in workspace state.
 - Save named group snapshots, shown in a collapsed Saved Groups panel, and restore their supported tabs after they are closed.
 - Show an unsaved-file decoration for text editors.
-- Track text, text-diff, custom-editor, notebook, and notebook-diff tabs with stable IDs.
+- Track text, text-diff, custom-editor, notebook, notebook-diff, and input-less system editor tabs.
 - Show ungrouped tabs in a Recent Tabs view ordered by most recently viewed.
 
 ## Usage
@@ -40,9 +40,11 @@ Use **Save Group...** from a group context menu to create or update a snapshot w
 
 ## Tab support
 
-Tab Group supports the current public VS Code tab inputs that provide both a stable identity and a public reopen command: text editors, text diffs, custom editors, notebooks, and notebook diffs. Saved tab groups restore the same supported input types.
+Tab Group supports text editors, text diffs, custom editors, notebooks, and notebook diffs with stable IDs. Saved tab groups restore the same resource-backed input types.
 
-Terminal and webview panel tabs are intentionally omitted. The public `TabInputTerminal` input has no identity fields, while `TabInputWebview` exposes only its view type. VS Code provides no public operation to match or reopen those individual instances, so adding them would merge unrelated tabs or break after a reload. Unknown and future tab inputs are skipped for the same reason.
+System editor tabs that VS Code exposes without a public input, including Settings, Keyboard Shortcuts, and extension detail pages, appear in the Tabs tree. They can be grouped and closed while open. VS Code does not expose a public operation to activate or reopen an individual system-editor instance, so these tabs are not included in Saved Groups. When saving a mixed group, Tab Group saves its restorable tabs and reports any skipped live-only tabs; a group containing only live-only tabs cannot be saved. Restoring into the existing live group preserves any currently open live-only system tabs while replacing its saved-tab members.
+
+Terminal and webview panel tabs remain omitted. `TabInputTerminal` has no public identity fields, while `TabInputWebview` exposes only a view type rather than an individual instance identity. Unknown and future tab inputs are also skipped when a stable current-session identity cannot be derived.
 
 ## Development
 

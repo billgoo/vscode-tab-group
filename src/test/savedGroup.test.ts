@@ -3,6 +3,7 @@ import { SavedGroup } from '../models/SavedGroup';
 import { Group, TreeItemType } from '../models/types';
 import {
   createSavedGroupSnapshot,
+  filterRestorableTabs,
   sortSavedGroups,
   updateSavedGroupSnapshotName,
   upsertSavedGroupSnapshot,
@@ -23,6 +24,16 @@ function createGroup(overrides: Partial<Group> = {}): Group {
 const tabs = [{ kind: 'text', id: 'file-id', uri: 'file:///workspace/file.ts' }] as const;
 
 describe('saved group snapshots', () => {
+  test('omits live-only tabs that cannot be restored', () => {
+    const secondTab = {
+      kind: 'text' as const,
+      id: 'second-file-id',
+      uri: 'file:///workspace/second-file.ts',
+    };
+
+    expect(filterRestorableTabs([tabs[0], undefined, secondTab])).toEqual([tabs[0], secondTab]);
+  });
+
   test('uses the live group ID and label without requiring a snapshot name', () => {
     const snapshot = createSavedGroupSnapshot(createGroup(), tabs);
 

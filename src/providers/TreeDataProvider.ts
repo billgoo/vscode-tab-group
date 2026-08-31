@@ -17,7 +17,7 @@ import {
   ViewMode,
 } from '../models/types';
 import { TreeState } from '../services/TreeState';
-import { getHandler, getNormalizedTabId } from './TabTypeHandler';
+import { getHandler, getNormalizedTabId, matchesTabId } from './TabTypeHandler';
 import { GroupColorId, getGroupColorOption } from '../utils/color';
 import { findLongestCommonFilePathPrefixIndex } from '../utils/fileTree';
 import {
@@ -30,10 +30,7 @@ import { createFileTree, FileTreeItem } from '../utils/fileTree';
 
 export function getNativeTabs(tab: Tab): vscode.Tab[] {
   const currentNativeTabs = vscode.window.tabGroups.all.flatMap(tabGroup => tabGroup.tabs);
-  return currentNativeTabs.filter(nativeTab => {
-    const handler = getHandler(nativeTab);
-    return tab.id === handler?.getNormalizedId(nativeTab);
-  });
+  return currentNativeTabs.filter(nativeTab => matchesTabId(nativeTab, tab.id));
 }
 
 export const TabDropMimeType = 'application/vnd.code.tree.tabstreeview';
@@ -393,8 +390,9 @@ export class TreeDataProvider
     tabs: Tab[],
     group: Pick<Group, 'colorId' | 'label' | 'collapsed'>,
     sourceGroupId?: string,
+    retainedTabIds: readonly string[] = [],
   ): Group | undefined {
-    const restoredGroup = this.treeState.restoreGroup(tabs, group, sourceGroupId);
+    const restoredGroup = this.treeState.restoreGroup(tabs, group, sourceGroupId, retainedTabIds);
     if (restoredGroup) {
       this.triggerStateChange();
     }

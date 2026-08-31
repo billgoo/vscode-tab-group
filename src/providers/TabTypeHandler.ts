@@ -63,8 +63,8 @@ function getUriSortKey(uri: vscode.Uri, id: string): TabSortKey {
 }
 
 /**
- * This class is a default for logic safety.
- * Unknown-typed tab won't be added to the tree data, because we cannot find the way to find a unique id which can bind tree data and actual tab.
+ * This class is a default for logic safety and system tabs without a public input.
+ * Unknown-typed tabs remain excluded when a stable identity cannot be derived.
  */
 export class UnknownInputTypeHandler implements TabTypeHandler<unknown> {
   name = 'unknownInputType';
@@ -107,6 +107,10 @@ export function getHandler(
     if (handler.is(tab)) {
       return handler;
     }
+  }
+
+  if (tab.input === undefined) {
+    return unknownInputTypeHandler;
   }
 
   return useDefault ? unknownInputTypeHandler : undefined;

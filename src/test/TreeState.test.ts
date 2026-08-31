@@ -351,4 +351,30 @@ describe('TreeState saved group restoration', () => {
     expect(extraTab.groupId).toBeNull();
     expect(treeState.getState()).toEqual([firstRestore, extraTab]);
   });
+
+  test('retains explicitly live-only tabs when restoring an existing group', () => {
+    const firstTab = createTab('first');
+    const secondTab = createTab('second');
+    const systemTab = createTab('Settings');
+    const treeState = new TreeState();
+    treeState.setState([firstTab, secondTab, systemTab]);
+    const savedGroup = {
+      colorId: 'charts.green',
+      label: 'Saved group',
+      collapsed: false,
+    };
+
+    const firstRestore = treeState.restoreGroup([firstTab, secondTab], savedGroup, 'source-group');
+    treeState.group(firstRestore!, [systemTab]);
+    const secondRestore = treeState.restoreGroup(
+      [secondTab, firstTab],
+      savedGroup,
+      'source-group',
+      [systemTab.id],
+    );
+
+    expect(secondRestore?.children).toEqual([systemTab, secondTab, firstTab]);
+    expect(systemTab.groupId).toBe('source-group');
+    expect(treeState.getState()).toEqual([firstRestore]);
+  });
 });

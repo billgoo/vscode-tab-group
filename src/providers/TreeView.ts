@@ -17,6 +17,7 @@ import { GroupColorId, groupColorOptions } from '../utils/color';
 import { getSavedTabId, getSavedTabLabel } from '../utils/savedTab';
 import {
   findSavedGroupForSource,
+  filterRestorableTabs,
   getSavedGroupName,
   sortSavedGroups as sortSavedGroupSnapshots,
   upsertSavedGroupSnapshot,
@@ -509,23 +510,36 @@ export class TabsView extends Disposable {
   }
 
   private async saveGroup(group: Group): Promise<void> {
-    const tabs: SavedTab[] = [];
+    const nativeTabs: vscode.Tab[] = [];
     for (const tab of group.children) {
       const nativeTab = getNativeTabs(tab)[0];
-      const savedTab = nativeTab && toSavedTab(nativeTab);
-      if (!savedTab) {
+      if (!nativeTab) {
         void vscode.window.showWarningMessage(
           'Cannot save this group because one or more tabs are no longer open.',
         );
         return;
       }
-      tabs.push(savedTab);
+      nativeTabs.push(nativeTab);
     }
 
-    if (tabs.length === 0) {
+    if (nativeTabs.length === 0) {
       void vscode.window.showWarningMessage('Cannot save an empty group.');
       return;
     }
+
+    const tabs = filterRestorableTabs(nativeTabs.map(toSavedTab));
+    if (tabs.length === 0) {
+      void vscode.window.showWarningMessage(
+        'Cannot save this group because it contains no restorable tabs.',
+      );
+      return;
+    }
+
+    const skippedTabCount = nativeTabs.length - tabs.length;
+    const skippedTabsMessage =
+      skippedTabCount === 0
+        ? ''
+        : ` Skipped ${skippedTabCount} tab${skippedTabCount === 1 ? '' : 's'} that cannot be restored.`;
 
     const savedGroups = this.getSavedGroups();
     const {
@@ -536,7 +550,7 @@ export class TabsView extends Disposable {
 
     await this.saveSavedGroups(
       nextSavedGroups,
-      `${updated ? 'Updated' : 'Saved'} tab group "${savedGroup.name}".`,
+      `${updated ? 'Updated' : 'Saved'} tab group "${savedGroup.name}".${skippedTabsMessage}`,
       `Could not save tab group "${savedGroup.name}".`,
     );
   }
@@ -602,6 +616,13 @@ export class TabsView extends Disposable {
       }
     }
 
+    const sourceGroup = savedGroup.sourceGroupId
+      ? this.treeDataProvider.getGroup(savedGroup.sourceGroupId)
+      : undefined;
+    const retainedTabIds =
+      sourceGroup?.children.flatMap(tab =>
+        getNativeTabs(tab).some(nativeTab => toSavedTab(nativeTab) === undefined) ? [tab.id] : [],
+      ) ?? [];
     const restoredGroup = this.treeDataProvider.restoreGroup(
       tabs,
       {
@@ -610,6 +631,7 @@ export class TabsView extends Disposable {
         collapsed: savedGroup.collapsed,
       },
       savedGroup.sourceGroupId,
+      retainedTabIds,
     );
     if (!restoredGroup) {
       return { restoredTabIds: [], failedTabs };

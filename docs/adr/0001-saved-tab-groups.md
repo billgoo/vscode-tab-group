@@ -17,7 +17,7 @@ Persist named Saved Tab Groups as versioned snapshots in `ExtensionContext.works
 - Keep snapshots separate from the live Tabs and Recent Tabs state.
 - Store typed, full-resource reopen descriptors for supported text, text-diff, custom-editor, notebook, and notebook-diff tabs.
 - Give each live group at most one snapshot, using the live group's stable ID as the snapshot ID. Derive the display name from the group label, using `untitled` when the label is empty. Saving that group again updates the snapshot in place without prompting for a name, and renaming the live group updates the snapshot title automatically.
-- Restore an exact snapshot: reuse matching open tabs, reopen missing tabs, restore saved metadata and order, and return live-only tabs to the root list.
+- Restore saved tabs by reusing matching open tabs, reopening missing tabs, and restoring saved metadata and order. When restoring into an existing live group, retain currently open live-only system tabs because snapshots cannot represent or reopen them.
 - Show snapshots in a collapsed Saved Groups panel. Users can inspect saved files, restore or delete one snapshot, and restore or delete all snapshots.
 - Use stable tree item IDs so Saved Groups expansion and selection survive refreshes.
 - Reject writes when persisted saved-group data has an unsupported version or invalid shape. Do not overwrite data that this version cannot understand.
@@ -36,7 +36,7 @@ Persist named Saved Tab Groups as versioned snapshots in `ExtensionContext.works
 
 - Snapshots are not shared automatically across workspaces or VS Code profiles.
 - Saved snapshot names are derived automatically, and distinct snapshots may have the same display name.
-- Restoring a snapshot intentionally removes tabs added to its source group after the snapshot was saved.
+- Restoring a snapshot intentionally removes restorable tabs added to its source group after the snapshot was saved, while retaining currently open live-only system tabs.
 - A missing file or unavailable provider yields a partial restore warning; the snapshot is kept.
 - Terminal, webview, unknown, untitled, and unsaved editor content are not recoverable through public VS Code APIs.
 - Restore All resolves overlapping legacy snapshots in panel order; a shared tab belongs to the first restored snapshot.
