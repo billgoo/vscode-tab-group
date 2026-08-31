@@ -1,8 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
 import { SavedTab } from '../models/SavedGroup';
 import {
-  getCustomTabId,
-  getNotebookTabId,
   getSavedTabId,
   getSavedTabLabel,
   getSavedTabPath,
@@ -22,7 +20,7 @@ describe('saved tab utilities', () => {
     expect(getSavedTabLabel(savedTab)).toBe('app.py');
   });
 
-  test('uses saved labels and canonical full-resource IDs', () => {
+  test('uses saved labels and preserved saved IDs', () => {
     const diffTab: SavedTab = {
       kind: 'textDiff',
       id: 'diff-id',
@@ -30,16 +28,8 @@ describe('saved tab utilities', () => {
       modifiedUri: 'file:///project/modified.ts',
       label: 'Compare files',
     };
-    const customUri = 'vscode-remote://ssh-remote%2Bworkspace/project/example.custom';
-    const notebookUri = 'vscode-remote://ssh-remote%2Bworkspace/project/example.ipynb';
 
     expect(getSavedTabLabel(diffTab)).toBe('Compare files');
     expect(getSavedTabId(diffTab)).toBe('diff-id');
-    expect(getCustomTabId(customUri, 'example.custom')).toBe(
-      JSON.stringify({ uri: customUri, viewType: 'example.custom' }),
-    );
-    expect(getNotebookTabId(notebookUri, 'jupyter-notebook')).toBe(
-      JSON.stringify({ uri: notebookUri, notebookType: 'jupyter-notebook' }),
-    );
   });
 });

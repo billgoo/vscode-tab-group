@@ -19,7 +19,7 @@ import {
 import { TreeState } from '../services/TreeState';
 import { getHandler, getNormalizedTabId } from './TabTypeHandler';
 import { GroupColorId, getGroupColorOption } from '../utils/color';
-import { findLongestCommonFilePathPrefixIndex } from '../utils/filePath';
+import { findLongestCommonFilePathPrefixIndex } from '../utils/fileTree';
 import {
   compareSortStrings,
   compareTabSortKeys,

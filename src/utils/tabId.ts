@@ -16,6 +16,14 @@ export function getNormalizedUri(uri: TabUri): TabUri {
   };
 }
 
+export function getCustomTabId(uri: string, viewType: string): string {
+  return JSON.stringify({ uri, viewType });
+}
+
+export function getNotebookTabId(uri: string, notebookType: string): string {
+  return JSON.stringify({ uri, notebookType });
+}
+
 export function getNormalizedNotebookDiffId(
   original: TabUri,
   modified: TabUri,

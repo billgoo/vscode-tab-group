@@ -29,8 +29,7 @@ import {
   focusTreeItem,
   selectTreeItem,
 } from '../utils/treePanel';
-import { findActiveItem } from '../utils/activeItem';
-import { getSelectedTab } from '../utils/selectedTab';
+import { findActiveItem, getSelectedTab } from '../utils/tabSelection';
 
 type GroupColorQuickPickItem = vscode.QuickPickItem & {
   colorId: GroupColorId;

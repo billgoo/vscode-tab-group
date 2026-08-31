@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Group, Slot, TreeItemType, Tab, isGroup, isSlot, isTab } from '../models/types';
-import { safeRemove, sortItemsInPlace } from '../utils/Arrays';
+import { safeRemove, sortItemsInPlace } from '../utils/arrays';
 import { GroupColorId, getNextColorId } from '../utils/color';
 
 export class TreeState {

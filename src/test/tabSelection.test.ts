@@ -1,12 +1,28 @@
 import { describe, expect, test } from '@jest/globals';
 import { Folder, Group, Slot, Tab, TreeItemType } from '../models/types';
-import { getSelectedTab } from '../utils/selectedTab';
+import { findActiveItem, getSelectedTab } from '../utils/tabSelection';
+
+type TestActiveItem = {
+  readonly id: string;
+  readonly isActive: boolean;
+};
 
 function createTab(id: string): Tab {
   return { type: TreeItemType.Tab, groupId: null, id };
 }
 
-describe('selected tab utility', () => {
+describe('tab selection utilities', () => {
+  test('finds the active item when an inactive item appears first', () => {
+    const inactiveItem: TestActiveItem = { id: 'inactive', isActive: false };
+    const activeItem: TestActiveItem = { id: 'active', isActive: true };
+
+    expect(findActiveItem([inactiveItem, activeItem])).toBe(activeItem);
+  });
+
+  test('returns undefined when no item is active', () => {
+    expect(findActiveItem<TestActiveItem>([{ id: 'inactive', isActive: false }])).toBeUndefined();
+  });
+
   test('returns the last selected tab', () => {
     const firstTab = createTab('first');
     const secondTab = createTab('second');

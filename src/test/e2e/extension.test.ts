@@ -20,7 +20,7 @@ import {
 import { RecentTabs } from '../../services/RecentTabs';
 import { SavedGroupsTreeDataProvider } from '../../providers/SavedGroupsTreeDataProvider';
 import { SavedGroupsStore } from '../../services/SavedGroupsStore';
-import { findActiveItem } from '../../utils/activeItem';
+import { findActiveItem } from '../../utils/tabSelection';
 import { ContextKeys, getContext } from '../../utils/context';
 
 function getOpenTabIds(): Set<string> {
