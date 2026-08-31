@@ -13,6 +13,7 @@ import {
 } from '../../providers/TabTypeHandler';
 import { RecentTabsTreeDataProvider } from '../../providers/RecentTabsTreeDataProvider';
 import {
+  getNativeTabs,
   RecentTabsTreeMimeType,
   TabDropMimeType,
   TreeDataProvider,
@@ -1071,6 +1072,83 @@ suite('Tab Group extension', () => {
     ]);
   });
 
+  test('saves restorable tabs while skipping live-only system tabs', async () => {
+    const extension = vscode.extensions.getExtension('jiapeiyao.tab-group');
+    const testId = `${Date.now()}-${process.pid}`;
+    const uri = vscode.Uri.file(join(tmpdir(), `tab-group-save-system-tab-${testId}.txt`));
+    const groupId = `tab-group-save-system-tab-${testId}`;
+
+    assert.ok(extension, 'The Tab Group extension should be available to the extension host.');
+    await extension.activate();
+    assert.equal(getContext(ContextKeys.HasSavedGroups), false);
+    await vscode.workspace.fs.writeFile(uri, Buffer.from('saved group test'));
+    await vscode.commands.executeCommand('vscode.open', uri, { preview: false });
+    await vscode.commands.executeCommand('workbench.action.openSettings');
+    const systemTab = vscode.window.tabGroups.all
+      .flatMap(tabGroup => tabGroup.tabs)
+      .find(tab => tab.label === 'Settings');
+    assert.ok(systemTab, 'Opening Settings should create a system tab.');
+
+    const group: Group = {
+      type: TreeItemType.Group,
+      id: groupId,
+      colorId: 'charts.green',
+      label: 'Mixed saved group',
+      children: [
+        { type: TreeItemType.Tab, groupId, id: uri.toString() },
+        { type: TreeItemType.Tab, groupId, id: getNormalizedTabId(systemTab) },
+      ],
+      collapsed: false,
+    };
+
+    try {
+      assert.ok(
+        getNativeTabs(group.children[1]).includes(systemTab),
+        'The grouped system tab should resolve to its open native tab.',
+      );
+      await vscode.commands.executeCommand('tabsTreeView.group.save', group);
+
+      assert.equal(getContext(ContextKeys.HasSavedGroups), true);
+    } finally {
+      await closeTabs([uri.toString(), systemTab ? getNormalizedTabId(systemTab) : '']);
+      await vscode.workspace.fs.delete(uri, { useTrash: false });
+    }
+  });
+
+  test('keeps live-only tabs in an existing group when restoring saved tabs', () => {
+    const groupId = `tab-group-restore-system-tab-${Date.now()}`;
+    const systemTab: Tab = { type: TreeItemType.Tab, groupId, id: 'Settings' };
+    const staleSavedTab: Tab = { type: TreeItemType.Tab, groupId, id: 'stale-saved-tab' };
+    const restoredTab: Tab = { type: TreeItemType.Tab, groupId: null, id: 'restored-tab' };
+    const group: Group = {
+      type: TreeItemType.Group,
+      id: groupId,
+      colorId: 'charts.blue',
+      label: 'Before restore',
+      children: [systemTab, staleSavedTab],
+      collapsed: false,
+    };
+    const treeDataProvider = new TreeDataProvider();
+
+    try {
+      treeDataProvider.setState([group, restoredTab]);
+
+      const restoredGroup = treeDataProvider.restoreGroup(
+        [restoredTab],
+        { colorId: 'charts.green', label: 'Restored group', collapsed: true },
+        groupId,
+        [systemTab.id],
+      );
+
+      assert.deepStrictEqual(restoredGroup?.children, [systemTab, restoredTab]);
+      assert.equal(systemTab.groupId, groupId);
+      assert.equal(staleSavedTab.groupId, null);
+      assert.deepStrictEqual(treeDataProvider.getState(), [restoredGroup, staleSavedTab]);
+    } finally {
+      treeDataProvider.dispose();
+    }
+  });
+
   test('saves the same live group twice without asking for a snapshot name', async () => {
     const extension = vscode.extensions.getExtension('jiapeiyao.tab-group');
     const uri = vscode.Uri.file(join(tmpdir(), `tab-group-save-without-name-${Date.now()}.txt`));
@@ -1149,20 +1227,46 @@ suite('Tab Group extension', () => {
     }
   });
 
-  test('skips tab inputs without a public identity or reopen operation', async () => {
-    const extension = vscode.extensions.getExtension('jiapeiyao.tab-group');
-
-    assert.ok(extension, 'The Tab Group extension should be available to the extension host.');
-    await extension.activate();
-
+  test('shows system tabs without a public input in the tab tree', async () => {
     const webviewTab = {
+      label: 'Webview',
       input: new vscode.TabInputWebview('tab-group-test-webview'),
     } as vscode.Tab;
     const terminalTab = {
+      label: 'Terminal',
       input: new vscode.TabInputTerminal(),
     } as vscode.Tab;
+    const treeDataProvider = new TreeDataProvider();
+    const systemTabs: vscode.Tab[] = [];
 
-    assert.equal(getHandler(webviewTab), undefined);
-    assert.equal(getHandler(terminalTab), undefined);
+    try {
+      for (const { command, label } of [
+        { command: 'workbench.action.openSettings', label: 'Settings' },
+        { command: 'workbench.action.openGlobalKeybindings', label: 'Keyboard Shortcuts' },
+      ]) {
+        await vscode.commands.executeCommand(command);
+        const systemTab = vscode.window.tabGroups.all
+          .flatMap(tabGroup => tabGroup.tabs)
+          .find(tab => tab.label === label);
+
+        assert.ok(systemTab, `Opening ${label} should create a system tab.`);
+        systemTabs.push(systemTab);
+        assert.equal(systemTab.input, undefined);
+        assert.equal(toSavedTab(systemTab), undefined);
+        const handler = getHandler(systemTab);
+        assert.ok(handler);
+        assert.equal(handler.createTreeItem(systemTab).label, systemTab.label);
+        assert.equal(treeDataProvider.appendTabs([systemTab]), true);
+        assert.ok(treeDataProvider.getTab(systemTab));
+      }
+
+      assert.equal(getHandler(webviewTab), undefined);
+      assert.equal(getHandler(terminalTab), undefined);
+    } finally {
+      treeDataProvider.dispose();
+      if (systemTabs.length > 0) {
+        await vscode.window.tabGroups.close(systemTabs);
+      }
+    }
   });
 });

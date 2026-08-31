@@ -114,6 +114,7 @@ export class TreeState {
     tabs: Tab[],
     { colorId, label, collapsed }: Pick<Group, 'colorId' | 'label' | 'collapsed'>,
     sourceGroupId?: string,
+    retainedTabIds: readonly string[] = [],
   ): Group | undefined {
     if (tabs.length === 0) {
       return undefined;
@@ -122,7 +123,8 @@ export class TreeState {
     const group = sourceGroupId ? this.groupMap[sourceGroupId] : undefined;
     if (group) {
       const savedTabIds = new Set(tabs.map(tab => tab.id));
-      this.ungroup(group.children.filter(tab => !savedTabIds.has(tab.id)).reverse());
+      const retainedIds = new Set([...savedTabIds, ...retainedTabIds]);
+      this.ungroup(group.children.filter(tab => !retainedIds.has(tab.id)).reverse());
       group.colorId = colorId;
       group.label = label;
       group.collapsed = collapsed;

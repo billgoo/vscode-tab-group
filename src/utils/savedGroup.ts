@@ -11,6 +11,10 @@ export type SavedGroupSnapshotUpsert = {
   readonly updated: boolean;
 };
 
+export function filterRestorableTabs(tabs: readonly (SavedTab | undefined)[]): SavedTab[] {
+  return tabs.filter((tab): tab is SavedTab => tab !== undefined);
+}
+
 export function findSavedGroupForSource(
   savedGroups: readonly SavedGroup[],
   sourceGroupId: string,
