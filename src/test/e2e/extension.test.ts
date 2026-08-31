@@ -265,7 +265,7 @@ suite('Tab Group extension', () => {
         menu =>
           menu.command === 'tabsTreeView.viewAsList' &&
           menu.when === 'view == tabsTreeView && tabGroup.viewMode == tree' &&
-          menu.group === 'navigation@50',
+          menu.group === 'navigation@9',
       ),
     );
     assert.ok(
@@ -273,7 +273,7 @@ suite('Tab Group extension', () => {
         menu =>
           menu.command === 'tabsTreeView.viewAsTree' &&
           menu.when === 'view == tabsTreeView && tabGroup.viewMode == list' &&
-          menu.group === 'navigation@50',
+          menu.group === 'navigation@9',
       ),
     );
     assert.ok(
