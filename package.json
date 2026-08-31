@@ -3,7 +3,7 @@
   "displayName": "Tab Group",
   "description": "Organize VS Code editor tabs into persistent, named groups.",
   "publisher": "jiapeiyao",
-  "version": "3.0.1",
+  "version": "3.1.0",
   "license": "MIT",
   "homepage": "https://github.com/billgoo/vscode-tab-group#readme",
   "galleryBanner": {

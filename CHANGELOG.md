@@ -1,5 +1,17 @@
 # Change Log
 
+## 3.1.0
+
+- Enhancements:
+  - Add Tree View mode and configurable root, group, and saved-group sorting controls.
+  - Synchronize the Tabs tree with the active editor and reveal its parent group or folder when needed.
+  - Show input-less system editor tabs such as Settings and Keyboard Shortcuts in the Tabs view.
+- Fix bugs:
+  - Save restorable tabs from mixed groups and preserve open live-only system tabs when restoring a saved group.
+  - Improve saved-group and workspace-state persistence across reloads and repeated tab events.
+  - Close the selected tab correctly from the keyboard or Command Palette.
+  - Guard destructive group and snapshot actions with appropriate confirmations and visibility conditions.
+
 ## 3.0.1
 
 - Enhancements:
