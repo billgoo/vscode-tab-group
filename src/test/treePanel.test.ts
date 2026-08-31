@@ -1,5 +1,5 @@
 import { describe, expect, jest, test } from '@jest/globals';
-import { sortItems, sortItemsInPlace } from '../utils/Arrays';
+import { sortItems, sortItemsInPlace } from '../utils/arrays';
 import {
   collapseAllTreeItems,
   expandAllTreeItems,

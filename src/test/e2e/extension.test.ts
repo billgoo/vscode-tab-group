@@ -20,7 +20,7 @@ import {
 import { RecentTabs } from '../../services/RecentTabs';
 import { SavedGroupsTreeDataProvider } from '../../providers/SavedGroupsTreeDataProvider';
 import { SavedGroupsStore } from '../../services/SavedGroupsStore';
-import { findActiveItem } from '../../utils/activeItem';
+import { findActiveItem } from '../../utils/tabSelection';
 import { ContextKeys, getContext } from '../../utils/context';
 
 function getOpenTabIds(): Set<string> {
@@ -313,6 +313,17 @@ suite('Tab Group extension', () => {
     assert.equal(
       viewTitleMenus.some(menu => menu.command === 'tabsTreeView.savedGroup.restore'),
       false,
+    );
+  });
+
+  test('ignores a tab close command without a tree item argument', async () => {
+    const extension = vscode.extensions.getExtension('jiapeiyao.tab-group');
+
+    assert.ok(extension, 'The Tab Group extension should be available to the extension host.');
+    await extension.activate();
+
+    await assert.doesNotReject(async () =>
+      vscode.commands.executeCommand('tabsTreeView.tab.close'),
     );
   });
 

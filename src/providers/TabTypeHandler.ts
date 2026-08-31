@@ -9,10 +9,9 @@ import {
   SavedTextDiffTab,
   SavedTextTab,
 } from '../models/SavedGroup';
-import { findLongestCommonFilePathPrefixIndex } from '../utils/filePath';
-import { getCustomTabId, getNotebookTabId } from '../utils/savedTab';
+import { findLongestCommonFilePathPrefixIndex } from '../utils/fileTree';
 import { createTabSortKey, TabSortKey } from '../utils/tabSort';
-import { getNormalizedNotebookDiffId } from '../utils/tabId';
+import { getCustomTabId, getNormalizedNotebookDiffId, getNotebookTabId } from '../utils/tabId';
 
 export type InputType = vscode.Tab['input'];
 

@@ -1,5 +1,6 @@
 import { URL } from 'node:url';
 import { SavedTab } from '../models/SavedGroup';
+import { getCustomTabId, getNotebookTabId } from './tabId';
 
 export function getSavedTabUri(savedTab: SavedTab): string {
   return 'uri' in savedTab ? savedTab.uri : savedTab.modifiedUri;
@@ -34,12 +35,4 @@ export function getSavedTabId(savedTab: SavedTab): string {
     default:
       return savedTab.id;
   }
-}
-
-export function getCustomTabId(uri: string, viewType: string): string {
-  return JSON.stringify({ uri, viewType });
-}
-
-export function getNotebookTabId(uri: string, notebookType: string): string {
-  return JSON.stringify({ uri, notebookType });
 }

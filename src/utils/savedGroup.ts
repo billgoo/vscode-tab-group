@@ -1,5 +1,6 @@
 import { Group } from '../models/types';
 import { SavedGroup, SavedTab } from '../models/SavedGroup';
+import { sortItems } from './arrays';
 import { compareSortStrings, TabSortDirection } from './tabSort';
 
 type SavedGroupSource = Pick<Group, 'id' | 'label' | 'colorId' | 'collapsed'>;
@@ -28,7 +29,8 @@ export function sortSavedGroups(
   savedGroups: readonly SavedGroup[],
   direction: TabSortDirection,
 ): SavedGroup[] {
-  return [...savedGroups].sort(
+  return sortItems(
+    savedGroups,
     (leftGroup, rightGroup) =>
       compareSortStrings(leftGroup.name, rightGroup.name, direction) ||
       compareSortStrings(leftGroup.id, rightGroup.id, direction),

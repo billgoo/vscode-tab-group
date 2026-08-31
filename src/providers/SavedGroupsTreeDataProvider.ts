@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { SavedGroup, SavedTab } from '../models/SavedGroup';
 import { SavedGroupsStore } from '../services/SavedGroupsStore';
 import { Disposable } from '../utils/disposable';
-import { getFilePathDescription } from '../utils/filePath';
+import { getFilePathDescription } from '../utils/fileTree';
 import { getSavedTabLabel, getSavedTabPath, getSavedTabUri } from '../utils/savedTab';
 
 type SavedTabTreeItem = {
