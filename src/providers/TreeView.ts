@@ -5,7 +5,7 @@ import { SavedGroupsStore } from '../services/SavedGroupsStore';
 import { RecentTabs } from '../services/RecentTabs';
 import { ExclusiveHandle } from '../utils/event';
 import { asPromise } from '../utils/async';
-import { Group, isGroup, Tab, TreeElement, TreeItemType, ViewMode } from '../models/types';
+import { Group, isGroup, isTab, Tab, TreeElement, TreeItemType, ViewMode } from '../models/types';
 import { SavedGroup, SavedTab } from '../models/SavedGroup';
 import { getNativeTabs, TreeDataProvider } from './TreeDataProvider';
 import { RecentTabsTreeDataProvider } from './RecentTabsTreeDataProvider';
@@ -30,6 +30,7 @@ import {
   selectTreeItem,
 } from '../utils/treePanel';
 import { findActiveItem } from '../utils/activeItem';
+import { getSelectedTab } from '../utils/selectedTab';
 
 type GroupColorQuickPickItem = vscode.QuickPickItem & {
   colorId: GroupColorId;
@@ -53,6 +54,7 @@ export class TabsView extends Disposable {
   private readonly savedGroupsTreeDataProvider: SavedGroupsTreeDataProvider;
   private exclusiveHandle = new ExclusiveHandle();
   private selectedGroup: Group | undefined;
+  private selectedTab: Tab | undefined;
   private expandedSavedGroupIds = new Set<string>();
 
   constructor(
@@ -123,9 +125,10 @@ export class TabsView extends Disposable {
     );
 
     this._register(
-      vscode.commands.registerCommand('tabsTreeView.tab.close', (tab: Tab) =>
-        vscode.window.tabGroups.close(getNativeTabs(tab)),
-      ),
+      vscode.commands.registerCommand('tabsTreeView.tab.close', (target?: TreeElement) => {
+        const tab = target === undefined ? this.selectedTab : isTab(target) ? target : undefined;
+        return tab ? vscode.window.tabGroups.close(getNativeTabs(tab)) : undefined;
+      }),
     );
 
     this._register(
@@ -341,9 +344,10 @@ export class TabsView extends Disposable {
 
     this._register(
       recentView.onDidChangeSelection(e => {
-        const item = e.selection.length > 0 ? e.selection[e.selection.length - 1] : undefined;
-        if (item?.type === TreeItemType.Tab) {
-          this.exclusiveHandle.run(() => asPromise(this.treeDataProvider.activate(item)));
+        const selectedTab = getSelectedTab(e.selection);
+        this.selectedTab = selectedTab;
+        if (selectedTab) {
+          this.exclusiveHandle.run(() => asPromise(this.treeDataProvider.activate(selectedTab)));
         }
       }),
     );
@@ -351,11 +355,13 @@ export class TabsView extends Disposable {
     this._register(
       view.onDidChangeSelection(e => {
         const item = e.selection.length > 0 ? e.selection[e.selection.length - 1] : undefined;
+        const selectedTab = getSelectedTab(e.selection);
+        this.selectedTab = selectedTab;
         this.selectedGroup = item && isGroup(item) ? item : undefined;
         setContext(ContextKeys.SelectedGroup, Boolean(this.selectedGroup));
 
-        if (item?.type === TreeItemType.Tab) {
-          this.exclusiveHandle.run(() => asPromise(this.treeDataProvider.activate(item)));
+        if (selectedTab) {
+          this.exclusiveHandle.run(() => asPromise(this.treeDataProvider.activate(selectedTab)));
         }
       }),
     );

@@ -316,6 +316,17 @@ suite('Tab Group extension', () => {
     );
   });
 
+  test('ignores a tab close command without a tree item argument', async () => {
+    const extension = vscode.extensions.getExtension('jiapeiyao.tab-group');
+
+    assert.ok(extension, 'The Tab Group extension should be available to the extension host.');
+    await extension.activate();
+
+    await assert.doesNotReject(async () =>
+      vscode.commands.executeCommand('tabsTreeView.tab.close'),
+    );
+  });
+
   test('derives nested folder trees for root and grouped tabs', async () => {
     const extension = vscode.extensions.getExtension('jiapeiyao.tab-group');
     assert.ok(extension, 'The Tab Group extension should be available to the extension host.');
