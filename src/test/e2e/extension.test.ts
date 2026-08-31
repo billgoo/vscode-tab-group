@@ -20,6 +20,7 @@ import {
 import { RecentTabs } from '../../services/RecentTabs';
 import { SavedGroupsTreeDataProvider } from '../../providers/SavedGroupsTreeDataProvider';
 import { SavedGroupsStore } from '../../services/SavedGroupsStore';
+import { findActiveItem } from '../../utils/activeItem';
 import { ContextKeys, getContext } from '../../utils/context';
 
 function getOpenTabIds(): Set<string> {
@@ -34,6 +35,18 @@ function getOpenTabIds(): Set<string> {
         }
       }),
   );
+}
+
+function getOpenTab(tabId: string): vscode.Tab | undefined {
+  return vscode.window.tabGroups.all
+    .flatMap(tabGroup => tabGroup.tabs)
+    .find(tab => {
+      try {
+        return getNormalizedTabId(tab) === tabId;
+      } catch {
+        return false;
+      }
+    });
 }
 
 async function closeTabs(tabIds: readonly string[]): Promise<void> {
@@ -511,6 +524,55 @@ suite('Tab Group extension', () => {
       treeDataProvider.dispose();
       await closeTabs([uri.toString()]);
       await vscode.workspace.fs.delete(uri, { useTrash: false });
+    }
+  });
+
+  test('maps the active grouped tab when an inactive changed tab appears first', async () => {
+    const prefix = `tab-group-active-selection-${Date.now()}`;
+    const firstUri = vscode.Uri.file(join(tmpdir(), `${prefix}-first.txt`));
+    const secondUri = vscode.Uri.file(join(tmpdir(), `${prefix}-second.txt`));
+    const groupId = `${prefix}-group`;
+    const firstTab: Tab = { type: TreeItemType.Tab, groupId, id: firstUri.toString() };
+    const secondTab: Tab = { type: TreeItemType.Tab, groupId, id: secondUri.toString() };
+    const group: Group = {
+      type: TreeItemType.Group,
+      id: groupId,
+      colorId: 'charts.green',
+      label: 'Grouped files',
+      children: [firstTab, secondTab],
+      collapsed: true,
+    };
+    const treeDataProvider = new TreeDataProvider();
+
+    await Promise.all(
+      [firstUri, secondUri].map(uri => vscode.workspace.fs.writeFile(uri, Buffer.from(uri.fsPath))),
+    );
+
+    try {
+      await vscode.commands.executeCommand('vscode.open', firstUri, { preview: false });
+      const firstNativeTab = getOpenTab(firstTab.id);
+      assert.ok(firstNativeTab, 'The first editor tab should be open.');
+
+      await vscode.commands.executeCommand('vscode.open', secondUri, { preview: false });
+      const secondNativeTab = getOpenTab(secondTab.id);
+      assert.ok(secondNativeTab, 'The second editor tab should be open.');
+      assert.equal(firstNativeTab.isActive, false);
+      assert.equal(secondNativeTab.isActive, true);
+
+      treeDataProvider.setState([group]);
+      const activeNativeTab = findActiveItem([firstNativeTab, secondNativeTab]);
+
+      assert.ok(activeNativeTab, 'One of the changed editor tabs should be active.');
+      assert.equal(activeNativeTab, secondNativeTab);
+      assert.equal(treeDataProvider.getTab(activeNativeTab), secondTab);
+      assert.equal(treeDataProvider.getGroup(secondTab.groupId), group);
+      assert.equal(treeDataProvider.getGroup(secondTab.groupId)?.collapsed, true);
+    } finally {
+      treeDataProvider.dispose();
+      await closeTabs([firstTab.id, secondTab.id]);
+      await Promise.all(
+        [firstUri, secondUri].map(uri => vscode.workspace.fs.delete(uri, { useTrash: false })),
+      );
     }
   });
 

@@ -9,6 +9,7 @@ Organize editor tabs into persistent, named groups from the Tab Group activity-b
 - Drag one or more tabs onto a tab or group to create and populate a named group.
 - Choose a distinct color for each group.
 - Drag tabs to the view background to ungroup them.
+- Keep the visible Tabs view selection synchronized with the active supported editor tab, opening only its containing group and folder path.
 - Switch the Tabs view between a GitLens-style file tree and a flat list from the view overflow menu.
 - Use manual Sort Mode in List view to reorder tabs and groups without changing group membership.
 - Sort root tabs by file URI, root groups by name, and each group's tabs by file URI.

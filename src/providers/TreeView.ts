@@ -23,7 +23,13 @@ import {
   updateSavedGroupSnapshotName,
 } from '../utils/savedGroup';
 import { TabSortDirection } from '../utils/tabSort';
-import { collapseAllTreeItems, expandAllTreeItems, focusTreeItem } from '../utils/treePanel';
+import {
+  collapseAllTreeItems,
+  expandAllTreeItems,
+  focusTreeItem,
+  selectTreeItem,
+} from '../utils/treePanel';
+import { findActiveItem } from '../utils/activeItem';
 
 type GroupColorQuickPickItem = vscode.QuickPickItem & {
   colorId: GroupColorId;
@@ -309,21 +315,20 @@ export class TabsView extends Disposable {
         const openedTabsChanged = this.treeDataProvider.appendTabs(e.opened);
         const closedTabsChanged = this.treeDataProvider.closeTabs(e.closed);
 
-        if (e.changed[0] && e.changed[0].isActive) {
-          const tab = this.treeDataProvider.getTab(e.changed[0]);
-          if (tab) {
-            if (view.visible) {
-              this.exclusiveHandle.run(() =>
-                asPromise(view.reveal(tab, { select: true, expand: true })),
-              );
-            }
-          }
-        }
+        this.revealActiveTab(view, findActiveItem(e.changed));
 
         this.treeDataProvider.triggerRerender();
         this.refreshRecentTabs(this.getActiveNativeTab());
         if (openedTabsChanged || closedTabsChanged) {
           this.saveState(this.treeDataProvider.getState());
+        }
+      }),
+    );
+
+    this._register(
+      view.onDidChangeVisibility(e => {
+        if (e.visible) {
+          this.revealActiveTab(view, this.getActiveNativeTab());
         }
       }),
     );
@@ -740,6 +745,23 @@ export class TabsView extends Disposable {
 
   private getSavedGroups(): readonly SavedGroup[] {
     return this.savedGroupsStore.load() ?? [];
+  }
+
+  private revealActiveTab(
+    view: vscode.TreeView<TreeElement>,
+    activeTab: vscode.Tab | undefined,
+  ): void {
+    if (!activeTab || !view.visible) {
+      return;
+    }
+
+    const tab = this.treeDataProvider.getTab(activeTab);
+    if (!tab) {
+      return;
+    }
+
+    const group = this.treeDataProvider.getGroup(tab.groupId);
+    this.exclusiveHandle.run(() => selectTreeItem(view, tab, group?.collapsed ? group : undefined));
   }
 
   private async setViewMode(view: vscode.TreeView<TreeElement>, viewMode: ViewMode): Promise<void> {

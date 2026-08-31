@@ -4,6 +4,7 @@ import {
   collapseAllTreeItems,
   expandAllTreeItems,
   focusTreeItem,
+  selectTreeItem,
   TreePanelRevealOptions,
   TreePanelView,
 } from '../utils/treePanel';
@@ -87,5 +88,24 @@ describe('tree panel helpers', () => {
     await focusTreeItem(treeView, item);
 
     expect(reveal).toHaveBeenCalledWith(item, { focus: true, select: false });
+  });
+
+  test('expands a collapsed parent before selecting a nested item', async () => {
+    const group: Item = { id: 'group', expandable: true };
+    const item: Item = { id: 'nested-tab', expandable: false };
+    const { reveal, treeView } = createTreeView();
+
+    await selectTreeItem(treeView, item, group);
+
+    expect(reveal).toHaveBeenNthCalledWith(1, group, {
+      expand: true,
+      focus: false,
+      select: false,
+    });
+    expect(reveal).toHaveBeenNthCalledWith(2, item, {
+      expand: true,
+      focus: false,
+      select: true,
+    });
   });
 });
