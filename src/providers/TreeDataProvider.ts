@@ -361,6 +361,10 @@ export class TreeDataProvider
     }
   }
 
+  public getGroup(groupId: string | null): Group | undefined {
+    return groupId === null ? undefined : this.treeState.getGroup(groupId);
+  }
+
   public getState(): Array<Tab | Group> {
     return this.treeState.getState();
   }

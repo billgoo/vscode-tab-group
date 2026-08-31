@@ -74,6 +74,7 @@ Use `--skip-e2e` only when a local VS Code runtime is unavailable. CI and tag-ba
 - Confirm the selected group color is restored after reloading the window.
 - Open a file and confirm it appears in the tree; close its native editor tab and confirm it disappears.
 - Select a tree item and confirm the corresponding editor becomes active.
+- Select an editor tab inside a collapsed group and confirm only its containing group and folder path expand, the active tab is selected, and editor focus remains unchanged.
 
 ### Saved Tab Groups
 

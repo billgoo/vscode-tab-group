@@ -12,6 +12,18 @@ export async function focusTreeItem<T>(treeView: TreePanelView<T>, item: T): Pro
   await treeView.reveal(item, { focus: true, select: false });
 }
 
+export async function selectTreeItem<T>(
+  treeView: TreePanelView<T>,
+  item: T,
+  collapsedParent?: T,
+): Promise<void> {
+  if (collapsedParent) {
+    await treeView.reveal(collapsedParent, { expand: true, focus: false, select: false });
+  }
+
+  await treeView.reveal(item, { expand: true, focus: false, select: true });
+}
+
 export async function expandAllTreeItems<TElement, TItem extends TElement>(
   treeView: TreePanelView<TElement>,
   items: readonly TItem[],
