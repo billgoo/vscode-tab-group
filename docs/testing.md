@@ -113,6 +113,7 @@ Use `--skip-e2e` only when a local VS Code runtime is unavailable. CI and tag-ba
 ### Add to Chat
 
 - Enable GitHub Copilot Chat. Right-click a tab in **Tabs** or **Recent Tabs**, choose **Add to Chat**, and confirm its file is attached to the chat input without submitting a message.
+- Hover a tab or live group in **Tabs**, or a tab in **Recent Tabs**, and confirm the attach button has an **Add to Chat** tooltip. Click it and confirm the same attachment behavior as the context-menu action. Disable chat and confirm the button is hidden.
 - Repeat with a collapsed live group in both List and Tree views; confirm all supported files in the group are attached.
 - Select multiple tabs and groups, including a group and one of its children; confirm each file is attached only once. Right-click an unselected tab and confirm only that tab is attached.
 - In both **Tabs** and **Recent Tabs**, use Ctrl-click to select separate tabs and Shift-click to select a range. Confirm earlier items remain selected and adding items does not activate an editor. In **Tabs**, confirm editor updates do not clear a multi-selection; selecting a single tab should still activate its editor.

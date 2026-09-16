@@ -307,6 +307,11 @@ suite('Tab Group extension', () => {
           when: 'view =~ /^(tabsTreeView|recentTabsTreeView)$/ && viewItem =~ /^(tab|grouped-tab|group-sort-ascending|group-sort-descending)$/ && chatIsEnabled',
           group: 'chat@1',
         },
+        {
+          command: 'tabsTreeView.addToChat',
+          when: 'view =~ /^(tabsTreeView|recentTabsTreeView)$/ && viewItem =~ /^(tab|grouped-tab|group-sort-ascending|group-sort-descending)$/ && chatIsEnabled',
+          group: 'inline@-1',
+        },
       ],
     );
     assert.ok(

@@ -224,6 +224,11 @@
           "group": "chat@1"
         },
         {
+          "command": "tabsTreeView.addToChat",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)$/ && viewItem =~ /^(tab|grouped-tab|group-sort-ascending|group-sort-descending)$/ && chatIsEnabled",
+          "group": "inline@-1"
+        },
+        {
           "command": "tabsTreeView.tab.ungroup",
           "when": "view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem == 'grouped-tab'",
           "group": "inline@0"
