@@ -13,7 +13,7 @@ import { SavedGroupsTreeDataProvider } from './SavedGroupsTreeDataProvider';
 import { Disposable } from '../utils/disposable';
 import { ContextKeys, setContext } from '../utils/context';
 import { GroupColorId, groupColorOptions } from '../utils/color';
-import { getSavedTabId, getSavedTabLabel } from '../utils/savedTab';
+import { getSavedTabId, getSavedTabLabel, getSavedTabUri } from '../utils/savedTab';
 import {
   findSavedGroupForSource,
   filterRestorableTabs,
@@ -110,6 +110,52 @@ export class TabsView extends Disposable {
         this.saveState(this.treeDataProvider.getState());
         this.recentTabsTreeDataProvider.refresh();
       }),
+    );
+
+    this._register(
+      vscode.commands.registerCommand(
+        'tabsTreeView.addToChat',
+        async (target?: TreeElement, selection?: readonly TreeElement[]) => {
+          if (!target) {
+            return;
+          }
+
+          const targets = selection?.includes(target) ? selection : [target];
+          const tabs = targets.flatMap(item =>
+            isGroup(item) ? item.children : isTab(item) ? [item] : [],
+          );
+          const resources = new Map<string, vscode.Uri>();
+          for (const tab of tabs) {
+            for (const nativeTab of getNativeTabs(tab)) {
+              const savedTab = toSavedTab(nativeTab);
+              if (!savedTab) {
+                continue;
+              }
+
+              const uri = vscode.Uri.parse(getSavedTabUri(savedTab));
+              if (['file', 'vscode-remote', 'untitled'].includes(uri.scheme)) {
+                resources.set(uri.toString(), uri);
+              }
+            }
+          }
+
+          if (resources.size === 0) {
+            await vscode.window.showInformationMessage(
+              'No supported files in the selected tabs to add to chat.',
+            );
+            return;
+          }
+
+          try {
+            const uris = [...resources.values()];
+            await vscode.commands.executeCommand('workbench.action.chat.attachFile', uris[0], uris);
+          } catch (error) {
+            await vscode.window.showErrorMessage(
+              `Unable to add tabs to chat. Make sure GitHub Copilot Chat is available. ${error instanceof Error ? error.message : String(error)}`,
+            );
+          }
+        },
+      ),
     );
 
     this._register(

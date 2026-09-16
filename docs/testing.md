@@ -110,6 +110,15 @@ Use `--skip-e2e` only when a local VS Code runtime is unavailable. CI and tag-ba
 - Drag a tab from **Recent Tabs** onto an existing group and confirm it disappears from **Recent Tabs** after grouping.
 - Ungroup the tab and confirm it returns to **Recent Tabs** in its tracked position.
 
+### Add to Chat
+
+- Enable GitHub Copilot Chat. Right-click a tab in **Tabs** or **Recent Tabs**, choose **Add to Chat**, and confirm its file is attached to the chat input without submitting a message.
+- Repeat with a collapsed live group in both List and Tree views; confirm all supported files in the group are attached.
+- Select multiple tabs and groups, including a group and one of its children; confirm each file is attached only once. Right-click an unselected tab and confirm only that tab is attached.
+- Add a diff tab and confirm only its modified file is attached. Check notebook, remote, and untitled resources when available.
+- Include a system tab or a virtual resource with an unsupported URI scheme in a group; confirm supported files still attach. A selection containing only unsupported tabs should show an informational message and attach nothing.
+- Use the keyboard context menu on a focused tab or group and confirm **Add to Chat** is available. Disable chat and confirm the menu action is hidden.
+
 ### Supported Tab Inputs
 
 - Confirm text editors, text diffs, custom editors, notebooks, and notebook diffs can be listed, grouped, selected, reopened from the Tab Group view, and restored from a saved group when their provider is available.

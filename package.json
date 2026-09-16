@@ -80,6 +80,12 @@
     },
     "commands": [
       {
+        "command": "tabsTreeView.addToChat",
+        "title": "Add to Chat",
+        "icon": "$(attach)",
+        "enablement": "chatIsEnabled"
+      },
+      {
         "command": "tabsTreeView.tab.close",
         "title": "Close",
         "icon": "$(close)"
@@ -212,6 +218,11 @@
     ],
     "menus": {
       "view/item/context": [
+        {
+          "command": "tabsTreeView.addToChat",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)$/ && viewItem =~ /^(tab|grouped-tab|group-sort-ascending|group-sort-descending)$/ && chatIsEnabled",
+          "group": "chat@1"
+        },
         {
           "command": "tabsTreeView.tab.ungroup",
           "when": "view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem == 'grouped-tab'",
@@ -351,6 +362,10 @@
         }
       ],
       "commandPalette": [
+        {
+          "command": "tabsTreeView.addToChat",
+          "when": "false"
+        },
         {
           "command": "tabsTreeView.tab.ungroup",
           "when": "false"

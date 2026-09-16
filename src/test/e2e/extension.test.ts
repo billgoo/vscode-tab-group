@@ -71,6 +71,85 @@ function createSavedTextTab(uri: vscode.Uri): SavedTextTab {
 }
 
 suite('Tab Group extension', () => {
+  test('adds tabs and groups to chat in a single deduplicated attachment call', async () => {
+    await vscode.extensions.getExtension('jiapeiyao.tab-group')!.activate();
+    const root = vscode.Uri.file(join(__dirname, '../../..'));
+    const firstUri = vscode.Uri.joinPath(root, 'README.md');
+    const secondUri = vscode.Uri.joinPath(root, 'package.json');
+    const virtualUri = vscode.Uri.parse('tab-group-chat-test:/virtual.ts');
+    const existingIds = getOpenTabIds();
+    const calls: string[][] = [];
+    const contentProvider = vscode.workspace.registerTextDocumentContentProvider(
+      virtualUri.scheme,
+      { provideTextDocumentContent: () => 'Virtual content' },
+    );
+    const attachmentCommand = vscode.commands.registerCommand(
+      'workbench.action.chat.attachFile',
+      (resource: vscode.Uri, resources: vscode.Uri[]) => {
+        assert.equal(resource.toString(), resources[0].toString());
+        calls.push(resources.map(uri => uri.toString()));
+      },
+    );
+
+    try {
+      await vscode.window.showTextDocument(virtualUri, { preview: false });
+      await vscode.window.showTextDocument(firstUri, { preview: false });
+      await vscode.window.showTextDocument(secondUri, { preview: false });
+      await vscode.commands.executeCommand('vscode.diff', firstUri, secondUri, 'Chat diff', {
+        preview: false,
+      });
+      const diff = vscode.window.tabGroups.all
+        .flatMap(group => group.tabs)
+        .find(
+          tab =>
+            tab.input instanceof vscode.TabInputTextDiff &&
+            tab.input.modified.toString() === secondUri.toString(),
+        );
+      assert.ok(diff);
+      const firstTab: Tab = { type: TreeItemType.Tab, id: firstUri.toString(), groupId: null };
+      const secondTab: Tab = { type: TreeItemType.Tab, id: secondUri.toString(), groupId: null };
+      const diffTab: Tab = { type: TreeItemType.Tab, id: getNormalizedTabId(diff), groupId: null };
+      const group: Group = {
+        type: TreeItemType.Group,
+        id: 'chat-test-group',
+        label: 'Chat test',
+        colorId: 'blue',
+        collapsed: true,
+        children: [
+          firstTab,
+          secondTab,
+          diffTab,
+          { type: TreeItemType.Tab, id: virtualUri.toString(), groupId: null },
+          { type: TreeItemType.Tab, id: 'closed-tab', groupId: null },
+        ],
+      };
+
+      await vscode.commands.executeCommand('tabsTreeView.addToChat', firstTab);
+      await vscode.commands.executeCommand('tabsTreeView.addToChat', group);
+      await vscode.commands.executeCommand('tabsTreeView.addToChat', group, [group, firstTab]);
+      await vscode.commands.executeCommand('tabsTreeView.addToChat', firstTab, [secondTab]);
+      await vscode.commands.executeCommand('tabsTreeView.addToChat', secondTab, [
+        secondTab,
+        firstTab,
+      ]);
+      await vscode.commands.executeCommand('tabsTreeView.addToChat', diffTab);
+      await vscode.commands.executeCommand('tabsTreeView.addToChat');
+
+      assert.deepStrictEqual(calls, [
+        [firstUri.toString()],
+        [firstUri.toString(), secondUri.toString()],
+        [firstUri.toString(), secondUri.toString()],
+        [firstUri.toString()],
+        [secondUri.toString(), firstUri.toString()],
+        [secondUri.toString()],
+      ]);
+    } finally {
+      attachmentCommand.dispose();
+      await closeTabs([...getOpenTabIds()].filter(tabId => !existingIds.has(tabId)));
+      contentProvider.dispose();
+    }
+  });
+
   test('activates and registers its tab-group commands', async () => {
     const extension = vscode.extensions.getExtension('jiapeiyao.tab-group');
 
@@ -78,6 +157,7 @@ suite('Tab Group extension', () => {
     await extension.activate();
 
     const commands = await vscode.commands.getCommands(true);
+    assert.ok(commands.includes('tabsTreeView.addToChat'));
     assert.ok(commands.includes('tabsTreeView.tab.ungroup'));
     assert.ok(commands.includes('tabsTreeView.group.rename'));
     assert.ok(commands.includes('tabsTreeView.group.changeColor'));
@@ -219,6 +299,16 @@ suite('Tab Group extension', () => {
       command: string;
       when?: string;
     }>;
+    assert.deepStrictEqual(
+      itemContextMenus.filter(menu => menu.command === 'tabsTreeView.addToChat'),
+      [
+        {
+          command: 'tabsTreeView.addToChat',
+          when: 'view =~ /^(tabsTreeView|recentTabsTreeView)$/ && viewItem =~ /^(tab|grouped-tab|group-sort-ascending|group-sort-descending)$/ && chatIsEnabled',
+          group: 'chat@1',
+        },
+      ],
+    );
     assert.ok(
       itemContextMenus.some(
         menu =>

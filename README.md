@@ -15,6 +15,7 @@ Organize editor tabs into persistent, named groups from the Tab Group activity-b
 - Sort root tabs by file URI, root groups by name, and each group's tabs by file URI.
 - Sort saved groups by name from the Saved Groups panel.
 - Rename, close, ungroup, or dissolve a group from its context menu.
+- Add tabs or live tab groups to GitHub Copilot Chat as file attachments.
 - Collapse and expand all live groups, or toggle all saved snapshots in the Saved Groups panel.
 - Preserve group membership, order, names, colors, and collapsed state in workspace state.
 - Save named group snapshots, shown in a collapsed Saved Groups panel, and restore their supported tabs after they are closed.
@@ -39,6 +40,14 @@ Dropping an item onto another inserts it immediately before the target. In Sort 
 Use **Save Group...** from a group context menu to create or update a snapshot without entering a name. The snapshot uses the live group's ID as its stable identity and its group label as the display name, showing **untitled** when the group has no name. Renaming a live group automatically updates the title of its saved snapshot. Saving the same live group again updates its existing snapshot. Expand the **Saved Groups** panel to see snapshots and their tab counts, then expand a snapshot to inspect its saved files. Duplicate file names show the shortest distinguishing parent path. Use the panel toolbar to sort snapshots by name, expand or collapse all snapshots, restore all snapshots, or delete all snapshots. Saved snapshot order is persisted, and when snapshots share a tab, **Restore All Saved Groups** gives that tab to the first snapshot shown in the panel. Use a snapshot's folder action to restore it or its trash action to remove it from saved workspace storage. **Restore Saved Group...** is also available from the Command Palette.
 
 ## Tab support
+
+### Add to Chat
+
+With GitHub Copilot Chat enabled, right-click a tab or live group in **Tabs**, or a tab in **Recent Tabs**, and choose **Add to Chat**. Select multiple tabs or groups to attach their files together. The action adds context to the chat input without sending a message or changing your tab groups.
+
+Duplicate files are attached once. Text, custom-editor, and notebook tabs use their file resource; diffs use the modified file, matching VS Code's **Add File to Chat** behavior. Local, remote, and untitled resources are supported. System tabs and unsupported URI schemes are skipped; a selection with no supported files shows an informational message. Saved Groups snapshots are not included in this action.
+
+### Supported Inputs
 
 Tab Group supports text editors, text diffs, custom editors, notebooks, and notebook diffs with stable IDs. Saved tab groups restore the same resource-backed input types.
 
