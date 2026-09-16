@@ -23,11 +23,17 @@ describe('tab selection utilities', () => {
     expect(findActiveItem<TestActiveItem>([{ id: 'inactive', isActive: false }])).toBeUndefined();
   });
 
-  test('returns the last selected tab', () => {
+  test('returns a single selected tab', () => {
+    const tab = createTab('tab');
+
+    expect(getSelectedTab([tab])).toBe(tab);
+  });
+
+  test('does not activate a tab from a multi-selection', () => {
     const firstTab = createTab('first');
     const secondTab = createTab('second');
 
-    expect(getSelectedTab([firstTab, secondTab])).toBe(secondTab);
+    expect(getSelectedTab([firstTab, secondTab])).toBeUndefined();
   });
 
   test.each<[Group | Folder | Slot]>([
@@ -52,7 +58,9 @@ describe('tab selection utilities', () => {
     ],
     [{ type: TreeItemType.Slot, index: 0, groupId: null }],
   ])('returns undefined when the selected item is not a tab', selectedItem => {
+    expect(getSelectedTab([selectedItem])).toBeUndefined();
     expect(getSelectedTab([createTab('tab'), selectedItem])).toBeUndefined();
+    expect(getSelectedTab([selectedItem, createTab('tab')])).toBeUndefined();
   });
 
   test('returns undefined when the selection is empty', () => {

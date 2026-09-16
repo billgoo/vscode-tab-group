@@ -9,6 +9,6 @@ export function findActiveItem<T extends ActiveItem>(items: readonly T[]): T | u
 }
 
 export function getSelectedTab(selection: readonly TreeElement[]): Tab | undefined {
-  const item = selection[selection.length - 1];
+  const item = selection.length === 1 ? selection[0] : undefined;
   return item && isTab(item) ? item : undefined;
 }
