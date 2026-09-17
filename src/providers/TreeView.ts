@@ -176,8 +176,8 @@ export class TabsView extends Disposable {
     );
 
     this._register(
-      vscode.commands.registerCommand('tabsTreeView.tab.ungroup', (tab: Tab) =>
-        this.treeDataProvider.ungroup(tab),
+      vscode.commands.registerCommand('tabsTreeView.tab.removeFromGroup', (tab: Tab) =>
+        this.treeDataProvider.removeFromGroup(tab),
       ),
     );
 
@@ -292,8 +292,20 @@ export class TabsView extends Disposable {
     );
 
     this._register(
+      vscode.commands.registerCommand('tabsTreeView.group.ungroup', (group: Group) =>
+        this.treeDataProvider.ungroup(group),
+      ),
+    );
+
+    this._register(
+      vscode.commands.registerCommand('tabsTreeView.tab.ungroup', (tab: Tab) =>
+        vscode.commands.executeCommand('tabsTreeView.tab.removeFromGroup', tab),
+      ),
+    );
+
+    this._register(
       vscode.commands.registerCommand('tabsTreeView.group.cancelGroup', (group: Group) =>
-        this.treeDataProvider.cancelGroup(group),
+        vscode.commands.executeCommand('tabsTreeView.group.ungroup', group),
       ),
     );
 

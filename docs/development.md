@@ -18,6 +18,13 @@ Running `npm ci` or `npm install` also installs the Husky pre-commit hook. The h
 
 See [testing.md](testing.md) for the automated-check matrix and manual acceptance checklist.
 
+## Group Command IDs
+
+- `tabsTreeView.tab.removeFromGroup` removes a tab from its group.
+- `tabsTreeView.group.ungroup` dissolves a group while leaving its tabs open.
+
+The previous IDs, `tabsTreeView.tab.ungroup` and `tabsTreeView.group.cancelGroup`, remain registered as compatibility aliases but are not contributed to menus. New integrations should use the IDs above. Internal methods use `removeFromGroup` (one tab), `removeTabsFromGroup` (multiple tabs), and `ungroup` (a whole group).
+
 ## Packaging
 
 Run `npm run package` to compile the extension and create an installable `.vsix`. Install that file with **Extensions: Install from VSIX...** for manual acceptance testing. The package excludes source, test, CI, and development-only files through `.vscodeignore`.

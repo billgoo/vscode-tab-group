@@ -91,8 +91,8 @@
         "icon": "$(close)"
       },
       {
-        "command": "tabsTreeView.tab.ungroup",
-        "title": "Ungroup",
+        "command": "tabsTreeView.tab.removeFromGroup",
+        "title": "Remove from Group",
         "icon": "$(screen-full)"
       },
       {
@@ -161,9 +161,9 @@
         "icon": "$(arrow-down)"
       },
       {
-        "command": "tabsTreeView.group.cancelGroup",
-        "title": "Cancel Group",
-        "icon": "$(array)"
+        "command": "tabsTreeView.group.ungroup",
+        "title": "Ungroup",
+        "icon": "$(screen-full)"
       },
       {
         "command": "tabsTreeView.group.close",
@@ -239,7 +239,7 @@
           "group": "inline@-1"
         },
         {
-          "command": "tabsTreeView.tab.ungroup",
+          "command": "tabsTreeView.tab.removeFromGroup",
           "when": "view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem == 'grouped-tab'",
           "group": "inline@0"
         },
@@ -274,7 +274,7 @@
           "group": "inline@3"
         },
         {
-          "command": "tabsTreeView.group.cancelGroup",
+          "command": "tabsTreeView.group.ungroup",
           "when": "view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem =~ /^group-sort-/",
           "group": "inline@4"
         },
@@ -382,7 +382,7 @@
           "when": "false"
         },
         {
-          "command": "tabsTreeView.tab.ungroup",
+          "command": "tabsTreeView.tab.removeFromGroup",
           "when": "false"
         },
         {
@@ -402,7 +402,7 @@
           "when": "false"
         },
         {
-          "command": "tabsTreeView.group.cancelGroup",
+          "command": "tabsTreeView.group.ungroup",
           "when": "false"
         },
         {

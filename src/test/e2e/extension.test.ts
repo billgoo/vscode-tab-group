@@ -71,6 +71,45 @@ function createSavedTextTab(uri: vscode.Uri): SavedTextTab {
 }
 
 suite('Tab Group extension', () => {
+  test('exposes readable group command IDs and retains compatibility aliases', async () => {
+    const extension = vscode.extensions.getExtension('jiapeiyao.tab-group')!;
+    await extension.activate();
+    const commands = await vscode.commands.getCommands(true);
+    const commandIds = [
+      'tabsTreeView.tab.removeFromGroup',
+      'tabsTreeView.group.ungroup',
+      'tabsTreeView.tab.ungroup',
+      'tabsTreeView.group.cancelGroup',
+    ];
+    assert.deepStrictEqual(
+      commandIds.filter(command => commands.includes(command)),
+      commandIds,
+    );
+    const contributedCommands = extension.packageJSON.contributes.commands as Array<{
+      command: string;
+      title: string;
+    }>;
+    assert.deepStrictEqual(
+      contributedCommands
+        .filter(command => commandIds.includes(command.command))
+        .map(({ command, title }) => ({ command, title })),
+      [
+        { command: commandIds[0], title: 'Remove from Group' },
+        { command: commandIds[1], title: 'Ungroup' },
+      ],
+    );
+    const menus = extension.packageJSON.contributes.menus as Record<
+      string,
+      Array<{ command: string }>
+    >;
+    assert.deepStrictEqual(
+      Object.values(menus)
+        .flat()
+        .filter(menu => commandIds.slice(2).includes(menu.command)),
+      [],
+    );
+  });
+
   test('adds saved groups and files to chat without reopening or modifying them', async () => {
     await vscode.extensions.getExtension('jiapeiyao.tab-group')!.activate();
     const firstUri = vscode.Uri.file(join(tmpdir(), 'tab-group-chat-saved.md'));
@@ -216,7 +255,8 @@ suite('Tab Group extension', () => {
 
     const commands = await vscode.commands.getCommands(true);
     assert.ok(commands.includes('tabsTreeView.addToChat'));
-    assert.ok(commands.includes('tabsTreeView.tab.ungroup'));
+    assert.ok(commands.includes('tabsTreeView.tab.removeFromGroup'));
+    assert.ok(commands.includes('tabsTreeView.group.ungroup'));
     assert.ok(commands.includes('tabsTreeView.group.rename'));
     assert.ok(commands.includes('tabsTreeView.group.changeColor'));
     assert.ok(commands.includes('tabsTreeView.sortTabsAscending'));
@@ -467,12 +507,12 @@ suite('Tab Group extension', () => {
       when?: string;
     }>;
     for (const command of [
-      'tabsTreeView.tab.ungroup',
+      'tabsTreeView.tab.removeFromGroup',
       'tabsTreeView.group.rename',
       'tabsTreeView.group.sortTabsAscending',
       'tabsTreeView.group.sortTabsDescending',
       'tabsTreeView.group.save',
-      'tabsTreeView.group.cancelGroup',
+      'tabsTreeView.group.ungroup',
       'tabsTreeView.group.close',
     ]) {
       assert.equal(

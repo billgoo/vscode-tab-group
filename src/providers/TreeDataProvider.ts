@@ -253,7 +253,7 @@ export class TreeDataProvider
 
   private doHandleGrouping(target: Tab | Group | undefined, tabs: Tab[]) {
     if (target === undefined) {
-      this.treeState.ungroup(tabs, true);
+      this.treeState.removeTabsFromGroup(tabs, true);
     } else {
       const isCreatingNewGroup = isTab(target) && target.groupId === null && tabs.length > 0;
       this.treeState.group(target, tabs);
@@ -346,8 +346,8 @@ export class TreeDataProvider
     return this.treeState.getState();
   }
 
-  public ungroup(tab: Tab) {
-    this.treeState.ungroup([tab]);
+  public removeFromGroup(tab: Tab) {
+    this.treeState.removeTabsFromGroup([tab]);
     this.triggerStateChange();
   }
 
@@ -361,8 +361,8 @@ export class TreeDataProvider
     this.triggerStateChange();
   }
 
-  public cancelGroup(group: Group): void {
-    this.treeState.cancelGroup(group);
+  public ungroup(group: Group): void {
+    this.treeState.ungroup(group);
     this.triggerStateChange();
   }
 
