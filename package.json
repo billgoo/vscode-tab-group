@@ -39,7 +39,7 @@
   ],
   "icon": "media/icon.png",
   "engines": {
-    "vscode": "^1.71.0"
+    "vscode": "^1.134.0"
   },
   "activationEvents": [
     "onStartupFinished"
@@ -352,6 +352,34 @@
       ],
       "commandPalette": [
         {
+          "command": "tabsTreeView.tab.ungroup",
+          "when": "false"
+        },
+        {
+          "command": "tabsTreeView.group.rename",
+          "when": "false"
+        },
+        {
+          "command": "tabsTreeView.group.sortTabsAscending",
+          "when": "false"
+        },
+        {
+          "command": "tabsTreeView.group.sortTabsDescending",
+          "when": "false"
+        },
+        {
+          "command": "tabsTreeView.group.save",
+          "when": "false"
+        },
+        {
+          "command": "tabsTreeView.group.cancelGroup",
+          "when": "false"
+        },
+        {
+          "command": "tabsTreeView.group.close",
+          "when": "false"
+        },
+        {
           "command": "tabsTreeView.enableSortMode",
           "when": "tabGroup.viewMode == list && !tabGroup.sortMode:enabled"
         },
@@ -386,7 +414,7 @@
     "@types/jest": "^30.0.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "^26.3.0",
-    "@types/vscode": "^1.71.0",
+    "@types/vscode": "^1.134.0",
     "@typescript-eslint/eslint-plugin": "^8.68.0",
     "@typescript-eslint/parser": "^8.67.0",
     "@vscode/test-cli": "^0.0.15",

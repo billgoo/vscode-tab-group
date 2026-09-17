@@ -29,9 +29,23 @@ export function getFilePathDescription(
     return undefined;
   }
 
-  const commonPrefixIndex = findLongestCommonFilePathPrefixIndex(relatedFilePaths);
-  const description = filePath.slice(commonPrefixIndex + 1, -1);
-  return description.length > 0 ? description.join('/') : undefined;
+  const parentPath = filePath.slice(0, -1);
+  for (let segmentCount = 1; segmentCount <= parentPath.length; segmentCount++) {
+    const suffix = parentPath.slice(-segmentCount);
+    const matchingPathCount = relatedFilePaths.filter(candidate => {
+      const candidateParent = candidate.slice(0, -1);
+      const candidateSuffix = candidateParent.slice(-segmentCount);
+      return (
+        candidateSuffix.length === suffix.length &&
+        candidateSuffix.every((segment, index) => segment === suffix[index])
+      );
+    }).length;
+    if (matchingPathCount <= 1) {
+      return suffix.join('/');
+    }
+  }
+
+  return parentPath.length > 0 ? parentPath.join('/') : undefined;
 }
 
 export function createFileTree(

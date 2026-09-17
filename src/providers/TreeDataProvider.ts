@@ -1,9 +1,8 @@
 import * as vscode from 'vscode';
-import { join, sep } from 'node:path';
+import { sep } from 'node:path';
 
 import { Disposable } from '../utils/disposable';
 import {
-  FilePathNode,
   Folder,
   Group,
   isGroup,
@@ -19,7 +18,7 @@ import {
 import { TreeState } from '../services/TreeState';
 import { getHandler, getNormalizedTabId, matchesTabId } from './TabTypeHandler';
 import { GroupColorId, getGroupColorOption } from '../utils/color';
-import { findLongestCommonFilePathPrefixIndex } from '../utils/fileTree';
+import { getFilePathDescription } from '../utils/fileTree';
 import {
   compareSortStrings,
   compareTabSortKeys,
@@ -54,11 +53,6 @@ export class TreeDataProvider
    * To reuse tree item object
    */
   private treeItemMap: Record<string, vscode.TreeItem> = {};
-
-  /**
-   * Store file path of open tab with resourceUri as tree map to use for label if duplicated file name showing
-   */
-  private filePathTree: Record<string, Record<string, FilePathNode>> = {};
 
   private sortMode = false;
   private viewMode: ViewMode = 'list';
@@ -100,38 +94,24 @@ export class TreeDataProvider
 
   getTreeItem(element: TreeElement): vscode.TreeItem {
     if (element.type === TreeItemType.Tab) {
-      const newTreeItem = this.createTabTreeItem(element);
       const tabId = element.id;
+      if (!this.treeItemMap[tabId]) {
+        this.treeItemMap[tabId] = this.createTabTreeItem(element);
+      }
+      const treeItem = this.treeItemMap[tabId];
 
-      newTreeItem.contextValue = element.groupId === null ? 'tab' : 'grouped-tab';
+      treeItem.contextValue = element.groupId === null ? 'tab' : 'grouped-tab';
 
-      const resourceUri = newTreeItem.resourceUri;
+      const resourceUri = treeItem.resourceUri;
       const isExternalResource =
         resourceUri !== undefined && vscode.workspace.getWorkspaceFolder(resourceUri) === undefined;
 
-      if (resourceUri) {
-        // use to update tab label if duplicated file name showing
-        const filePathArray = tabId.split(sep);
-        if (filePathArray.length > 1) {
-          if (!this.filePathTree[filePathArray[-1]]) {
-            this.filePathTree[filePathArray[-1]] = {};
-          }
-          if (!this.filePathTree[filePathArray[-1]][tabId]) {
-            this.filePathTree[filePathArray[-1]][tabId] = { pathList: filePathArray, id: tabId };
-          }
-        }
-      }
-
-      if (!this.treeItemMap[tabId]) {
-        this.treeItemMap[tabId] = newTreeItem;
-      }
-
-      if (isExternalResource && this.treeItemMap[tabId].tooltip === undefined) {
-        this.treeItemMap[tabId].tooltip =
+      if (isExternalResource && treeItem.tooltip === undefined) {
+        treeItem.tooltip =
           resourceUri.scheme === 'file' ? resourceUri.fsPath : resourceUri.toString();
       }
 
-      return this.treeItemMap[tabId];
+      return treeItem;
     }
 
     if (element.type === TreeItemType.Slot) {
@@ -295,7 +275,7 @@ export class TreeDataProvider
   public triggerRerender() {
     this.treeItemMap = {}; // Clear cache to force recreation of TreeItems with updated decorations
     this._onDidChangeTreeData.fire();
-    this.refreshFilePathTree();
+    this.refreshFilePathDescriptions();
   }
 
   public setState(state: Array<Tab | Group>) {
@@ -499,34 +479,33 @@ export class TreeDataProvider
     return expandableItems;
   }
 
-  private refreshFilePathTree() {
-    this.filePathTree = {};
-    this.getLeafNodes(this.treeState.getState()).forEach((leafNode: Tab) => {
-      const tabId = leafNode.id;
-      const nativeTabs = getNativeTabs(leafNode);
-      if (nativeTabs.length === 0) {
-        return;
+  private refreshFilePathDescriptions(): void {
+    const tabsByFileName = new Map<string, Array<{ path: string[]; treeItem: vscode.TreeItem }>>();
+
+    for (const tab of this.getLeafNodes(this.treeState.getState())) {
+      const nativeTab = getNativeTabs(tab)[0];
+      if (!(nativeTab?.input instanceof vscode.TabInputText)) {
+        continue;
       }
 
-      const leafItem = this.getTreeItem(leafNode);
-      if (nativeTabs[0].input instanceof vscode.TabInputText && leafItem.resourceUri) {
-        // use to update tab label if duplicated file name showing
-        const filePathArray = leafItem.resourceUri.fsPath.split(sep);
-        if (filePathArray.length > 1) {
-          const fileName = filePathArray[filePathArray.length - 1];
-          if (!this.filePathTree[fileName]) {
-            this.filePathTree[fileName] = {};
-          }
-          if (!this.filePathTree[fileName][tabId]) {
-            this.filePathTree[fileName][tabId] = {
-              pathList: filePathArray,
-              id: tabId,
-            } as FilePathNode;
-            this.onChangeFilePathTree(fileName);
-          }
-        }
+      const treeItem = this.getTreeItem(tab);
+      const path = treeItem.resourceUri?.fsPath.split(sep);
+      if (!path || path.length < 2) {
+        continue;
       }
-    });
+
+      const fileName = path[path.length - 1];
+      const entries = tabsByFileName.get(fileName) ?? [];
+      entries.push({ path, treeItem });
+      tabsByFileName.set(fileName, entries);
+    }
+
+    for (const entries of tabsByFileName.values()) {
+      const relatedPaths = entries.map(entry => entry.path);
+      for (const entry of entries) {
+        entry.treeItem.description = getFilePathDescription(entry.path, relatedPaths);
+      }
+    }
   }
 
   private createRootTree(children: Array<Tab | Group>): Array<TreeElement> {
@@ -677,34 +656,5 @@ export class TreeDataProvider
       }
     });
     return leafNodes;
-  }
-
-  private onChangeFilePathTree(fileName: string) {
-    const distinceNodeCount = Object.keys(this.filePathTree[fileName]).length;
-    if (distinceNodeCount > 1) {
-      const commonAncestorDirIndex = findLongestCommonFilePathPrefixIndex(
-        Object.values(this.filePathTree[fileName]).map(node => node.pathList) as Array<
-          Array<string>
-        >,
-      );
-      // map back to treeItemMap to change the description
-      Object.values(this.filePathTree[fileName]).forEach((node: FilePathNode) => {
-        this.updateTreeItemDescription(
-          node.id,
-          node.pathList.slice(commonAncestorDirIndex + 1, -1),
-        );
-      });
-    } else if (distinceNodeCount === 1) {
-      const node = Object.values(this.filePathTree[fileName])[0];
-      this.updateTreeItemDescription(node.id);
-    }
-  }
-
-  private updateTreeItemDescription(tabId: string, pathSequence?: Array<string>) {
-    if (this.treeItemMap[tabId]) {
-      this.treeItemMap[tabId].description = pathSequence?.length
-        ? join(...pathSequence)
-        : undefined;
-    }
   }
 }

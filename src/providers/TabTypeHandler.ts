@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { setTabDecoration } from '../decorators/TabFileDecorationProvider';
+import { setTabDecoration } from '../utils/tabDecoration';
 import {
   SavedCustomTab,
   SavedNotebookDiffTab,
@@ -177,7 +177,7 @@ export class TabInputTextHandler implements TabTypeHandler<vscode.TabInputText> 
       throw new UnimplementedError('Expected a saved text tab');
     }
 
-    await vscode.commands.executeCommand('vscode.open', vscode.Uri.parse(savedTab.uri), {
+    await vscode.window.showTextDocument(vscode.Uri.parse(savedTab.uri), {
       preview: false,
     });
   }
@@ -186,14 +186,14 @@ export class TabInputTextHandler implements TabTypeHandler<vscode.TabInputText> 
     const treeItem = new vscode.TreeItem(tab.input.uri);
 
     treeItem.label = tab.label;
-    setTabDecoration(treeItem, tab.input.uri, 'file');
+    setTabDecoration(treeItem, tab);
 
     return treeItem;
   }
 
   async openEditor(tab: TypedTab<vscode.TabInputText>): Promise<void> {
-    await vscode.commands
-      .executeCommand('vscode.open', tab.input.uri, { viewColumn: tab.group.viewColumn })
+    await vscode.window
+      .showTextDocument(tab.input.uri, { viewColumn: tab.group.viewColumn })
       .then(undefined, e => console.error(e));
     return;
   }
@@ -252,24 +252,28 @@ export class TabInputTextDiffHandler implements TabTypeHandler<vscode.TabInputTe
     const treeItem = new vscode.TreeItem(tab.input.modified);
     treeItem.label = tab.label;
 
-    // generate discription
-    const originalFilePathArray = tab.input.original.fsPath.split(path.sep);
-    const modifiedFilePathArray = tab.input.modified.fsPath.split(path.sep);
-    const filePathArray = [];
-    filePathArray.push(originalFilePathArray);
-    filePathArray.push(modifiedFilePathArray);
-    if (
-      originalFilePathArray[originalFilePathArray.length - 1] ==
-      modifiedFilePathArray[modifiedFilePathArray.length - 1]
-    ) {
-      const commonAncestorDirIndex = findLongestCommonFilePathPrefixIndex(filePathArray);
-      treeItem.description =
-        path.join(...originalFilePathArray.slice(commonAncestorDirIndex + 1, -1)) +
-        ' - ' +
-        path.join(...modifiedFilePathArray.slice(commonAncestorDirIndex + 1, -1));
+    if (tab.input.original.fsPath !== tab.input.modified.fsPath) {
+      const originalFilePathArray = tab.input.original.fsPath.split(path.sep);
+      const modifiedFilePathArray = tab.input.modified.fsPath.split(path.sep);
+      if (
+        originalFilePathArray[originalFilePathArray.length - 1] ===
+        modifiedFilePathArray[modifiedFilePathArray.length - 1]
+      ) {
+        const commonAncestorDirIndex = findLongestCommonFilePathPrefixIndex([
+          originalFilePathArray,
+          modifiedFilePathArray,
+        ]);
+        const originalDirectory = path.join(
+          ...originalFilePathArray.slice(commonAncestorDirIndex + 1, -1),
+        );
+        const modifiedDirectory = path.join(
+          ...modifiedFilePathArray.slice(commonAncestorDirIndex + 1, -1),
+        );
+        treeItem.description = `${originalDirectory} - ${modifiedDirectory}`;
+      }
     }
 
-    setTabDecoration(treeItem, tab.input.modified, 'diff');
+    setTabDecoration(treeItem, tab);
 
     return treeItem;
   }
@@ -333,7 +337,7 @@ export class TabInputNotebookDiffHandler implements TabTypeHandler<vscode.TabInp
   createTreeItem(tab: TypedTab<vscode.TabInputNotebookDiff>): vscode.TreeItem {
     const treeItem = new vscode.TreeItem(tab.input.modified);
     treeItem.label = tab.label;
-    setTabDecoration(treeItem, tab.input.modified, 'diff');
+    setTabDecoration(treeItem, tab);
 
     return treeItem;
   }
@@ -392,7 +396,10 @@ export class TabInputCustomHandler implements TabTypeHandler<vscode.TabInputCust
   }
 
   createTreeItem(tab: TypedTab<vscode.TabInputCustom>): vscode.TreeItem {
-    return new vscode.TreeItem(tab.input.uri);
+    const treeItem = new vscode.TreeItem(tab.input.uri);
+    treeItem.label = tab.label;
+    setTabDecoration(treeItem, tab);
+    return treeItem;
   }
 
   async openEditor(tab: TypedTab<vscode.TabInputCustom>): Promise<void> {
@@ -449,7 +456,10 @@ export class TabInputNotebookHandler implements TabTypeHandler<vscode.TabInputNo
   }
 
   createTreeItem(tab: TypedTab<vscode.TabInputNotebook>): vscode.TreeItem {
-    return new vscode.TreeItem(tab.input.uri);
+    const treeItem = new vscode.TreeItem(tab.input.uri);
+    treeItem.label = tab.label;
+    setTabDecoration(treeItem, tab);
+    return treeItem;
   }
 
   async openEditor(tab: TypedTab<vscode.TabInputNotebook>): Promise<void> {

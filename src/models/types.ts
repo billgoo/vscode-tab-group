@@ -53,8 +53,3 @@ export function isSlot(item: TreeElement): item is Slot {
 export function isFolder(item: TreeElement): item is Folder {
   return item.type === TreeItemType.Folder;
 }
-
-export type FilePathNode = {
-  pathList: Array<string>;
-  id: string;
-};

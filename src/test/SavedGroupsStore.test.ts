@@ -132,4 +132,40 @@ describe('SavedGroupsStore', () => {
     );
     expect(update).not.toHaveBeenCalled();
   });
+
+  test('serializes complete read-modify-write updates', async () => {
+    let state: unknown = { version: 1, groups: [] };
+    let releaseFirstUpdate!: () => void;
+    const firstUpdateReleased = new Promise<void>(resolve => {
+      releaseFirstUpdate = resolve;
+    });
+    const update = jest.fn(async (_key: string, value: unknown) => {
+      if (update.mock.calls.length === 1) {
+        await firstUpdateReleased;
+      }
+      state = value;
+    });
+    const workspaceState = {
+      get: jest.fn(() => state),
+      update,
+    } as unknown as Memento;
+    const store = new SavedGroupsStore(workspaceState);
+    const firstGroup = createSavedGroup();
+    const secondGroup = {
+      ...firstGroup,
+      id: 'second-saved-group',
+      sourceGroupId: 'second-live-group',
+      name: 'Second group',
+    };
+
+    const firstUpdate = store.update(groups => [...groups, firstGroup]);
+    const secondUpdate = store.update(groups => [...groups, secondGroup]);
+
+    await Promise.resolve();
+    expect(update).toHaveBeenCalledTimes(1);
+    releaseFirstUpdate();
+    await Promise.all([firstUpdate, secondUpdate]);
+
+    expect(store.load()).toEqual([firstGroup, secondGroup]);
+  });
 });

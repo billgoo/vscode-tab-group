@@ -3,7 +3,7 @@ import { getNormalizedTabId, matchesTabId, reopenSavedTab, toSavedTab } from './
 import { WorkspaceStateStore } from '../services/WorkspaceStateStore';
 import { SavedGroupsStore } from '../services/SavedGroupsStore';
 import { RecentTabs } from '../services/RecentTabs';
-import { ExclusiveHandle } from '../utils/event';
+import { ExclusiveHandle, ExclusiveHandlePriority } from '../utils/event';
 import { asPromise } from '../utils/async';
 import { Group, isGroup, isTab, Tab, TreeElement, TreeItemType, ViewMode } from '../models/types';
 import { SavedGroup, SavedTab } from '../models/SavedGroup';
@@ -12,7 +12,6 @@ import { RecentTabsTreeDataProvider } from './RecentTabsTreeDataProvider';
 import { SavedGroupsTreeDataProvider } from './SavedGroupsTreeDataProvider';
 import { Disposable } from '../utils/disposable';
 import { ContextKeys, setContext } from '../utils/context';
-import { getTabFileDecorationProvider } from '../decorators/TabFileDecorationProvider';
 import { GroupColorId, groupColorOptions } from '../utils/color';
 import { getSavedTabId, getSavedTabLabel } from '../utils/savedTab';
 import {
@@ -110,17 +109,6 @@ export class TabsView extends Disposable {
       this.treeDataProvider.onDidChangeState(() => {
         this.saveState(this.treeDataProvider.getState());
         this.recentTabsTreeDataProvider.refresh();
-      }),
-    );
-
-    const tabFileDecorationProvider = this._register(getTabFileDecorationProvider());
-
-    this._register(
-      tabFileDecorationProvider.onDidChangeFileDecorations(uris => {
-        if (uris.length > 0) {
-          this.treeDataProvider.triggerRerender();
-          this.recentTabsTreeDataProvider.refresh();
-        }
       }),
     );
 
@@ -254,9 +242,9 @@ export class TabsView extends Disposable {
     );
 
     this._register(
-      vscode.commands.registerCommand('tabsTreeView.group.close', (group: Group) => {
-        vscode.window.tabGroups.close(group.children.map((tab: Tab) => getNativeTabs(tab)).flat());
-      }),
+      vscode.commands.registerCommand('tabsTreeView.group.close', (group: Group) =>
+        vscode.window.tabGroups.close(group.children.map((tab: Tab) => getNativeTabs(tab)).flat()),
+      ),
     );
 
     this._register(
@@ -321,7 +309,10 @@ export class TabsView extends Disposable {
         this.revealActiveTab(view, findActiveItem(e.changed));
 
         this.treeDataProvider.triggerRerender();
-        this.refreshRecentTabs(this.getActiveNativeTab());
+        const recentTabsChanged = this.refreshRecentTabs(this.getActiveNativeTab());
+        if (!recentTabsChanged) {
+          this.recentTabsTreeDataProvider.refresh();
+        }
         if (openedTabsChanged || closedTabsChanged) {
           this.saveState(this.treeDataProvider.getState());
         }
@@ -347,7 +338,10 @@ export class TabsView extends Disposable {
         const selectedTab = getSelectedTab(e.selection);
         this.selectedTab = selectedTab;
         if (selectedTab) {
-          this.exclusiveHandle.run(() => asPromise(this.treeDataProvider.activate(selectedTab)));
+          this.exclusiveHandle.run(
+            () => asPromise(this.treeDataProvider.activate(selectedTab)),
+            ExclusiveHandlePriority.UserAction,
+          );
         }
       }),
     );
@@ -361,7 +355,10 @@ export class TabsView extends Disposable {
         setContext(ContextKeys.SelectedGroup, Boolean(this.selectedGroup));
 
         if (selectedTab) {
-          this.exclusiveHandle.run(() => asPromise(this.treeDataProvider.activate(selectedTab)));
+          this.exclusiveHandle.run(
+            () => asPromise(this.treeDataProvider.activate(selectedTab)),
+            ExclusiveHandlePriority.UserAction,
+          );
         }
       }),
     );
@@ -473,21 +470,13 @@ export class TabsView extends Disposable {
   }
 
   private async sortSavedGroups(direction: TabSortDirection): Promise<void> {
-    const savedGroups = this.getSavedGroups();
-    const sortedSavedGroups = sortSavedGroupSnapshots(savedGroups, direction);
-    const changed = sortedSavedGroups.some(
-      (savedGroup, index) => savedGroup !== savedGroups[index],
-    );
-
-    if (!changed) {
-      await setContext(ContextKeys.NextSavedGroupsSortAscending, direction === 'descending');
-      return;
-    }
-
-    const saved = await this.persistSavedGroups(
-      sortedSavedGroups,
-      'Could not sort saved tab groups.',
-    );
+    const saved = await this.persistSavedGroups(savedGroups => {
+      const sortedSavedGroups = sortSavedGroupSnapshots(savedGroups, direction);
+      const changed = sortedSavedGroups.some(
+        (savedGroup, index) => savedGroup !== savedGroups[index],
+      );
+      return changed ? sortedSavedGroups : savedGroups;
+    }, 'Could not sort saved tab groups.');
     if (!saved) {
       return;
     }
@@ -541,35 +530,34 @@ export class TabsView extends Disposable {
         ? ''
         : ` Skipped ${skippedTabCount} tab${skippedTabCount === 1 ? '' : 's'} that cannot be restored.`;
 
-    const savedGroups = this.getSavedGroups();
-    const {
-      savedGroup,
-      savedGroups: nextSavedGroups,
-      updated,
-    } = upsertSavedGroupSnapshot(savedGroups, group, tabs);
-
-    await this.saveSavedGroups(
-      nextSavedGroups,
-      `${updated ? 'Updated' : 'Saved'} tab group "${savedGroup.name}".${skippedTabsMessage}`,
-      `Could not save tab group "${savedGroup.name}".`,
+    let successMessage = '';
+    const saved = await this.persistSavedGroups(
+      savedGroups => {
+        const result = upsertSavedGroupSnapshot(savedGroups, group, tabs);
+        successMessage = `${result.updated ? 'Updated' : 'Saved'} tab group "${result.savedGroup.name}".${skippedTabsMessage}`;
+        return result.savedGroups;
+      },
+      `Could not save tab group "${getSavedGroupName(group.label)}".`,
     );
+    if (saved) {
+      void vscode.window.showInformationMessage(successMessage);
+    }
   }
 
   private async updateSavedGroupName(group: Group): Promise<void> {
-    const savedGroups = this.getSavedGroups();
-    const existingGroup = findSavedGroupForSource(savedGroups, group.id);
-    if (!existingGroup) {
-      return;
-    }
-
-    const nextName = getSavedGroupName(group.label);
-    if (existingGroup.name === nextName && existingGroup.groupLabel === group.label) {
-      return;
-    }
-
     const saved = await this.persistSavedGroups(
-      updateSavedGroupSnapshotName(savedGroups, group.id, group.label),
-      `Could not update saved tab group "${existingGroup.name}".`,
+      savedGroups => {
+        const existingGroup = findSavedGroupForSource(savedGroups, group.id);
+        const nextName = getSavedGroupName(group.label);
+        if (
+          !existingGroup ||
+          (existingGroup.name === nextName && existingGroup.groupLabel === group.label)
+        ) {
+          return savedGroups;
+        }
+        return updateSavedGroupSnapshotName(savedGroups, group.id, group.label);
+      },
+      `Could not update saved tab group "${getSavedGroupName(group.label)}".`,
     );
     if (!saved) {
       return;
@@ -721,9 +709,8 @@ export class TabsView extends Disposable {
       return;
     }
 
-    const savedGroups = this.getSavedGroups();
     await this.saveSavedGroups(
-      savedGroups.filter(candidate => candidate.id !== savedGroup.id),
+      savedGroups => savedGroups.filter(candidate => candidate.id !== savedGroup.id),
       `Deleted saved tab group "${savedGroup.name}".`,
       `Could not delete tab group "${savedGroup.name}".`,
     );
@@ -746,7 +733,7 @@ export class TabsView extends Disposable {
     }
 
     await this.saveSavedGroups(
-      [],
+      () => [],
       `Deleted ${savedGroups.length} saved tab groups.`,
       'Could not delete all saved tab groups.',
     );
@@ -811,11 +798,11 @@ export class TabsView extends Disposable {
   }
 
   private async saveSavedGroups(
-    savedGroups: readonly SavedGroup[],
+    mutator: (savedGroups: readonly SavedGroup[]) => readonly SavedGroup[],
     successMessage: string,
     failureMessage: string,
   ): Promise<void> {
-    const saved = await this.persistSavedGroups(savedGroups, failureMessage);
+    const saved = await this.persistSavedGroups(mutator, failureMessage);
     if (!saved) {
       return;
     }
@@ -824,19 +811,21 @@ export class TabsView extends Disposable {
   }
 
   private async persistSavedGroups(
-    savedGroups: readonly SavedGroup[],
+    mutator: (savedGroups: readonly SavedGroup[]) => readonly SavedGroup[],
     failureMessage: string,
-  ): Promise<boolean> {
-    const snapshot = [...savedGroups];
-    const saved = await this.persist(() => this.savedGroupsStore.save(snapshot), failureMessage);
-    if (!saved) {
-      return false;
+  ): Promise<readonly SavedGroup[] | undefined> {
+    let snapshot: readonly SavedGroup[] | undefined;
+    const saved = await this.persist(async () => {
+      snapshot = await this.savedGroupsStore.update(mutator);
+    }, failureMessage);
+    if (!saved || !snapshot) {
+      return undefined;
     }
 
     void setContext(ContextKeys.HasSavedGroups, snapshot.length > 0);
     this.savedGroupsTreeDataProvider.refresh();
     void this.updateSavedGroupsExpansionContext();
-    return true;
+    return snapshot;
   }
 
   private findNativeTab(tabId: string): vscode.Tab | undefined {
@@ -928,7 +917,7 @@ export class TabsView extends Disposable {
       );
   }
 
-  private refreshRecentTabs(activeTab: vscode.Tab | undefined): void {
+  private refreshRecentTabs(activeTab: vscode.Tab | undefined): boolean {
     const nativeTabIds = this.collectNativeTabIds(this.getNativeTabs());
 
     let changed = this.recentTabs.reconcile([...nativeTabIds]);
@@ -947,6 +936,7 @@ export class TabsView extends Disposable {
       this.saveRecentTabs();
       this.recentTabsTreeDataProvider.refresh();
     }
+    return changed;
   }
 
   private getNativeTabs(): vscode.Tab[] {

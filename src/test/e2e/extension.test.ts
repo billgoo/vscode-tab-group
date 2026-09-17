@@ -1,4 +1,5 @@
 import * as assert from 'assert';
+import { suite, test } from 'mocha';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import * as vscode from 'vscode';
@@ -23,6 +24,7 @@ import { SavedGroupsTreeDataProvider } from '../../providers/SavedGroupsTreeData
 import { SavedGroupsStore } from '../../services/SavedGroupsStore';
 import { findActiveItem } from '../../utils/tabSelection';
 import { ContextKeys, getContext } from '../../utils/context';
+import { setTabDecoration } from '../../utils/tabDecoration';
 
 function getOpenTabIds(): Set<string> {
   return new Set(
@@ -297,6 +299,21 @@ suite('Tab Group extension', () => {
       command: string;
       when?: string;
     }>;
+    for (const command of [
+      'tabsTreeView.tab.ungroup',
+      'tabsTreeView.group.rename',
+      'tabsTreeView.group.sortTabsAscending',
+      'tabsTreeView.group.sortTabsDescending',
+      'tabsTreeView.group.save',
+      'tabsTreeView.group.cancelGroup',
+      'tabsTreeView.group.close',
+    ]) {
+      assert.equal(
+        commandPaletteMenus.find(menu => menu.command === command)?.when,
+        'false',
+        `${command} should only be available from a tree item`,
+      );
+    }
     assert.ok(
       commandPaletteMenus.some(
         menu =>
@@ -436,6 +453,38 @@ suite('Tab Group extension', () => {
       await closeTabs([firstTab.id, externalTab.id, groupedTab.id]);
       await vscode.workspace.fs.delete(directoryUri, { useTrash: false, recursive: true });
       await vscode.workspace.fs.delete(externalDirectoryUri, { useTrash: false, recursive: true });
+    }
+  });
+
+  test('shows the shortest distinguishing directories for duplicate filenames', async () => {
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
+    assert.ok(workspaceRoot, 'The extension host should have a workspace folder.');
+    const directoryUri = vscode.Uri.joinPath(
+      workspaceRoot,
+      `.tab-group-duplicate-names-${Date.now()}`,
+    );
+    const firstUri = vscode.Uri.joinPath(directoryUri, 'feature', 'src', 'index.ts');
+    const secondUri = vscode.Uri.joinPath(directoryUri, 'shared', 'src', 'index.ts');
+    const firstTab: Tab = { type: TreeItemType.Tab, groupId: null, id: firstUri.toString() };
+    const secondTab: Tab = { type: TreeItemType.Tab, groupId: null, id: secondUri.toString() };
+    const treeDataProvider = new TreeDataProvider();
+
+    await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(directoryUri, 'feature', 'src'));
+    await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(directoryUri, 'shared', 'src'));
+    await vscode.workspace.fs.writeFile(firstUri, Buffer.from(firstUri.fsPath));
+    await vscode.workspace.fs.writeFile(secondUri, Buffer.from(secondUri.fsPath));
+
+    try {
+      await vscode.commands.executeCommand('vscode.open', firstUri, { preview: false });
+      await vscode.commands.executeCommand('vscode.open', secondUri, { preview: false });
+      treeDataProvider.setState([firstTab, secondTab]);
+
+      assert.equal(treeDataProvider.getTreeItem(firstTab).description, 'feature/src');
+      assert.equal(treeDataProvider.getTreeItem(secondTab).description, 'shared/src');
+    } finally {
+      treeDataProvider.dispose();
+      await closeTabs([firstUri.toString(), secondUri.toString()]);
+      await vscode.workspace.fs.delete(directoryUri, { recursive: true, useTrash: false });
     }
   });
 
@@ -1072,6 +1121,52 @@ suite('Tab Group extension', () => {
     ]);
   });
 
+  test('decorates dirty and pinned resource-backed tabs from native tab state', () => {
+    const uri = vscode.Uri.file('/workspace/dirty.txt');
+    const tabs = [
+      { input: new vscode.TabInputText(uri), label: 'Text' },
+      { input: new vscode.TabInputTextDiff(uri, uri), label: 'Text Diff' },
+      { input: new vscode.TabInputCustom(uri, 'example.custom'), label: 'Custom' },
+      { input: new vscode.TabInputNotebook(uri, 'jupyter-notebook'), label: 'Notebook' },
+      {
+        input: new vscode.TabInputNotebookDiff(uri, uri, 'jupyter-notebook'),
+        label: 'Notebook Diff',
+      },
+    ].map(tab => ({ ...tab, isDirty: true }) as vscode.Tab);
+
+    for (const tab of tabs) {
+      const treeItem = getHandler(tab)?.createTreeItem(tab);
+      assert.ok(treeItem);
+      assert.match(String(treeItem.label), /^⏺ /);
+      assert.equal(treeItem.iconPath, undefined);
+    }
+
+    const textHandler = getHandler(tabs[0]);
+    assert.ok(textHandler);
+    const cleanTab = { ...tabs[0], isDirty: false } as vscode.Tab;
+    const pinnedTab = { ...tabs[0], isDirty: false, isPinned: true } as vscode.Tab;
+    const dirtyPinnedTab = { ...tabs[0], isPinned: true } as vscode.Tab;
+    const cleanTreeItem = textHandler.createTreeItem(cleanTab);
+    const pinnedTreeItem = textHandler.createTreeItem(pinnedTab);
+
+    assert.equal(cleanTreeItem.label, 'Text');
+    assert.equal(cleanTreeItem.iconPath, undefined);
+    assert.match(String(pinnedTreeItem.label), /^📌︎ /);
+    assert.equal(pinnedTreeItem.iconPath, undefined);
+    const dirtyPinnedTreeItem = textHandler.createTreeItem(dirtyPinnedTab);
+    assert.match(String(dirtyPinnedTreeItem.label), /^📌︎⏺ /);
+    assert.equal(dirtyPinnedTreeItem.iconPath, undefined);
+
+    const richLabel = { label: 'Text', highlights: [[0, 4] as [number, number]] };
+    const richLabelTreeItem = new vscode.TreeItem(richLabel);
+    setTabDecoration(richLabelTreeItem, tabs[0]);
+    assert.deepStrictEqual(richLabelTreeItem.label, {
+      label: '⏺ Text',
+      highlights: [[2, 6]],
+    });
+    assert.deepStrictEqual(richLabel, { label: 'Text', highlights: [[0, 4]] });
+  });
+
   test('saves restorable tabs while skipping live-only system tabs', async () => {
     const extension = vscode.extensions.getExtension('jiapeiyao.tab-group');
     const testId = `${Date.now()}-${process.pid}`;
@@ -1113,6 +1208,19 @@ suite('Tab Group extension', () => {
       await closeTabs([uri.toString(), systemTab ? getNormalizedTabId(systemTab) : '']);
       await vscode.workspace.fs.delete(uri, { useTrash: false });
     }
+  });
+
+  test('omits an uninformative description for a same-path text diff', () => {
+    const uri = vscode.Uri.file('/workspace/same.txt');
+    const tab = {
+      input: new vscode.TabInputTextDiff(uri, uri),
+      label: 'Text Diff',
+    } as vscode.Tab;
+
+    const treeItem = getHandler(tab)?.createTreeItem(tab);
+
+    assert.ok(treeItem);
+    assert.equal(treeItem.description, undefined);
   });
 
   test('keeps live-only tabs in an existing group when restoring saved tabs', () => {

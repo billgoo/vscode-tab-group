@@ -83,4 +83,22 @@ describe('file path descriptions', () => {
     expect(getFilePathDescription(paths[0], paths)).toBe('event-publisher-role');
     expect(getFilePathDescription(paths[1], paths)).toBe('cleanup-workflow');
   });
+
+  test('expands the parent suffix only while shorter suffixes are ambiguous', () => {
+    const paths = [
+      ['workspace', 'feature', 'src', 'index.ts'],
+      ['workspace', 'shared', 'src', 'index.ts'],
+      ['workspace', 'tests', 'index.ts'],
+    ];
+
+    expect(getFilePathDescription(paths[0], paths)).toBe('feature/src');
+    expect(getFilePathDescription(paths[1], paths)).toBe('shared/src');
+    expect(getFilePathDescription(paths[2], paths)).toBe('tests');
+  });
+
+  test('omits the description when a filename is unique', () => {
+    const path = ['workspace', 'src', 'unique.ts'];
+
+    expect(getFilePathDescription(path, [path])).toBeUndefined();
+  });
 });
