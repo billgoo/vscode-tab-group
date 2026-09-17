@@ -5,6 +5,7 @@ export type TreePanelRevealOptions = {
 };
 
 export type TreePanelView<T> = {
+  readonly selection?: readonly T[];
   reveal(element: T, options?: TreePanelRevealOptions): PromiseLike<void>;
 };
 
@@ -17,8 +18,16 @@ export async function selectTreeItem<T>(
   item: T,
   collapsedParent?: T,
 ): Promise<void> {
+  if (treeView.selection && treeView.selection.length > 1) {
+    return;
+  }
+
   if (collapsedParent) {
     await treeView.reveal(collapsedParent, { expand: true, focus: false, select: false });
+  }
+
+  if (treeView.selection && treeView.selection.length > 1) {
+    return;
   }
 
   await treeView.reveal(item, { expand: true, focus: false, select: true });

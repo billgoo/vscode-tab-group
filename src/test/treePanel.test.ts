@@ -108,4 +108,28 @@ describe('tree panel helpers', () => {
       select: true,
     });
   });
+
+  test('preserves multiple selected items during active editor synchronization', async () => {
+    const first: Item = { id: 'first', expandable: false };
+    const second: Item = { id: 'second', expandable: false };
+    const { reveal } = createTreeView();
+
+    await selectTreeItem({ reveal, selection: [first, second] }, second);
+
+    expect(reveal).not.toHaveBeenCalled();
+  });
+
+  test('preserves a multi-selection made while its parent is being revealed', async () => {
+    const group: Item = { id: 'group', expandable: true };
+    const first: Item = { id: 'first', expandable: false };
+    const second: Item = { id: 'second', expandable: false };
+    const selection = [first];
+    const reveal = jest.fn(async (_item: Item, _options?: TreePanelRevealOptions) => {
+      selection.push(second);
+    });
+
+    await selectTreeItem({ reveal, selection }, second, group);
+
+    expect(reveal.mock.calls).toEqual([[group, { expand: true, focus: false, select: false }]]);
+  });
 });

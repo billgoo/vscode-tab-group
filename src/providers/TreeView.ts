@@ -9,11 +9,11 @@ import { Group, isGroup, isTab, Tab, TreeElement, TreeItemType, ViewMode } from 
 import { SavedGroup, SavedTab } from '../models/SavedGroup';
 import { getNativeTabs, TreeDataProvider } from './TreeDataProvider';
 import { RecentTabsTreeDataProvider } from './RecentTabsTreeDataProvider';
-import { SavedGroupsTreeDataProvider } from './SavedGroupsTreeDataProvider';
+import { SavedGroupsTreeDataProvider, SavedGroupsTreeItem } from './SavedGroupsTreeDataProvider';
 import { Disposable } from '../utils/disposable';
 import { ContextKeys, setContext } from '../utils/context';
 import { GroupColorId, groupColorOptions } from '../utils/color';
-import { getSavedTabId, getSavedTabLabel } from '../utils/savedTab';
+import { getSavedTabId, getSavedTabLabel, getSavedTabUri } from '../utils/savedTab';
 import {
   findSavedGroupForSource,
   filterRestorableTabs,
@@ -102,6 +102,7 @@ export class TabsView extends Disposable {
     const savedGroupsView = this._register(
       vscode.window.createTreeView('savedGroupsTreeView', {
         treeDataProvider: this.savedGroupsTreeDataProvider,
+        canSelectMany: true,
       }),
     );
 
@@ -113,6 +114,61 @@ export class TabsView extends Disposable {
     );
 
     this._register(
+      vscode.commands.registerCommand(
+        'tabsTreeView.addToChat',
+        async (
+          target?: TreeElement | SavedGroupsTreeItem,
+          selection?: readonly (TreeElement | SavedGroupsTreeItem)[],
+        ) => {
+          if (!target) {
+            return;
+          }
+
+          const targets = selection?.includes(target) ? selection : [target];
+          const tabs = targets.flatMap((item): readonly SavedTab[] => {
+            if ('tabs' in item) {
+              return item.tabs;
+            }
+            if ('savedTab' in item) {
+              return [item.savedTab];
+            }
+
+            const liveTabs = isGroup(item) ? item.children : isTab(item) ? [item] : [];
+            return liveTabs.flatMap(tab =>
+              getNativeTabs(tab).flatMap(nativeTab => {
+                const savedTab = toSavedTab(nativeTab);
+                return savedTab ? [savedTab] : [];
+              }),
+            );
+          });
+          const resources = new Map<string, vscode.Uri>();
+          for (const savedTab of tabs) {
+            const uri = vscode.Uri.parse(getSavedTabUri(savedTab));
+            if (['file', 'vscode-remote', 'untitled'].includes(uri.scheme)) {
+              resources.set(uri.toString(), uri);
+            }
+          }
+
+          if (resources.size === 0) {
+            await vscode.window.showInformationMessage(
+              'No supported files in the selected tabs to add to chat.',
+            );
+            return;
+          }
+
+          try {
+            const uris = [...resources.values()];
+            await vscode.commands.executeCommand('workbench.action.chat.attachFile', uris[0], uris);
+          } catch (error) {
+            await vscode.window.showErrorMessage(
+              `Unable to add tabs to chat. Make sure GitHub Copilot Chat is available. ${error instanceof Error ? error.message : String(error)}`,
+            );
+          }
+        },
+      ),
+    );
+
+    this._register(
       vscode.commands.registerCommand('tabsTreeView.tab.close', (target?: TreeElement) => {
         const tab = target === undefined ? this.selectedTab : isTab(target) ? target : undefined;
         return tab ? vscode.window.tabGroups.close(getNativeTabs(tab)) : undefined;
@@ -120,8 +176,8 @@ export class TabsView extends Disposable {
     );
 
     this._register(
-      vscode.commands.registerCommand('tabsTreeView.tab.ungroup', (tab: Tab) =>
-        this.treeDataProvider.ungroup(tab),
+      vscode.commands.registerCommand('tabsTreeView.tab.removeFromGroup', (tab: Tab) =>
+        this.treeDataProvider.removeFromGroup(tab),
       ),
     );
 
@@ -236,8 +292,20 @@ export class TabsView extends Disposable {
     );
 
     this._register(
+      vscode.commands.registerCommand('tabsTreeView.group.ungroup', (group: Group) =>
+        this.treeDataProvider.ungroup(group),
+      ),
+    );
+
+    this._register(
+      vscode.commands.registerCommand('tabsTreeView.tab.ungroup', (tab: Tab) =>
+        vscode.commands.executeCommand('tabsTreeView.tab.removeFromGroup', tab),
+      ),
+    );
+
+    this._register(
       vscode.commands.registerCommand('tabsTreeView.group.cancelGroup', (group: Group) =>
-        this.treeDataProvider.cancelGroup(group),
+        vscode.commands.executeCommand('tabsTreeView.group.ungroup', group),
       ),
     );
 
@@ -276,7 +344,7 @@ export class TabsView extends Disposable {
         }
 
         setContext(ContextKeys.SortMode, true);
-        view.title = (view.title ?? '') + ' (Sorting)';
+        view.title = (view.title ?? '') + ' (Reordering)';
         this.treeDataProvider.toggleSortMode(true);
       }),
     );
@@ -284,7 +352,7 @@ export class TabsView extends Disposable {
     this._register(
       vscode.commands.registerCommand('tabsTreeView.disableSortMode', () => {
         setContext(ContextKeys.SortMode, false);
-        view.title = (view.title ?? '').replace(' (Sorting)', '');
+        view.title = (view.title ?? '').replace(' (Reordering)', '');
         this.treeDataProvider.toggleSortMode(false);
       }),
     );
@@ -785,7 +853,7 @@ export class TabsView extends Disposable {
 
     if (viewMode === 'tree' && this.treeDataProvider.isSortMode()) {
       setContext(ContextKeys.SortMode, false);
-      view.title = (view.title ?? '').replace(' (Sorting)', '');
+      view.title = (view.title ?? '').replace(' (Reordering)', '');
       this.treeDataProvider.toggleSortMode(false);
     }
 
