@@ -177,12 +177,12 @@
       {
         "command": "tabsTreeView.viewAsList",
         "title": "View as List",
-        "icon": "$(list-tree)"
+        "icon": "$(list-flat)"
       },
       {
         "command": "tabsTreeView.viewAsTree",
         "title": "View as Tree",
-        "icon": "$(list-flat)"
+        "icon": "$(list-tree)"
       },
       {
         "command": "tabsTreeView.collapseAll",
