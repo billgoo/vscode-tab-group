@@ -71,6 +71,36 @@ function createSavedTextTab(uri: vscode.Uri): SavedTextTab {
 }
 
 suite('Tab Group extension', () => {
+  test('shows group colors only on icons when creating and refreshing rows', () => {
+    const provider = new TreeDataProvider();
+    const group: Group = {
+      type: TreeItemType.Group,
+      id: 'color-description-test',
+      label: '',
+      colorId: 'charts.blue',
+      collapsed: false,
+      children: [],
+    };
+
+    try {
+      const item = provider.getTreeItem(group);
+      assert.equal(item.description, undefined);
+      assert.ok(item.iconPath instanceof vscode.ThemeIcon);
+      assert.equal(item.iconPath.color?.id, 'terminal.ansiBrightBlue');
+
+      group.colorId = 'charts.green';
+      group.label = 'Named group';
+      const refreshedItem = provider.getTreeItem(group);
+      assert.strictEqual(refreshedItem, item);
+      assert.equal(refreshedItem.label, 'Named group');
+      assert.equal(refreshedItem.description, undefined);
+      assert.ok(refreshedItem.iconPath instanceof vscode.ThemeIcon);
+      assert.equal(refreshedItem.iconPath.color?.id, 'terminal.ansiBrightGreen');
+    } finally {
+      provider.dispose();
+    }
+  });
+
   test('exposes readable group command IDs and retains compatibility aliases', async () => {
     const extension = vscode.extensions.getExtension('jiapeiyao.tab-group')!;
     await extension.activate();

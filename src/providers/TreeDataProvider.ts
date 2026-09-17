@@ -151,7 +151,6 @@ export class TreeDataProvider
         'layout-sidebar-left',
         groupColor ? new vscode.ThemeColor(groupColor.themeColorId) : undefined,
       );
-      treeItem.description = groupColor?.label;
       this.treeItemMap[element.id] = treeItem;
     } else {
       const treeItem = this.treeItemMap[element.id];
@@ -161,7 +160,6 @@ export class TreeDataProvider
         'layout-sidebar-left',
         groupColor ? new vscode.ThemeColor(groupColor.themeColorId) : undefined,
       );
-      treeItem.description = groupColor?.label;
     }
 
     return this.treeItemMap[element.id];
