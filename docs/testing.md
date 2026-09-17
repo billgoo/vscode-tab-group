@@ -54,8 +54,8 @@ Use `--skip-e2e` only when a local VS Code runtime is unavailable. CI and tag-ba
 
 - Open the Tabs view title **...** menu, choose **View as Tree**, and confirm resource-backed tabs appear under nested directory nodes inside the root and named groups. Open a resource outside the current workspace and confirm it remains a direct tab item instead of exposing its absolute parent directories; hover it and confirm its full location is available in the tooltip.
 - Confirm the view menu now offers **View as List**, and switch back to verify the flat list is restored. Reload the window and confirm the selected view mode is retained.
-- In Tree view, confirm **Sort Mode** and its manual-sort icon are unavailable. Switch to List view and confirm they return; predefined URI sort actions remain available in both views.
-- Use the top-right **Sort Mode** action, reorder tabs or groups, and select **Done**.
+- In Tree view, confirm **Manual Reorder** and its grabber icon are unavailable. Switch to List view and confirm they return; predefined URI sort actions remain available in both views.
+- Use **Manual Reorder**, confirm the title becomes **Tabs (Reordering)**, reorder tabs or groups, and select **Done**. Confirm the title returns to **Tabs**. Also confirm switching to Tree view while reordering removes the title suffix.
 - Confirm ordering changes without changing group membership.
 - Try to drop a root tab into a group and a grouped tab onto the root while sorting; confirm both drops are ignored.
 - Use the view-title ascending sort control to sort root tabs and every group's tabs by File URI A-Z, and root groups by name A-Z, then confirm it changes to the descending control and reverses all three orders on the next click.

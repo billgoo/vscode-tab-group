@@ -11,7 +11,7 @@ Organize editor tabs into persistent, named groups from the Tab Group activity-b
 - Drag tabs to the view background to ungroup them.
 - Keep the visible Tabs view selection synchronized with the active supported editor tab, opening only its containing group and folder path.
 - Switch the Tabs view between a GitLens-style file tree and a flat list from the view overflow menu.
-- Use manual Sort Mode in List view to reorder tabs and groups without changing group membership.
+- Use Manual Reorder in List view to reorder tabs and groups without changing group membership.
 - Sort root tabs by file URI, root groups by name, and each group's tabs by file URI.
 - Sort saved groups by name from the Saved Groups panel.
 - Rename, close, ungroup, or dissolve a group from its context menu.
@@ -25,15 +25,15 @@ Organize editor tabs into persistent, named groups from the Tab Group activity-b
 
 ## Usage
 
-Open the **Tab Group** activity-bar view. Drag tabs directly to group them. When a new group is created, enter an optional name. Use the view title actions to enter Sort Mode and to collapse, expand, or reset all groups.
+Open the **Tab Group** activity-bar view. Drag tabs directly to group them. When a new group is created, enter an optional name. Use the view title actions to enable **Manual Reorder** and to collapse, expand, or reset all groups.
 
-Use the **...** menu in the Tabs view title to switch between **View as Tree** and **View as List**. Tree mode groups resource-backed tabs by workspace-relative directory inside the root and each named group. Resource-backed tabs outside the current workspace, and tabs without a usable resource path, remain direct leaves; external resource tabs show their full location in the tooltip. The selected view is persisted with the workspace. Manual **Sort Mode** is available only in List view, while the predefined URI sort actions remain available in both views.
+Use the **...** menu in the Tabs view title to switch between **View as Tree** and **View as List**. Tree mode groups resource-backed tabs by workspace-relative directory inside the root and each named group. Resource-backed tabs outside the current workspace, and tabs without a usable resource path, remain direct leaves; external resource tabs show their full location in the tooltip. The selected view is persisted with the workspace. **Manual Reorder** is available only in List view, while the predefined URI sort actions remain available in both views.
 
 ![Active editor tab selection](docs/assets/active-tab-selection.gif)
 
 ![Sorting grouped tabs](docs/assets/sort.gif)
 
-Dropping an item onto another inserts it immediately before the target. In Sort Mode, tabs and groups can only be reordered within their current parent, so sorting never changes group membership. The view-title sort control orders root tabs by File URI, every group's tabs by File URI, and root groups by name. A group sort control orders only that group's tabs by File URI. Each control switches to the opposite direction after it is used. Group controls toggle independently, while a root sort resets every group control to its next direction. Root tabs and groups reorder only among their existing root positions. Sorting changes the Tabs tree only; it does not reorder VS Code's editor tabs. The **Recent Tabs** view lists ungrouped tabs by most recent activation; drag a tab from it onto a group in the **Tabs** view to organize it.
+Dropping an item onto another inserts it immediately before the target. With **Manual Reorder** enabled, tabs and groups can only be reordered within their current parent, so reordering never changes group membership. The view title shows **Tabs (Reordering)** until you select **Done**. The view-title sort control orders root tabs by File URI, every group's tabs by File URI, and root groups by name. A group sort control orders only that group's tabs by File URI. Each control switches to the opposite direction after it is used. Group controls toggle independently, while a root sort resets every group control to its next direction. Root tabs and groups reorder only among their existing root positions. Sorting changes the Tabs tree only; it does not reorder VS Code's editor tabs. The **Recent Tabs** view lists ungrouped tabs by most recent activation; drag a tab from it onto a group in the **Tabs** view to organize it.
 
 ![Saved Groups panel](docs/assets/saved-groups.gif)
 

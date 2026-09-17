@@ -243,6 +243,10 @@ suite('Tab Group extension', () => {
       title?: string;
     }>;
     assert.equal(
+      contributedCommands.find(command => command.command === 'tabsTreeView.enableSortMode')?.title,
+      'Manual Reorder',
+    );
+    assert.equal(
       contributedCommands.find(command => command.command === 'tabsTreeView.sortTabsAscending')
         ?.icon,
       '$(arrow-up)',

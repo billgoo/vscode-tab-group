@@ -93,7 +93,7 @@
       {
         "command": "tabsTreeView.tab.ungroup",
         "title": "Ungroup",
-        "icon": "$(array)"
+        "icon": "$(screen-full)"
       },
       {
         "command": "tabsTreeView.group.rename",
@@ -172,8 +172,8 @@
       },
       {
         "command": "tabsTreeView.enableSortMode",
-        "title": "Sort Mode",
-        "icon": "$(sort-precedence)"
+        "title": "Manual Reorder",
+        "icon": "$(list-ordered)"
       },
       {
         "command": "tabsTreeView.disableSortMode",
@@ -183,12 +183,12 @@
       {
         "command": "tabsTreeView.viewAsList",
         "title": "View as List",
-        "icon": "$(list-tree)"
+        "icon": "$(list-flat)"
       },
       {
         "command": "tabsTreeView.viewAsTree",
         "title": "View as Tree",
-        "icon": "$(list-flat)"
+        "icon": "$(list-tree)"
       },
       {
         "command": "tabsTreeView.collapseAll",
@@ -326,23 +326,23 @@
           "group": "navigation@0"
         },
         {
-          "command": "tabsTreeView.enableSortMode",
-          "when": "view =~ /^tabsTreeView/ && tabGroup.viewMode == list && !tabGroup.sortMode:enabled",
-          "group": "navigation@1"
-        },
-        {
-          "command": "tabsTreeView.disableSortMode",
-          "when": "view =~ /^tabsTreeView/ && tabGroup.viewMode == list && tabGroup.sortMode:enabled",
-          "group": "navigation@1"
-        },
-        {
           "command": "tabsTreeView.sortTabsAscending",
           "when": "view =~ /^tabsTreeView/ && !tabGroup.sortMode:enabled && tabGroup.sort:nextRootAscending",
-          "group": "navigation@2"
+          "group": "navigation@1"
         },
         {
           "command": "tabsTreeView.sortTabsDescending",
           "when": "view =~ /^tabsTreeView/ && !tabGroup.sortMode:enabled && !tabGroup.sort:nextRootAscending",
+          "group": "navigation@1"
+        },
+        {
+          "command": "tabsTreeView.enableSortMode",
+          "when": "view =~ /^tabsTreeView/ && tabGroup.viewMode == list && !tabGroup.sortMode:enabled",
+          "group": "navigation@2"
+        },
+        {
+          "command": "tabsTreeView.disableSortMode",
+          "when": "view =~ /^tabsTreeView/ && tabGroup.viewMode == list && tabGroup.sortMode:enabled",
           "group": "navigation@2"
         },
         {

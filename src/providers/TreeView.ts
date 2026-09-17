@@ -332,7 +332,7 @@ export class TabsView extends Disposable {
         }
 
         setContext(ContextKeys.SortMode, true);
-        view.title = (view.title ?? '') + ' (Sorting)';
+        view.title = (view.title ?? '') + ' (Reordering)';
         this.treeDataProvider.toggleSortMode(true);
       }),
     );
@@ -340,7 +340,7 @@ export class TabsView extends Disposable {
     this._register(
       vscode.commands.registerCommand('tabsTreeView.disableSortMode', () => {
         setContext(ContextKeys.SortMode, false);
-        view.title = (view.title ?? '').replace(' (Sorting)', '');
+        view.title = (view.title ?? '').replace(' (Reordering)', '');
         this.treeDataProvider.toggleSortMode(false);
       }),
     );
@@ -841,7 +841,7 @@ export class TabsView extends Disposable {
 
     if (viewMode === 'tree' && this.treeDataProvider.isSortMode()) {
       setContext(ContextKeys.SortMode, false);
-      view.title = (view.title ?? '').replace(' (Sorting)', '');
+      view.title = (view.title ?? '').replace(' (Reordering)', '');
       this.treeDataProvider.toggleSortMode(false);
     }
 
