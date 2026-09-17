@@ -344,7 +344,7 @@ suite('Tab Group extension', () => {
     );
     assert.equal(
       contributedCommands.find(command => command.command === 'tabsTreeView.viewAsList')?.icon,
-      '$(list-tree)',
+      '$(list-flat)',
     );
     assert.equal(
       contributedCommands.find(command => command.command === 'tabsTreeView.viewAsTree')?.title,
@@ -352,7 +352,7 @@ suite('Tab Group extension', () => {
     );
     assert.equal(
       contributedCommands.find(command => command.command === 'tabsTreeView.viewAsTree')?.icon,
-      '$(list-flat)',
+      '$(list-tree)',
     );
 
     const contributedViews = extension.packageJSON.contributes.views.tabs as Array<{
