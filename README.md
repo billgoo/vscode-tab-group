@@ -43,9 +43,9 @@ Use **Save Group...** from a group context menu to create or update a snapshot w
 
 ### Add to Chat
 
-With GitHub Copilot Chat enabled, right-click a tab or live group in **Tabs**, or a tab in **Recent Tabs**, and choose **Add to Chat**. Select multiple tabs or groups to attach their files together. The action adds context to the chat input without sending a message or changing your tab groups.
+With GitHub Copilot Chat enabled, right-click a tab or live group in **Tabs**, a tab in **Recent Tabs**, or a saved group or file in **Saved Groups**, and choose **Add to Chat**. The leftmost inline button provides the same action. Select multiple tabs or groups to attach their files together. The action adds context to the chat input without sending a message or changing your tab groups. Saved groups use their stored file URIs without reopening tabs or restoring the snapshot.
 
-Duplicate files are attached once. Text, custom-editor, and notebook tabs use their file resource; diffs use the modified file, matching VS Code's **Add File to Chat** behavior. Local, remote, and untitled resources are supported. System tabs and unsupported URI schemes are skipped; a selection with no supported files shows an informational message. Saved Groups snapshots are not included in this action.
+Duplicate files are attached once. Text, custom-editor, and notebook tabs use their file resource; diffs use the modified file, matching VS Code's **Add File to Chat** behavior. Local, remote, and untitled resources are supported. System tabs and unsupported URI schemes are skipped; a selection with no supported files shows an informational message. Saved files must still be accessible for chat to read their contents.
 
 ### Supported Inputs
 

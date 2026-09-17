@@ -71,6 +71,64 @@ function createSavedTextTab(uri: vscode.Uri): SavedTextTab {
 }
 
 suite('Tab Group extension', () => {
+  test('adds saved groups and files to chat without reopening or modifying them', async () => {
+    await vscode.extensions.getExtension('jiapeiyao.tab-group')!.activate();
+    const firstUri = vscode.Uri.file(join(tmpdir(), 'tab-group-chat-saved.md'));
+    const secondUri = vscode.Uri.parse('vscode-remote://ssh-remote+workspace/project/notes.md');
+    const savedGroup: SavedGroup = {
+      id: 'saved-chat-test',
+      name: 'Saved chat test',
+      groupLabel: 'Saved chat test',
+      colorId: 'blue',
+      collapsed: true,
+      tabs: [
+        createSavedTextTab(firstUri),
+        {
+          kind: 'textDiff',
+          id: 'saved-chat-diff',
+          originalUri: 'git:/project/notes.md',
+          modifiedUri: secondUri.toString(),
+          label: 'Saved diff',
+        },
+        createSavedTextTab(vscode.Uri.parse('git:/project/unsupported.md')),
+      ],
+    };
+    const child = { savedGroup, savedTab: savedGroup.tabs[0] };
+    const otherGroup: SavedGroup = { ...savedGroup, id: 'other-saved-chat-test' };
+    const originalSnapshot = JSON.stringify(savedGroup);
+    const originalTabIds = getOpenTabIds();
+    const calls: string[][] = [];
+    const attachmentCommand = vscode.commands.registerCommand(
+      'workbench.action.chat.attachFile',
+      (resource: vscode.Uri, resources: vscode.Uri[]) => {
+        assert.equal(resource.toString(), resources[0].toString());
+        calls.push(resources.map(uri => uri.toString()));
+      },
+    );
+
+    try {
+      await vscode.commands.executeCommand('tabsTreeView.addToChat', savedGroup);
+      await vscode.commands.executeCommand('tabsTreeView.addToChat', child);
+      await vscode.commands.executeCommand('tabsTreeView.addToChat', savedGroup, [
+        savedGroup,
+        child,
+        otherGroup,
+      ]);
+      await vscode.commands.executeCommand('tabsTreeView.addToChat', child, [otherGroup]);
+
+      assert.deepStrictEqual(calls, [
+        [firstUri.toString(), secondUri.toString()],
+        [firstUri.toString()],
+        [firstUri.toString(), secondUri.toString()],
+        [firstUri.toString()],
+      ]);
+      assert.deepStrictEqual(getOpenTabIds(), originalTabIds);
+      assert.equal(JSON.stringify(savedGroup), originalSnapshot);
+    } finally {
+      attachmentCommand.dispose();
+    }
+  });
+
   test('adds tabs and groups to chat in a single deduplicated attachment call', async () => {
     await vscode.extensions.getExtension('jiapeiyao.tab-group')!.activate();
     const root = vscode.Uri.file(join(__dirname, '../../..'));
@@ -310,6 +368,16 @@ suite('Tab Group extension', () => {
         {
           command: 'tabsTreeView.addToChat',
           when: 'view =~ /^(tabsTreeView|recentTabsTreeView)$/ && viewItem =~ /^(tab|grouped-tab|group-sort-ascending|group-sort-descending)$/ && chatIsEnabled',
+          group: 'inline@-1',
+        },
+        {
+          command: 'tabsTreeView.addToChat',
+          when: 'view == savedGroupsTreeView && viewItem =~ /^(saved-group|saved-tab)$/ && chatIsEnabled',
+          group: 'chat@1',
+        },
+        {
+          command: 'tabsTreeView.addToChat',
+          when: 'view == savedGroupsTreeView && viewItem =~ /^(saved-group|saved-tab)$/ && chatIsEnabled',
           group: 'inline@-1',
         },
       ],

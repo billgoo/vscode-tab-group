@@ -9,7 +9,7 @@ import { Group, isGroup, isTab, Tab, TreeElement, TreeItemType, ViewMode } from 
 import { SavedGroup, SavedTab } from '../models/SavedGroup';
 import { getNativeTabs, TreeDataProvider } from './TreeDataProvider';
 import { RecentTabsTreeDataProvider } from './RecentTabsTreeDataProvider';
-import { SavedGroupsTreeDataProvider } from './SavedGroupsTreeDataProvider';
+import { SavedGroupsTreeDataProvider, SavedGroupsTreeItem } from './SavedGroupsTreeDataProvider';
 import { Disposable } from '../utils/disposable';
 import { ContextKeys, setContext } from '../utils/context';
 import { GroupColorId, groupColorOptions } from '../utils/color';
@@ -102,6 +102,7 @@ export class TabsView extends Disposable {
     const savedGroupsView = this._register(
       vscode.window.createTreeView('savedGroupsTreeView', {
         treeDataProvider: this.savedGroupsTreeDataProvider,
+        canSelectMany: true,
       }),
     );
 
@@ -115,27 +116,36 @@ export class TabsView extends Disposable {
     this._register(
       vscode.commands.registerCommand(
         'tabsTreeView.addToChat',
-        async (target?: TreeElement, selection?: readonly TreeElement[]) => {
+        async (
+          target?: TreeElement | SavedGroupsTreeItem,
+          selection?: readonly (TreeElement | SavedGroupsTreeItem)[],
+        ) => {
           if (!target) {
             return;
           }
 
           const targets = selection?.includes(target) ? selection : [target];
-          const tabs = targets.flatMap(item =>
-            isGroup(item) ? item.children : isTab(item) ? [item] : [],
-          );
-          const resources = new Map<string, vscode.Uri>();
-          for (const tab of tabs) {
-            for (const nativeTab of getNativeTabs(tab)) {
-              const savedTab = toSavedTab(nativeTab);
-              if (!savedTab) {
-                continue;
-              }
+          const tabs = targets.flatMap((item): readonly SavedTab[] => {
+            if ('tabs' in item) {
+              return item.tabs;
+            }
+            if ('savedTab' in item) {
+              return [item.savedTab];
+            }
 
-              const uri = vscode.Uri.parse(getSavedTabUri(savedTab));
-              if (['file', 'vscode-remote', 'untitled'].includes(uri.scheme)) {
-                resources.set(uri.toString(), uri);
-              }
+            const liveTabs = isGroup(item) ? item.children : isTab(item) ? [item] : [];
+            return liveTabs.flatMap(tab =>
+              getNativeTabs(tab).flatMap(nativeTab => {
+                const savedTab = toSavedTab(nativeTab);
+                return savedTab ? [savedTab] : [];
+              }),
+            );
+          });
+          const resources = new Map<string, vscode.Uri>();
+          for (const savedTab of tabs) {
+            const uri = vscode.Uri.parse(getSavedTabUri(savedTab));
+            if (['file', 'vscode-remote', 'untitled'].includes(uri.scheme)) {
+              resources.set(uri.toString(), uri);
             }
           }
 

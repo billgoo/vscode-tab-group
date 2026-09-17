@@ -112,6 +112,8 @@ Use `--skip-e2e` only when a local VS Code runtime is unavailable. CI and tag-ba
 
 ### Add to Chat
 
+- In **Saved Groups**, use the leftmost **Add to Chat** button and the context-menu action on a collapsed saved group and an individual saved file. Confirm the stored files attach without reopening tabs or changing the snapshot.
+- Use Ctrl-click and Shift-click in **Saved Groups** to select multiple groups and files, including overlapping groups and a group with its child. Confirm each resource attaches once. Check saved diffs attach their modified resource and unsupported URI schemes are skipped.
 - Enable GitHub Copilot Chat. Right-click a tab in **Tabs** or **Recent Tabs**, choose **Add to Chat**, and confirm its file is attached to the chat input without submitting a message.
 - Hover a tab or live group in **Tabs**, or a tab in **Recent Tabs**, and confirm the attach button has an **Add to Chat** tooltip. Click it and confirm the same attachment behavior as the context-menu action. Disable chat and confirm the button is hidden.
 - Repeat with a collapsed live group in both List and Tree views; confirm all supported files in the group are attached.
