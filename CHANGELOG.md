@@ -1,5 +1,15 @@
 # Change Log
 
+## 3.2.0
+
+- Enhancements:
+  - Upgrade the extension to the current VS Code API and modernize tree and tab handling.
+  - Add extension-host coverage for native editor events and tree synchronization.
+  - Improve file-tree labels, tab decorations, and event lifecycle handling.
+- Fix bugs:
+  - Preserve saved groups when stored data is invalid or changes across reloads.
+  - Improve tab updates and cleanup to avoid stale tree entries and duplicate event handling.
+
 ## 3.1.0
 
 - Enhancements:
