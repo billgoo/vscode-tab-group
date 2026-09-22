@@ -10,7 +10,7 @@ type SavedTabTreeItem = {
   readonly savedTab: SavedTab;
 };
 
-type SavedGroupsTreeItem = SavedGroup | SavedTabTreeItem;
+export type SavedGroupsTreeItem = SavedGroup | SavedTabTreeItem;
 
 function isSavedTabTreeItem(item: SavedGroupsTreeItem): item is SavedTabTreeItem {
   return 'savedTab' in item;

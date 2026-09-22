@@ -53,6 +53,26 @@ describe('TreeState grouping', () => {
 });
 
 describe('TreeState ungrouping', () => {
+  test('dissolves a group while preserving tab order and other root items', () => {
+    const group = createGroup('group');
+    const firstTab = createTab('first');
+    const secondTab = createTab('second');
+    const rootTab = createTab('root');
+    firstTab.groupId = group.id;
+    secondTab.groupId = group.id;
+    group.children = [firstTab, secondTab];
+    const treeState = new TreeState();
+    treeState.setState([group, rootTab]);
+
+    treeState.ungroup(group);
+
+    expect(treeState.getState()).toEqual([
+      { type: TreeItemType.Tab, id: 'first', groupId: null },
+      { type: TreeItemType.Tab, id: 'second', groupId: null },
+      { type: TreeItemType.Tab, id: 'root', groupId: null },
+    ]);
+  });
+
   test('returns a grouped tab to the root after its group', () => {
     const group = createGroup('G');
     const a = createTab('A');
@@ -64,7 +84,7 @@ describe('TreeState ungrouping', () => {
 
     const treeState = new TreeState();
     treeState.setState([group, c]);
-    treeState.ungroup([a]);
+    treeState.removeTabsFromGroup([a]);
 
     const state = treeState.getState();
     expect(state).toHaveLength(3);

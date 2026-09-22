@@ -11,10 +11,11 @@ Organize editor tabs into persistent, named groups from the Tab Group activity-b
 - Drag tabs to the view background to ungroup them.
 - Keep the visible Tabs view selection synchronized with the active supported editor tab, opening only its containing group and folder path.
 - Switch the Tabs view between a GitLens-style file tree and a flat list from the view overflow menu.
-- Use manual Sort Mode in List view to reorder tabs and groups without changing group membership.
+- Use Manual Reorder in List view to reorder tabs and groups without changing group membership.
 - Sort root tabs by file URI, root groups by name, and each group's tabs by file URI.
 - Sort saved groups by name from the Saved Groups panel.
 - Rename, close, ungroup, or dissolve a group from its context menu.
+- Add tabs or live tab groups to GitHub Copilot Chat as file attachments.
 - Collapse and expand all live groups, or toggle all saved snapshots in the Saved Groups panel.
 - Preserve group membership, order, names, colors, and collapsed state in workspace state.
 - Save named group snapshots, shown in a collapsed Saved Groups panel, and restore their supported tabs after they are closed.
@@ -24,21 +25,31 @@ Organize editor tabs into persistent, named groups from the Tab Group activity-b
 
 ## Usage
 
-Open the **Tab Group** activity-bar view. Drag tabs directly to group them. When a new group is created, enter an optional name. Use the view title actions to enter Sort Mode and to collapse, expand, or reset all groups.
+Open the **Tab Group** activity-bar view. Drag tabs directly to group them. When a new group is created, enter an optional name. Use the view title actions to enable **Manual Reorder** and to collapse, expand, or reset all groups.
 
-Use the **...** menu in the Tabs view title to switch between **View as Tree** and **View as List**. Tree mode groups resource-backed tabs by workspace-relative directory inside the root and each named group. Resource-backed tabs outside the current workspace, and tabs without a usable resource path, remain direct leaves; external resource tabs show their full location in the tooltip. The selected view is persisted with the workspace. Manual **Sort Mode** is available only in List view, while the predefined URI sort actions remain available in both views.
+Use the **...** menu in the Tabs view title to switch between **View as Tree** and **View as List**. Tree mode groups resource-backed tabs by workspace-relative directory inside the root and each named group. Resource-backed tabs outside the current workspace, and tabs without a usable resource path, remain direct leaves; external resource tabs show their full location in the tooltip. The selected view is persisted with the workspace. **Manual Reorder** is available only in List view, while the predefined URI sort actions remain available in both views.
 
 ![Active editor tab selection](docs/assets/active-tab-selection.gif)
 
 ![Sorting grouped tabs](docs/assets/sort.gif)
 
-Dropping an item onto another inserts it immediately before the target. In Sort Mode, tabs and groups can only be reordered within their current parent, so sorting never changes group membership. The view-title sort control orders root tabs by File URI, every group's tabs by File URI, and root groups by name. A group sort control orders only that group's tabs by File URI. Each control switches to the opposite direction after it is used. Group controls toggle independently, while a root sort resets every group control to its next direction. Root tabs and groups reorder only among their existing root positions. Sorting changes the Tabs tree only; it does not reorder VS Code's editor tabs. The **Recent Tabs** view lists ungrouped tabs by most recent activation; drag a tab from it onto a group in the **Tabs** view to organize it.
+Dropping an item onto another inserts it immediately before the target. With **Manual Reorder** enabled, tabs and groups can only be reordered within their current parent, so reordering never changes group membership. The view title shows **Tabs (Reordering)** until you select **Done**. The view-title sort control orders root tabs by File URI, every group's tabs by File URI, and root groups by name. A group sort control orders only that group's tabs by File URI. Each control switches to the opposite direction after it is used. Group controls toggle independently, while a root sort resets every group control to its next direction. Root tabs and groups reorder only among their existing root positions. Sorting changes the Tabs tree only; it does not reorder VS Code's editor tabs. The **Recent Tabs** view lists ungrouped tabs by most recent activation; drag a tab from it onto a group in the **Tabs** view to organize it.
 
 ![Saved Groups panel](docs/assets/saved-groups.gif)
 
 Use **Save Group...** from a group context menu to create or update a snapshot without entering a name. The snapshot uses the live group's ID as its stable identity and its group label as the display name, showing **untitled** when the group has no name. Renaming a live group automatically updates the title of its saved snapshot. Saving the same live group again updates its existing snapshot. Expand the **Saved Groups** panel to see snapshots and their tab counts, then expand a snapshot to inspect its saved files. Duplicate file names show the shortest distinguishing parent path. Use the panel toolbar to sort snapshots by name, expand or collapse all snapshots, restore all snapshots, or delete all snapshots. Saved snapshot order is persisted, and when snapshots share a tab, **Restore All Saved Groups** gives that tab to the first snapshot shown in the panel. Use a snapshot's folder action to restore it or its trash action to remove it from saved workspace storage. **Restore Saved Group...** is also available from the Command Palette.
 
 ## Tab support
+
+### Add to Chat
+
+![Add to Chat](docs/assets/add-to-chat.gif)
+
+With GitHub Copilot Chat enabled, right-click a tab or live group in **Tabs**, a tab in **Recent Tabs**, or a saved group or file in **Saved Groups**, and choose **Add to Chat**. The leftmost inline button provides the same action. Select multiple tabs or groups to attach their files together. The action adds context to the chat input without sending a message or changing your tab groups. Saved groups use their stored file URIs without reopening tabs or restoring the snapshot.
+
+Duplicate files are attached once. Text, custom-editor, and notebook tabs use their file resource; diffs use the modified file, matching VS Code's **Add File to Chat** behavior. Local, remote, and untitled resources are supported. System tabs and unsupported URI schemes are skipped; a selection with no supported files shows an informational message. Saved files must still be accessible for chat to read their contents.
+
+### Supported Inputs
 
 Tab Group supports text editors, text diffs, custom editors, notebooks, and notebook diffs with stable IDs. Saved tab groups restore the same resource-backed input types.
 

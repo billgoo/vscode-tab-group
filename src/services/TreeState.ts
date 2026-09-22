@@ -124,7 +124,7 @@ export class TreeState {
     if (group) {
       const savedTabIds = new Set(tabs.map(tab => tab.id));
       const retainedIds = new Set([...savedTabIds, ...retainedTabIds]);
-      this.ungroup(group.children.filter(tab => !retainedIds.has(tab.id)).reverse());
+      this.removeTabsFromGroup(group.children.filter(tab => !retainedIds.has(tab.id)).reverse());
       group.colorId = colorId;
       group.label = label;
       group.collapsed = collapsed;
@@ -151,7 +151,7 @@ export class TreeState {
     this.insertTabToGroup(tab, group, index);
   }
 
-  public ungroup(tabs: Tab[], pushBack: boolean = false) {
+  public removeTabsFromGroup(tabs: Tab[], pushBack: boolean = false) {
     tabs.forEach(tab => {
       if (tab.groupId === null) {
         return;
@@ -200,8 +200,8 @@ export class TreeState {
     }
   }
 
-  public cancelGroup(group: Group): void {
-    this.ungroup(group.children.slice().reverse());
+  public ungroup(group: Group): void {
+    this.removeTabsFromGroup(group.children.slice().reverse());
   }
 
   public sort(target: Tab | Group | Slot | undefined, draggeds: Array<Tab | Group>): boolean {

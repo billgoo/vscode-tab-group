@@ -8,10 +8,17 @@ export function getSavedTabUri(savedTab: SavedTab): string {
 
 export function getSavedTabPath(savedTab: SavedTab): string {
   const uri = getSavedTabUri(savedTab);
+  let pathname: string;
   try {
-    return new URL(uri).pathname;
+    pathname = new URL(uri).pathname;
   } catch {
     return uri;
+  }
+
+  try {
+    return decodeURIComponent(pathname);
+  } catch {
+    return pathname;
   }
 }
 

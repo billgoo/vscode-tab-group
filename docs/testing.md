@@ -54,8 +54,8 @@ Use `--skip-e2e` only when a local VS Code runtime is unavailable. CI and tag-ba
 
 - Open the Tabs view title **...** menu, choose **View as Tree**, and confirm resource-backed tabs appear under nested directory nodes inside the root and named groups. Open a resource outside the current workspace and confirm it remains a direct tab item instead of exposing its absolute parent directories; hover it and confirm its full location is available in the tooltip.
 - Confirm the view menu now offers **View as List**, and switch back to verify the flat list is restored. Reload the window and confirm the selected view mode is retained.
-- In Tree view, confirm **Sort Mode** and its manual-sort icon are unavailable. Switch to List view and confirm they return; predefined URI sort actions remain available in both views.
-- Use the top-right **Sort Mode** action, reorder tabs or groups, and select **Done**.
+- In Tree view, confirm **Manual Reorder** and its ordered-list icon are unavailable. Switch to List view and confirm they return; predefined URI sort actions remain available in both views.
+- Use **Manual Reorder**, confirm the title becomes **Tabs (Reordering)**, reorder tabs or groups, and select **Done**. Confirm the title returns to **Tabs**. Also confirm switching to Tree view while reordering removes the title suffix.
 - Confirm ordering changes without changing group membership.
 - Try to drop a root tab into a group and a grouped tab onto the root while sorting; confirm both drops are ignored.
 - Use the view-title ascending sort control to sort root tabs and every group's tabs by File URI A-Z, and root groups by name A-Z, then confirm it changes to the descending control and reverses all three orders on the next click.
@@ -109,6 +109,19 @@ Use `--skip-e2e` only when a local VS Code runtime is unavailable. CI and tag-ba
 - Open several ungrouped files and activate them in different orders; confirm **Recent Tabs** lists the most recently activated tab first.
 - Drag a tab from **Recent Tabs** onto an existing group and confirm it disappears from **Recent Tabs** after grouping.
 - Ungroup the tab and confirm it returns to **Recent Tabs** in its tracked position.
+
+### Add to Chat
+
+- In **Saved Groups**, use the leftmost **Add to Chat** button and the context-menu action on a collapsed saved group and an individual saved file. Confirm the stored files attach without reopening tabs or changing the snapshot.
+- Use Ctrl-click and Shift-click in **Saved Groups** to select multiple groups and files, including overlapping groups and a group with its child. Confirm each resource attaches once. Check saved diffs attach their modified resource and unsupported URI schemes are skipped.
+- Enable GitHub Copilot Chat. Right-click a tab in **Tabs** or **Recent Tabs**, choose **Add to Chat**, and confirm its file is attached to the chat input without submitting a message.
+- Hover a tab or live group in **Tabs**, or a tab in **Recent Tabs**, and confirm the attach button has an **Add to Chat** tooltip. Click it and confirm the same attachment behavior as the context-menu action. Disable chat and confirm the button is hidden.
+- Repeat with a collapsed live group in both List and Tree views; confirm all supported files in the group are attached.
+- Select multiple tabs and groups, including a group and one of its children; confirm each file is attached only once. Right-click an unselected tab and confirm only that tab is attached.
+- In both **Tabs** and **Recent Tabs**, use Ctrl-click to select separate tabs and Shift-click to select a range. Confirm earlier items remain selected and adding items does not activate an editor. In **Tabs**, confirm editor updates do not clear a multi-selection; selecting a single tab should still activate its editor.
+- Add a diff tab and confirm only its modified file is attached. Check notebook, remote, and untitled resources when available.
+- Include a system tab or a virtual resource with an unsupported URI scheme in a group; confirm supported files still attach. A selection containing only unsupported tabs should show an informational message and attach nothing.
+- Use the keyboard context menu on a focused tab or group and confirm **Add to Chat** is available. Disable chat and confirm the menu action is hidden.
 
 ### Supported Tab Inputs
 
