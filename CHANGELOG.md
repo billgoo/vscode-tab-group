@@ -1,5 +1,14 @@
 # Change Log
 
+## 3.2.1
+
+- Enhancements:
+  - Add Add to Chat actions for tabs, groups, and saved groups.
+  - Improve grouping command compatibility and refine view controls and icons.
+- Fix bugs:
+  - Preserve multi-selected tabs and percent-encoded URI paths.
+  - Prevent rapid selections and concurrent saved-group updates from losing state.
+
 ## 3.2.0
 
 - Enhancements:
