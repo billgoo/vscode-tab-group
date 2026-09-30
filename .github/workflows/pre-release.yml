@@ -13,6 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.prerelease.outputs.version }}
+      stable_version: ${{ steps.prerelease.outputs.stable_version }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -26,33 +27,41 @@ jobs:
         id: prerelease
         run: |
           stable_version="$(git show origin/main:package.json | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version")"
-          version="$(node - "$stable_version" "$GITHUB_RUN_NUMBER" <<'NODE'
-          const [, , stableVersion, runNumber] = process.argv;
-          const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(stableVersion);
-
-          if (!match || !/^\d+$/.test(runNumber)) {
-            throw new Error(`Expected a stable X.Y.Z version and numeric run number, got ${stableVersion} and ${runNumber}.`);
-          }
-
-          const [, major, minor] = match;
-          const stableMinor = Number(minor);
-          if (stableMinor % 2 !== 0) {
-            throw new Error(`Stable release versions must use an even minor version; got ${stableVersion}.`);
-          }
-
-          console.log(`${major}.${stableMinor + 1}.${Number(runNumber)}`);
-          NODE
-          )"
+          version="$(node .github/scripts/prepare-prerelease.js version "$stable_version" "$GITHUB_RUN_NUMBER")"
           echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "stable_version=${stable_version}" >> "$GITHUB_OUTPUT"
           npm version "$version" --no-git-tag-version --ignore-scripts
       - run: npm run lint
       - run: npm run test:unit
       - run: xvfb-run -a npm run test:e2e
+      - name: Generate pre-release notes and changelog
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRERELEASE_TAG: pre-release/${{ steps.prerelease.outputs.version }}
+          PRERELEASE_VERSION: ${{ steps.prerelease.outputs.version }}
+          STABLE_VERSION: ${{ steps.prerelease.outputs.stable_version }}
+        run: |
+          previous_tag=""
+          if git rev-parse --quiet --verify "refs/tags/${STABLE_VERSION}" >/dev/null; then
+            previous_tag="${STABLE_VERSION}"
+          elif git rev-parse --quiet --verify "refs/tags/v${STABLE_VERSION}" >/dev/null; then
+            previous_tag="v${STABLE_VERSION}"
+          fi
+
+          notes_args=(-f "tag_name=${PRERELEASE_TAG}" -f "target_commitish=${GITHUB_SHA}")
+          if [[ -n "${previous_tag}" ]]; then
+            notes_args+=(-f "previous_tag_name=${previous_tag}")
+          fi
+
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/releases/generate-notes" "${notes_args[@]}" --jq .body > pre-release-notes.md
+          node .github/scripts/prepare-prerelease.js changelog "${PRERELEASE_VERSION}" "${STABLE_VERSION}" pre-release-notes.md
       - run: npm run package -- --pre-release
       - uses: actions/upload-artifact@v7
         with:
           name: tab-group-prerelease-${{ steps.prerelease.outputs.version }}
-          path: '*.vsix'
+          path: |
+            *.vsix
+            pre-release-notes.md
           if-no-files-found: error
 
   publish:
@@ -87,13 +96,13 @@ jobs:
       - name: Create GitHub pre-release
         env:
           GH_TOKEN: ${{ github.token }}
-          PRERELEASE_VERSION: ${{ needs.validate.outputs.version }}
-          RELEASE_TAG: dev-pre-${{ github.run_number }}
+          RELEASE_TAG: pre-release/${{ needs.validate.outputs.version }}
+          RELEASE_TITLE: '${{ needs.validate.outputs.version }} (Pre-release)'
         run: |
           vsix_path="$(find release -maxdepth 1 -name '*.vsix' -print -quit)"
           test -n "${vsix_path}"
           if gh release view "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
             gh release upload "${RELEASE_TAG}" "${vsix_path}" --repo "${GITHUB_REPOSITORY}" --clobber
           else
-            gh release create "${RELEASE_TAG}" "${vsix_path}" --repo "${GITHUB_REPOSITORY}" --target "${GITHUB_SHA}" --prerelease --title "Pre-release ${PRERELEASE_VERSION}" --generate-notes
+            gh release create "${RELEASE_TAG}" "${vsix_path}" --repo "${GITHUB_REPOSITORY}" --target "${GITHUB_SHA}" --prerelease --title "${RELEASE_TITLE}" --notes-file release/pre-release-notes.md
           fi
