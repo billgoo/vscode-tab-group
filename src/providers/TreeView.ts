@@ -44,6 +44,9 @@ type SavedGroupRestoreResult = {
   readonly failedTabs: readonly SavedTab[];
 };
 
+// Identifies which live tree owns the selection used by the close-tab shortcut.
+type SelectedTabView = 'tabs' | 'recent';
+
 export class TabsView extends Disposable {
   private treeDataProvider: TreeDataProvider = this._register(new TreeDataProvider());
   private recentTabs = new RecentTabs();
@@ -53,7 +56,7 @@ export class TabsView extends Disposable {
   private readonly savedGroupsTreeDataProvider: SavedGroupsTreeDataProvider;
   private exclusiveHandle = new ExclusiveHandle();
   private selectedGroup: Group | undefined;
-  private selectedTab: Tab | undefined;
+  private selectedTabView: SelectedTabView = 'tabs';
   private expandedSavedGroupIds = new Set<string>();
 
   constructor(
@@ -170,8 +173,16 @@ export class TabsView extends Disposable {
 
     this._register(
       vscode.commands.registerCommand('tabsTreeView.tab.close', (target?: TreeElement) => {
-        const tab = target === undefined ? this.selectedTab : isTab(target) ? target : undefined;
-        return tab ? vscode.window.tabGroups.close(getNativeTabs(tab)) : undefined;
+        const selectedView = this.selectedTabView === 'recent' ? recentView : view;
+        const selectedItem =
+          target ?? (selectedView.selection.length === 1 ? selectedView.selection[0] : undefined);
+        const nativeTabs =
+          selectedItem && isGroup(selectedItem)
+            ? selectedItem.children.flatMap(tab => getNativeTabs(tab))
+            : selectedItem && isTab(selectedItem)
+              ? getNativeTabs(selectedItem)
+              : [];
+        return nativeTabs.length > 0 ? vscode.window.tabGroups.close(nativeTabs, true) : undefined;
       }),
     );
 
@@ -404,7 +415,7 @@ export class TabsView extends Disposable {
     this._register(
       recentView.onDidChangeSelection(e => {
         const selectedTab = getSelectedTab(e.selection);
-        this.selectedTab = selectedTab;
+        this.selectedTabView = 'recent';
         if (selectedTab) {
           this.exclusiveHandle.run(
             () => asPromise(this.treeDataProvider.activate(selectedTab)),
@@ -418,7 +429,7 @@ export class TabsView extends Disposable {
       view.onDidChangeSelection(e => {
         const item = e.selection.length > 0 ? e.selection[e.selection.length - 1] : undefined;
         const selectedTab = getSelectedTab(e.selection);
-        this.selectedTab = selectedTab;
+        this.selectedTabView = 'tabs';
         this.selectedGroup = item && isGroup(item) ? item : undefined;
         setContext(ContextKeys.SelectedGroup, Boolean(this.selectedGroup));
 

@@ -14,6 +14,7 @@ Organize editor tabs into persistent, named groups from the Tab Group activity-b
 - Use Manual Reorder in List view to reorder tabs and groups without changing group membership.
 - Sort root tabs by file URI, root groups by name, and each group's tabs by file URI.
 - Sort saved groups by name from the Saved Groups panel.
+- Close selected tabs or a live group with the inline tree action or Ctrl+Backspace/Ctrl+Delete (Cmd+Backspace/Cmd+Delete on macOS) when the item is focused in Tabs or Recent Tabs.
 - Rename, close, ungroup, or dissolve a group from its context menu.
 - Add tabs or live tab groups to GitHub Copilot Chat as file attachments.
 - Collapse and expand all live groups, or toggle all saved snapshots in the Saved Groups panel.

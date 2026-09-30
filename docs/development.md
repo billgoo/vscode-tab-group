@@ -20,6 +20,7 @@ See [testing.md](testing.md) for the automated-check matrix and manual acceptanc
 
 ## Group Command IDs
 
+- `tabsTreeView.tab.close` closes the selected tab or live group from the Tabs or Recent Tabs view when invoked without an explicit item.
 - `tabsTreeView.tab.removeFromGroup` removes a tab from its group.
 - `tabsTreeView.group.ungroup` dissolves a group while leaving its tabs open.
 

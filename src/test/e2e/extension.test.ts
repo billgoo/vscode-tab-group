@@ -285,6 +285,7 @@ suite('Tab Group extension', () => {
 
     const commands = await vscode.commands.getCommands(true);
     assert.ok(commands.includes('tabsTreeView.addToChat'));
+    assert.ok(commands.includes('tabsTreeView.tab.close'));
     assert.ok(commands.includes('tabsTreeView.tab.removeFromGroup'));
     assert.ok(commands.includes('tabsTreeView.group.ungroup'));
     assert.ok(commands.includes('tabsTreeView.group.rename'));
@@ -353,6 +354,30 @@ suite('Tab Group extension', () => {
     assert.equal(
       contributedCommands.find(command => command.command === 'tabsTreeView.viewAsTree')?.icon,
       '$(list-tree)',
+    );
+
+    const keybindings = extension.packageJSON.contributes.keybindings as Array<{
+      command: string;
+      key: string;
+      mac?: string;
+      when?: string;
+    }>;
+    assert.deepStrictEqual(
+      keybindings.filter(binding => binding.command === 'tabsTreeView.tab.close'),
+      [
+        {
+          command: 'tabsTreeView.tab.close',
+          key: 'ctrl+backspace',
+          mac: 'cmd+backspace',
+          when: 'focusedView =~ /^(tabsTreeView|recentTabsTreeView)$/ || (listFocus && view =~ /^(tabsTreeView|recentTabsTreeView)$/)',
+        },
+        {
+          command: 'tabsTreeView.tab.close',
+          key: 'ctrl+delete',
+          mac: 'cmd+delete',
+          when: 'focusedView =~ /^(tabsTreeView|recentTabsTreeView)$/ || (listFocus && view =~ /^(tabsTreeView|recentTabsTreeView)$/)',
+        },
+      ],
     );
 
     const contributedViews = extension.packageJSON.contributes.views.tabs as Array<{
@@ -430,7 +455,16 @@ suite('Tab Group extension', () => {
     const itemContextMenus = extension.packageJSON.contributes.menus['view/item/context'] as Array<{
       command: string;
       when?: string;
+      group?: string;
     }>;
+    assert.ok(
+      itemContextMenus.some(
+        menu =>
+          menu.command === 'tabsTreeView.tab.close' &&
+          menu.when === 'view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem =~ /tab/' &&
+          menu.group === 'inline@1',
+      ),
+    );
     assert.deepStrictEqual(
       itemContextMenus.filter(menu => menu.command === 'tabsTreeView.addToChat'),
       [
@@ -580,6 +614,46 @@ suite('Tab Group extension', () => {
     await assert.doesNotReject(async () =>
       vscode.commands.executeCommand('tabsTreeView.tab.close'),
     );
+  });
+
+  test('closes all native tabs when the close command receives a live group', async () => {
+    const extension = vscode.extensions.getExtension('jiapeiyao.tab-group');
+    const firstUri = vscode.Uri.file(
+      join(tmpdir(), `tab-group-close-group-first-${Date.now()}.txt`),
+    );
+    const secondUri = vscode.Uri.file(
+      join(tmpdir(), `tab-group-close-group-second-${Date.now()}.txt`),
+    );
+
+    assert.ok(extension, 'The Tab Group extension should be available to the extension host.');
+    await extension.activate();
+    await vscode.workspace.fs.writeFile(firstUri, Buffer.from('first'));
+    await vscode.workspace.fs.writeFile(secondUri, Buffer.from('second'));
+    await vscode.commands.executeCommand('vscode.open', firstUri, { preview: false });
+    await vscode.commands.executeCommand('vscode.open', secondUri, { preview: false });
+
+    const groupId = `tab-group-close-group-${Date.now()}`;
+    const group: Group = {
+      type: TreeItemType.Group,
+      id: groupId,
+      colorId: 'charts.green',
+      label: 'Close group',
+      collapsed: false,
+      children: [
+        { type: TreeItemType.Tab, groupId, id: firstUri.toString() },
+        { type: TreeItemType.Tab, groupId, id: secondUri.toString() },
+      ],
+    };
+
+    try {
+      await vscode.commands.executeCommand('tabsTreeView.tab.close', group);
+      assert.equal(getOpenTab(firstUri.toString()), undefined);
+      assert.equal(getOpenTab(secondUri.toString()), undefined);
+    } finally {
+      await closeTabs([firstUri.toString(), secondUri.toString()]);
+      await vscode.workspace.fs.delete(firstUri, { useTrash: false });
+      await vscode.workspace.fs.delete(secondUri, { useTrash: false });
+    }
   });
 
   test('derives nested folder trees for root and grouped tabs', async () => {
