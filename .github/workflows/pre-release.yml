@@ -1,0 +1,99 @@
+name: Publish Dev Pre-release
+
+on:
+  push:
+    branches: [dev]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate and package pre-release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.prerelease.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Resolve pre-release version
+        id: prerelease
+        run: |
+          stable_version="$(git show origin/main:package.json | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version")"
+          version="$(node - "$stable_version" "$GITHUB_RUN_NUMBER" <<'NODE'
+          const [, , stableVersion, runNumber] = process.argv;
+          const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(stableVersion);
+
+          if (!match || !/^\d+$/.test(runNumber)) {
+            throw new Error(`Expected a stable X.Y.Z version and numeric run number, got ${stableVersion} and ${runNumber}.`);
+          }
+
+          const [, major, minor] = match;
+          const stableMinor = Number(minor);
+          if (stableMinor % 2 !== 0) {
+            throw new Error(`Stable release versions must use an even minor version; got ${stableVersion}.`);
+          }
+
+          console.log(`${major}.${stableMinor + 1}.${Number(runNumber)}`);
+          NODE
+          )"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          npm version "$version" --no-git-tag-version --ignore-scripts
+      - run: npm run lint
+      - run: npm run test:unit
+      - run: xvfb-run -a npm run test:e2e
+      - run: npm run package -- --pre-release
+      - uses: actions/upload-artifact@v7
+        with:
+          name: tab-group-prerelease-${{ steps.prerelease.outputs.version }}
+          path: '*.vsix'
+          if-no-files-found: error
+
+  publish:
+    name: Publish pre-release
+    needs: validate
+    runs-on: ubuntu-latest
+    environment:
+      name: marketplace-prerelease
+      url: https://marketplace.visualstudio.com/items?itemName=jiapeiyao.tab-group
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - uses: actions/download-artifact@v8
+        with:
+          name: tab-group-prerelease-${{ needs.validate.outputs.version }}
+          path: release
+      - name: Publish to Visual Studio Marketplace
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          vsix_path="$(find release -maxdepth 1 -name '*.vsix' -print -quit)"
+          test -n "${vsix_path}"
+          npx --no-install vsce publish --pre-release --skip-duplicate --packagePath "${vsix_path}"
+      - name: Create GitHub pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRERELEASE_VERSION: ${{ needs.validate.outputs.version }}
+          RELEASE_TAG: dev-pre-${{ github.run_number }}
+        run: |
+          vsix_path="$(find release -maxdepth 1 -name '*.vsix' -print -quit)"
+          test -n "${vsix_path}"
+          if gh release view "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release upload "${RELEASE_TAG}" "${vsix_path}" --repo "${GITHUB_REPOSITORY}" --clobber
+          else
+            gh release create "${RELEASE_TAG}" "${vsix_path}" --repo "${GITHUB_REPOSITORY}" --target "${GITHUB_SHA}" --prerelease --title "Pre-release ${PRERELEASE_VERSION}" --generate-notes
+          fi

@@ -34,6 +34,16 @@ Run `npm run package` to compile the extension and create an installable `.vsix`
 
 `.github/workflows/ci.yml` runs lint, unit tests, extension-host tests, and packaging on Ubuntu, macOS, and Windows for pull requests and pushes to `main`. The Ubuntu job uploads the built VSIX as a workflow artifact.
 
+## Development Pre-releases
+
+Use a long-lived `dev` branch as the integration target for feature work. Open pull requests against `dev`; the regular CI workflow validates pull requests, and each push to `dev` runs `.github/workflows/pre-release.yml`. That workflow reruns lint, unit and extension-host tests, packages the extension as a Marketplace pre-release, publishes it, and creates a GitHub pre-release containing the VSIX. The generated package version is not committed back to the branch.
+
+VS Code Marketplace pre-release packages require plain `major.minor.patch` versions; SemVer suffixes such as `-beta.1` are not supported. To keep the pre-release stream above the stable stream, stable versions use an even minor number and pre-release versions use the next odd minor number. For example, a stable `3.2.1` on `main` produces pre-releases `3.3.<workflow-run-number>`; promote the baked changes as stable `3.4.0`. The workflow derives every pre-release version from the current `main` version, so future pre-release streams move to `3.5.x` after `3.4.0` is released.
+
+Before enabling the workflow, create `dev` from `main` and protect it with pull requests and passing CI checks. Create a `marketplace-prerelease` GitHub Environment with the `VSCE_PAT` secret, no required reviewers, and deployment restricted to the `dev` branch. Keep the separate `marketplace-publish` environment approval-gated for stable releases.
+
+To promote a baked release, update `package.json`, `package-lock.json`, and `CHANGELOG.md` on `dev` to the next even-minor stable version, merge `dev` into `main`, then push a matching version tag (for example, `3.4.0`). The existing tagged-release workflow creates the stable GitHub Release and waits for approval in `marketplace-publish` before publishing to the Marketplace.
+
 ## Dependency Updates
 
 Dependabot is configured in [.github/dependabot.yml](../.github/dependabot.yml) to open weekly grouped updates for npm dependencies and GitHub Actions. A repository administrator must enable **Dependabot version updates** under **Settings** -> **Code security and analysis** for these configured updates to run.
