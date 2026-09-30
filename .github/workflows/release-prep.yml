@@ -1,0 +1,127 @@
+name: Prepare Promotion Release
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, reopened, ready_for_review, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: read
+  statuses: write
+
+concurrency:
+  group: prepare-stable-release-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    name: Stable release prep gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set promotion status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PROMOTION_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+        run: |
+          state="success"
+          description="Stable release preparation is not required for this branch."
+          if [[ "${HEAD_BRANCH}" == "dev" && "${HEAD_REPOSITORY}" == "${GITHUB_REPOSITORY}" ]]; then
+            state="pending"
+            description="Waiting for stable release metadata to be prepared on dev."
+          fi
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${PROMOTION_SHA}" -f state="${state}" -f context=stable-release-prep -f description="${description}"
+
+  prepare:
+    needs: gate
+    if: >-
+      github.event.pull_request.head.ref == 'dev' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.base.ref == 'main' &&
+      !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    concurrency:
+      group: stable-release-prep-${{ github.event.pull_request.base.ref }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+      - name: Preserve trusted release helpers
+        run: |
+          cp .github/scripts/prepare-release.js "$RUNNER_TEMP/prepare-release.js"
+          cp scripts/release-metadata.js "$RUNNER_TEMP/release-metadata.js"
+      - name: Resolve the next stable version
+        id: metadata
+        run: |
+          git fetch origin main:refs/remotes/origin/main dev:refs/remotes/origin/dev --tags
+          node .github/scripts/resolve-release-prep.js
+      - uses: actions/create-github-app-token@v2
+        if: steps.metadata.outputs.should_prepare == 'true'
+        id: app-token
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          permission-contents: write
+          permission-pull-requests: write
+      - name: Prepare release metadata on a bot branch
+        if: steps.metadata.outputs.should_prepare == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          RELEASE_VERSION: ${{ steps.metadata.outputs.version }}
+        run: |
+          git checkout -B "release-prep/${RELEASE_VERSION}" origin/dev
+          current_version="$(node -p "require('./package.json').version")"
+          if [[ "${current_version}" != "${RELEASE_VERSION}" ]]; then
+            npm version "${RELEASE_VERSION}" --no-git-tag-version --ignore-scripts
+          fi
+
+          stable_version="$(git show origin/main:package.json | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version")"
+          previous_tag=""
+          if git rev-parse --quiet --verify "refs/tags/${stable_version}" >/dev/null; then
+            previous_tag="${stable_version}"
+          elif git rev-parse --quiet --verify "refs/tags/v${stable_version}" >/dev/null; then
+            previous_tag="v${stable_version}"
+          fi
+
+          notes_args=(-f "tag_name=${RELEASE_VERSION}" -f "target_commitish=dev")
+          if [[ -n "${previous_tag}" ]]; then
+            notes_args+=(-f "previous_tag_name=${previous_tag}")
+          fi
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/releases/generate-notes" "${notes_args[@]}" --jq .body > "$RUNNER_TEMP/release-notes.md"
+          node "$RUNNER_TEMP/prepare-release.js" "${RELEASE_VERSION}" "$RUNNER_TEMP/release-notes.md" "$GITHUB_WORKSPACE"
+          node "$RUNNER_TEMP/release-metadata.js" "${RELEASE_VERSION}" --stable
+      - name: Create or update release-prep PR
+        if: steps.metadata.outputs.should_prepare == 'true'
+        id: create-pr
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          branch: release-prep/${{ steps.metadata.outputs.version }}
+          base: dev
+          title: 'chore(release): prepare ${{ steps.metadata.outputs.version }}'
+          body: |
+            Automated release preparation for promotion PR #${{ github.event.pull_request.number }}.
+
+            This updates the stable package version and promotes the current Unreleased changelog notes. CI must pass before this PR is merged.
+          commit-message: 'chore(release): prepare ${{ steps.metadata.outputs.version }}'
+          delete-branch: false
+      - name: Enable auto-merge for release-prep PR
+        if: steps.create-pr.outputs.pull-request-number != ''
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PULL_REQUEST_NUMBER: ${{ steps.create-pr.outputs.pull-request-number }}
+        run: gh pr merge "${PULL_REQUEST_NUMBER}" --auto --squash --repo "${GITHUB_REPOSITORY}"
+      - name: Mark promotion metadata ready
+        if: steps.metadata.outputs.should_prepare == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PROMOTION_SHA: ${{ github.event.pull_request.head.sha }}
+        run: gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${PROMOTION_SHA}" -f state=success -f context=stable-release-prep -f description='Stable release metadata is committed to dev.'

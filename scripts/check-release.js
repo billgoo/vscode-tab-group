@@ -1,6 +1,7 @@
 const { spawnSync } = require('node:child_process');
 const { readFileSync } = require('node:fs');
 const { resolve } = require('node:path');
+const { getReleaseMetadataErrors } = require('./release-metadata');
 
 const projectRoot = resolve(__dirname, '..');
 const packageJsonPath = resolve(projectRoot, 'package.json');
@@ -9,10 +10,6 @@ const changelogPath = resolve(projectRoot, 'CHANGELOG.md');
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, 'utf8'));
-}
-
-function escapeRegex(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function getGitTags() {
@@ -31,47 +28,11 @@ function getGitTags() {
   return new Set(result.stdout.split('\n').filter(Boolean));
 }
 
-function hasChangelogEntry(changelog, version) {
-  const heading = new RegExp(`^##\\s+${escapeRegex(version)}\\s*$`, 'm');
-  const match = heading.exec(changelog);
-
-  if (!match) {
-    return false;
-  }
-
-  const sectionStart = match.index + match[0].length;
-  const nextHeading = /^##\s+/m;
-  nextHeading.lastIndex = sectionStart;
-  const sectionEnd = nextHeading.exec(changelog.slice(sectionStart));
-  const section = changelog.slice(
-    sectionStart,
-    sectionEnd ? sectionStart + sectionEnd.index : undefined,
-  );
-
-  return /^\s*-\s+\S/m.test(section);
-}
-
 const packageJson = readJson(packageJsonPath);
 const packageLock = readJson(packageLockPath);
 const changelog = readFileSync(changelogPath, 'utf8');
 const version = packageJson.version;
-const errors = [];
-
-if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(version)) {
-  errors.push(`package.json version '${version}' is not a valid semantic version.`);
-}
-
-if (packageLock.version !== version) {
-  errors.push(`package-lock.json version '${packageLock.version}' does not match '${version}'.`);
-}
-
-if (packageLock.packages?.['']?.version !== version) {
-  errors.push(`package-lock.json root package version does not match '${version}'.`);
-}
-
-if (!hasChangelogEntry(changelog, version)) {
-  errors.push(`CHANGELOG.md needs a non-empty '## ${version}' section.`);
-}
+const errors = getReleaseMetadataErrors({ version, packageJson, packageLock, changelog });
 
 const tags = getGitTags();
 const existingTags = [version, `v${version}`].filter(tag => tags.has(tag));

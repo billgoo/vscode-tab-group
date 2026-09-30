@@ -32,13 +32,51 @@ Run `npm run package` to compile the extension and create an installable `.vsix`
 
 ## Continuous Integration
 
-`.github/workflows/ci.yml` runs lint, unit tests, extension-host tests, and packaging on Ubuntu, macOS, and Windows for pull requests and pushes to `main`. The Ubuntu job uploads the built VSIX as a workflow artifact.
+`.github/workflows/ci.yml` runs lint, unit tests, extension-host tests, and packaging on Ubuntu, macOS, and Windows for pull requests and pushes to `main`. The Ubuntu job uploads the built VSIX as a workflow artifact. Stable release tags use numeric `X.Y.Z` or `vX.Y.Z` names; namespaced `pre-release/` tags do not start the stable workflow.
+
+## Development Pre-releases
+
+Use a long-lived `dev` branch as the integration target for feature work. Open pull requests against `dev`; the regular CI workflow validates pull requests, and each push to `dev` runs `.github/workflows/pre-release.yml`. That workflow reruns lint, unit and extension-host tests, packages the extension as a Marketplace pre-release, publishes it, and creates a GitHub pre-release containing the VSIX. GitHub releases use a namespaced `pre-release/<version>` tag and a `<version> (Pre-release)` title, for example `pre-release/3.3.54` and `3.3.54 (Pre-release)`.
+
+VS Code Marketplace pre-release packages require plain `major.minor.patch` versions; SemVer suffixes such as `-beta.1` are not supported. The `--pre-release` publish flag marks the Marketplace package as a pre-release. Following VS Code's recommended version ordering, stable releases use an even minor number and pre-releases use the next odd minor number. The pre-release patch increments from existing `pre-release/<version>` tags in that odd-minor lane and starts at `.1` when there are no tags. For example, stable `3.2.1` starts previews at `3.3.1`; with the already-published `pre-release/3.3.4`, the next preview is `3.3.5`. Promotion prepares stable `3.4.0`, and previews after that stable release start at `3.5.1`. Preview numbering comes from fetched Git tags, not the workflow's total run number. The pre-release workflow derives its version from `main` and adds generated notes to the packaged `CHANGELOG.md`; it does not commit those preview changes.
+
+## Automated Stable Promotion
+
+Open a pull request from `dev` to `main` when the changes are ready for stable promotion. `.github/workflows/release-prep.yml` calculates the next even-minor stable version from `main` by advancing the minor number by two and setting the patch to `.0`, updates `package.json` and `package-lock.json`, and promotes the existing `Unreleased` changelog notes into a versioned section. If `Unreleased` has no bullet entries, it uses generated notes since the latest stable tag. The workflow opens or updates a `release-prep/<version>` pull request into `dev` and enables auto-merge; that PR still has to pass CI. Its merge updates the open `dev` to `main` pull request, whose checks rerun. Opening, reviewing, and merging the promotion PR remain human actions.
+
+After that promotion PR is merged, `.github/workflows/tag-promoted-release.yml` validates the package and changelog metadata and pushes a matching stable version tag to the merged commit. The tag starts `.github/workflows/release.yml`, which builds the VSIX and creates the GitHub Release. Publishing to the Marketplace still waits for human approval in `marketplace-publish`.
+
+One-time repository setup:
+
+- Install a GitHub App on this repository with **Contents: read and write** and **Pull requests: read and write**. Add `RELEASE_APP_ID` and `RELEASE_APP_PRIVATE_KEY` as repository Actions secrets. The App creates the release-prep PR and pushes the stable tag so the resulting GitHub events start their workflows.
+- Enable **Allow auto-merge** in repository settings.
+- Split the branch rules so `dev` requires a pull request and the passing, up-to-date `ubuntu-latest`, `macos-latest`, and `windows-latest` checks, but requires no approving review. Keep deletion and force-push protection. This lets the release-prep PR auto-merge without a bypass.
+- Keep `main` protected by a pull request, one approval, the same required checks, and the additional `stable-release-prep` status check. Enable stale-approval dismissal and resolved review conversations so the release-prep commit must be reviewed. Repository administrators retain their configured bypass.
+- Keep `marketplace-prerelease` restricted to `dev` with `VSCE_PAT` and no required reviewers. Keep `marketplace-publish` approval-gated.
+
+The PR from `dev` to `main` is the release-intent signal; release-prep is not opened for every feature PR merged into `dev`. If that promotion PR is closed without merging, its release-prep PR should also be closed or abandoned before starting a different promotion.
+
+### Testing the Automation
+
+Run the focused helper test and the project checks locally:
+
+```bash
+npm run test:unit -- --runInBand src/test/prepareRelease.test.ts
+npm run lint
+npm run compile
+npm test
+actionlint .github/workflows/release-prep.yml .github/workflows/tag-promoted-release.yml
+```
+
+End-to-end testing requires the GitHub App, auto-merge, and ruleset settings above. Use a dedicated test repository or non-production Marketplace credentials: merging the prep PR into `dev` triggers the Marketplace pre-release workflow.
 
 ## Dependency Updates
 
 Dependabot is configured in [.github/dependabot.yml](../.github/dependabot.yml) to open weekly grouped updates for npm dependencies and GitHub Actions. A repository administrator must enable **Dependabot version updates** under **Settings** -> **Code security and analysis** for these configured updates to run.
 
 ## Marketplace Release
+
+The automated `dev` to `main` promotion flow above is the normal stable-release path. Use the manual procedure below for standalone hotfixes or recovery releases that do not come through `dev`.
 
 1. Choose the next semantic version. This repository uses bare version tags such as `2.0.5`.
 2. Update `package.json` and `package-lock.json` without creating a tag:
