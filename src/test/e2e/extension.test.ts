@@ -369,13 +369,13 @@ suite('Tab Group extension', () => {
           command: 'tabsTreeView.tab.close',
           key: 'ctrl+backspace',
           mac: 'cmd+backspace',
-          when: 'focusedView =~ /^(tabsTreeView|recentTabsTreeView)$/',
+          when: 'focusedView =~ /^(tabsTreeView|recentTabsTreeView)$/ || (listFocus && view =~ /^(tabsTreeView|recentTabsTreeView)$/)',
         },
         {
           command: 'tabsTreeView.tab.close',
           key: 'ctrl+delete',
           mac: 'cmd+delete',
-          when: 'focusedView =~ /^(tabsTreeView|recentTabsTreeView)$/',
+          when: 'focusedView =~ /^(tabsTreeView|recentTabsTreeView)$/ || (listFocus && view =~ /^(tabsTreeView|recentTabsTreeView)$/)',
         },
       ],
     );
