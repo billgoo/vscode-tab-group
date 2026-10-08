@@ -1,0 +1,60 @@
+name: Tag Promoted Stable Release
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [closed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tag-promoted-stable-release
+  cancel-in-progress: false
+jobs:
+  tag:
+    if: >-
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.head.ref == 'dev' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          permission-contents: write
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+      - name: Validate release metadata and push stable tag
+        env:
+          RELEASE_COMMIT: ${{ github.event.pull_request.merge_commit_sha }}
+        run: |
+          git fetch origin --tags
+          release_version="$(node -p "require('./package.json').version")"
+          node scripts/release-metadata.js "${release_version}" --stable
+
+          if [[ "$(git rev-parse HEAD)" != "${RELEASE_COMMIT}" ]]; then
+            echo "Checked out commit does not match the merged PR commit." >&2
+            exit 1
+          fi
+
+          if git rev-parse --quiet --verify "refs/tags/${release_version}" >/dev/null; then
+            tag_commit="$(git rev-parse "${release_version}^{commit}")"
+            if [[ "${tag_commit}" == "${RELEASE_COMMIT}" ]]; then
+              echo "Tag ${release_version} already points to the merged commit."
+              exit 0
+            fi
+            echo "Tag ${release_version} already points to a different commit." >&2
+            exit 1
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${release_version}" -m "${release_version}"
+          git push origin "${release_version}"
