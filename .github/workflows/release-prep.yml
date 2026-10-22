@@ -62,7 +62,7 @@ jobs:
         run: |
           git fetch origin main:refs/remotes/origin/main dev:refs/remotes/origin/dev --tags
           node .github/scripts/resolve-release-prep.js
-      - uses: actions/create-github-app-token@v2
+      - uses: actions/create-github-app-token@v3
         if: steps.metadata.outputs.should_prepare == 'true'
         id: app-token
         with:
@@ -101,7 +101,7 @@ jobs:
       - name: Create or update release-prep PR
         if: steps.metadata.outputs.should_prepare == 'true'
         id: create-pr
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ steps.app-token.outputs.token }}
           branch: release-prep/${{ steps.metadata.outputs.version }}
