@@ -30,6 +30,29 @@ describe('resolvePrereleaseVersion', () => {
     ).toBe('3.5.11');
   });
 
+  it('ignores malformed tags and tags outside the exact preview lane', () => {
+    expect(
+      resolvePrereleaseVersion('3.2.1', [
+        'pre-release/3.3.4',
+        'pre-release/13.3.99',
+        'pre-release/3.13.99',
+        'pre-release/03.3.99',
+        'pre-release/3.03.99',
+        'pre-release/3x3x99',
+        'prefix/pre-release/3.3.99',
+        'pre-release/3.3.',
+        'pre-release/3.3.-99',
+        'pre-release/3.3.99-beta.1',
+        'pre-release/3.3.99/extra',
+        'pre-release/3.3.99.1',
+      ]),
+    ).toBe('3.3.5');
+  });
+
+  it.each(['3.*.1', '(3).2.1', '3.2.1|.*'])('rejects regex syntax in %s', version => {
+    expect(() => resolvePrereleaseVersion(version)).toThrow('stable X.Y.Z');
+  });
+
   it('rejects invalid stable versions and odd-minor stable versions', () => {
     expect(() => resolvePrereleaseVersion('3.3.0')).toThrow('even minor version');
     expect(() => resolvePrereleaseVersion('3.x.1')).toThrow('stable X.Y.Z');
