@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 3.4.0
+
 - Fix closing a selected live group with Ctrl/Cmd+Backspace or Ctrl/Cmd+Delete after restoring it from Saved Groups.
 
 ## 3.2.1
