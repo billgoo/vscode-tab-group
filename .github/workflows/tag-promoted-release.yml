@@ -4,6 +4,13 @@ on:
   pull_request_target:
     branches: [main]
     types: [closed]
+    paths:
+      - 'src/**'
+      - '!src/test/**'
+      - 'media/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
 
 permissions:
   contents: read
