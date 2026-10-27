@@ -62,7 +62,8 @@ After a promotion PR with release-relevant changes is merged, `.github/workflows
 
 One-time repository setup:
 
-- Install a GitHub App on this repository with **Contents: read and write** and **Pull requests: read and write**. Add `RELEASE_APP_ID` and `RELEASE_APP_PRIVATE_KEY` as repository Actions secrets. The App creates the release-prep PR and pushes the stable tag so the resulting GitHub events start their workflows.
+- Install a GitHub App on this repository with **Contents: read and write** and **Pull requests: read and write**. The App creates the release-prep PR and pushes the stable tag so the resulting GitHub events start their workflows.
+- Under **Settings** -> **Secrets and variables** -> **Actions**, add the repository variable `RELEASE_APP_CLIENT_ID` using the App's **Client ID**, not its numeric App ID. Store the App's PEM private key as the repository secret `RELEASE_APP_PRIVATE_KEY`. The workflows use the v3 action's `client-id` input and no longer read `RELEASE_APP_ID`. Environment-only secrets are unavailable to these jobs because they do not declare an environment. Missing values fail early with setup guidance, without printing the key.
 - Enable **Allow auto-merge** in repository settings.
 - Split the branch rules so `dev` requires a pull request and the passing, up-to-date `ubuntu-latest`, `macos-latest`, and `windows-latest` checks, but requires no approving review. Keep deletion and force-push protection. This lets the release-prep PR auto-merge without a bypass.
 - Keep `main` protected by a pull request, one approval, the same required checks, and the additional `stable-release-prep` status check. Enable stale-approval dismissal and resolved review conversations so the release-prep commit must be reviewed. Repository administrators retain their configured bypass.
@@ -81,6 +82,8 @@ npm run compile
 npm test
 actionlint .github/workflows/pre-release.yml .github/workflows/release-prep.yml .github/workflows/tag-promoted-release.yml
 ```
+
+Older `actionlint` versions may incorrectly require `app-id` or reject `client-id`; check the current v3 action metadata rather than restoring the deprecated input.
 
 End-to-end testing requires the GitHub App, auto-merge, and ruleset settings above. Use a dedicated test repository or non-production Marketplace credentials: merging the prep PR into `dev` triggers the Marketplace pre-release workflow.
 
