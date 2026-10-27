@@ -5,6 +5,10 @@
 ## 3.4.0
 
 - Fix closing a selected live group with Ctrl/Cmd+Backspace or Ctrl/Cmd+Delete after restoring it from Saved Groups.
+- Use native workflow path filters to skip automatic stable and preview releases for documentation-, test-, and CI-only changes.
+- Remove dynamic regular-expression construction from prerelease version matching.
+- Fix initial stable release preparation when release helpers are not yet present on `main`.
+- Update the test-tooling serialization dependency to address security advisories.
 
 ## 3.2.1
 
