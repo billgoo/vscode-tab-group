@@ -3,6 +3,13 @@ name: Publish Dev Pre-release
 on:
   push:
     branches: [dev]
+    paths:
+      - 'src/**'
+      - '!src/test/**'
+      - 'media/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
 
 permissions:
   contents: read

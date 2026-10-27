@@ -18,25 +18,46 @@ jobs:
   gate:
     name: Stable release prep gate
     runs-on: ubuntu-latest
+    outputs:
+      required: ${{ steps.changes.outputs.required }}
     steps:
+      - name: Check changed files
+        id: changes
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          required="$(gh api --paginate --slurp "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/files?per_page=100" | jq -r '
+            any(.[][] | [.filename, (.previous_filename // "")][];
+              (startswith("src/") and (startswith("src/test/") | not)) or
+              startswith("media/") or
+              IN("package.json", "package-lock.json", "tsconfig.json"))
+          ')"
+          echo "required=${required}" >> "$GITHUB_OUTPUT"
       - name: Set promotion status
         env:
           GH_TOKEN: ${{ github.token }}
           PROMOTION_SHA: ${{ github.event.pull_request.head.sha }}
           HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
           HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          RELEASE_REQUIRED: ${{ steps.changes.outputs.required }}
         run: |
           state="success"
-          description="Stable release preparation is not required for this branch."
-          if [[ "${HEAD_BRANCH}" == "dev" && "${HEAD_REPOSITORY}" == "${GITHUB_REPOSITORY}" ]]; then
-            state="pending"
-            description="Waiting for stable release metadata to be prepared on dev."
+          description="No release-relevant files changed."
+          if [[ "${RELEASE_REQUIRED}" == "true" ]]; then
+            description="Stable release preparation is not required for this branch."
+            if [[ "${HEAD_BRANCH}" == "dev" && "${HEAD_REPOSITORY}" == "${GITHUB_REPOSITORY}" ]]; then
+              state="pending"
+              description="Waiting for stable release metadata to be prepared on dev."
+            fi
           fi
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${PROMOTION_SHA}" -f state="${state}" -f context=stable-release-prep -f description="${description}"
 
   prepare:
     needs: gate
     if: >-
+      needs.gate.outputs.required == 'true' &&
       github.event.pull_request.head.ref == 'dev' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.base.ref == 'main' &&
@@ -48,7 +69,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.pull_request.base.sha }}
+          ref: ${{ github.event.repository.default_branch }}
           fetch-depth: 0
       - uses: actions/setup-node@v7
         with:

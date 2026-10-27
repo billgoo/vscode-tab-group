@@ -36,6 +36,12 @@ npm run publish:local -- --package-only
 
 Use `--skip-e2e` only when a local VS Code runtime is unavailable. CI and tag-based releases always run the extension-host test.
 
+## Release File Checks
+
+Validate the native preview/tag path filters and the always-running preparation workflow with `actionlint .github/workflows/pre-release.yml .github/workflows/release-prep.yml .github/workflows/tag-promoted-release.yml`.
+
+In a test repository, verify that documentation-, test-, and CI-only pushes to `dev` do not start the preview workflow. A promotion PR containing only those changes must receive a successful `stable-release-prep` status without a release-prep PR or stable tag. Runtime or manifest changes must still follow the normal release gates. Keep preview/tag path patterns and the inline preparation file check consistent. Explicit stable tags remain publishable regardless of changed paths.
+
 ## Manual Acceptance
 
 1. Open the repository in VS Code and start **Run Extension** with `F5`.

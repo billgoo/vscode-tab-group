@@ -16,10 +16,10 @@ function resolvePrereleaseVersion(stableVersion, existingTags = []) {
   }
 
   const prereleaseMinor = stableMinor + 1;
-  const laneTag = new RegExp(`^pre-release/${major}\\.${prereleaseMinor}\\.(\\d+)$`);
+  const lanePrefix = `pre-release/${major}.${prereleaseMinor}.`;
   const latestPatch = existingTags.reduce((highest, tag) => {
-    const tagMatch = laneTag.exec(tag);
-    return tagMatch ? Math.max(highest, Number(tagMatch[1])) : highest;
+    const tagPatch = tag.startsWith(lanePrefix) ? tag.slice(lanePrefix.length) : '';
+    return /^\d+$/.test(tagPatch) ? Math.max(highest, Number(tagPatch)) : highest;
   }, 0);
 
   return `${major}.${prereleaseMinor}.${latestPatch + 1}`;
