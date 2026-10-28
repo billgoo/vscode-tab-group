@@ -62,6 +62,14 @@ In a test repository, verify that release-preparation commits do not publish pre
 - Drag a grouped tab onto the view background and confirm it returns to the root list.
 - Select a group, use the top-right **Change Group Color** action (or the group item action), choose a color, and confirm the colored group icon and color name update.
 
+### Tab And Group Actions
+
+- In both List and Tree views, right-click a grouped tab and confirm **Remove from Group** and **Close** appear. An ungrouped tab should offer **Close**, but not **Remove from Group**. Repeat using the keyboard context menu and confirm the existing hover buttons remain available.
+- Choose **Remove from Group** and confirm the tab returns to the root without closing its editor. Choose **Close** and confirm only that tab closes.
+- Right-click a live group and confirm **Rename Group**, **Ungroup**, and **Close Grouped Tabs** appear. Rename the group, then use **Ungroup** and confirm its tabs remain open at the root.
+- Create another group and use **Close Grouped Tabs**; confirm unrelated tabs remain open. Check the group menu before and after sorting its tabs so both sort directions retain these actions.
+- In **Recent Tabs**, confirm **Close** is available on right-click and hover. Confirm live-tab and live-group actions do not appear on directory rows or saved snapshots.
+
 ### Sorting And Toolbar
 
 - Open the Tabs view title **...** menu, choose **View as Tree**, and confirm resource-backed tabs appear under nested directory nodes inside the root and named groups. Open a resource outside the current workspace and confirm it remains a direct tab item instead of exposing its absolute parent directories; hover it and confirm its full location is available in the tooltip.
