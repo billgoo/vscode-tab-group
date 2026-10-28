@@ -17,7 +17,16 @@ function resolveReleasePreparation({
   }
 
   const stableMinor = Number(match[2]);
-  const releaseVersion = `${match[1]}.${stableMinor + 2}.0`;
+  const patchVersion = `${match[1]}.${stableMinor}.${Number(match[3]) + 1}`;
+  const previewPrefix = `pre-release/${match[1]}.${stableMinor + 1}.`;
+  const hasStableTag = existingTags.has(stableVersion) || existingTags.has(`v${stableVersion}`);
+  const hasPreviewTag = [...existingTags].some(
+    tag => tag.startsWith(previewPrefix) && /^\d+$/.test(tag.slice(previewPrefix.length)),
+  );
+  let releaseVersion = stableVersion;
+  if (hasStableTag) {
+    releaseVersion = hasPreviewTag ? `${match[1]}.${stableMinor + 2}.0` : patchVersion;
+  }
   if (![stableVersion, releaseVersion].includes(devPackage.version)) {
     throw new Error(
       `Expected dev to use ${stableVersion} or ${releaseVersion}, got ${devPackage.version}.`,
