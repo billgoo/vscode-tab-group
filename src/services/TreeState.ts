@@ -189,8 +189,23 @@ export class TreeState {
     return this.groupMap[groupId];
   }
 
-  public renameGroup(group: Group, input: string): void {
-    group.label = input;
+  public validateGroupName(group: Group, input: string): string | undefined {
+    const label = input.trim();
+    if (
+      label.length > 0 &&
+      this.root.some(item => isGroup(item) && item.id !== group.id && item.label.trim() === label)
+    ) {
+      return 'A group with this name already exists.';
+    }
+    return undefined;
+  }
+
+  public renameGroup(group: Group, input: string): boolean {
+    if (this.validateGroupName(group, input)) {
+      return false;
+    }
+    group.label = input.trim();
+    return true;
   }
 
   public setGroupColor(groupId: string, colorId: GroupColorId): void {

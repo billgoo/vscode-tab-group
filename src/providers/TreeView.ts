@@ -197,12 +197,12 @@ export class TabsView extends Disposable {
         const input = await vscode.window.showInputBox({
           placeHolder: 'Name this Group',
           value: group.label,
+          validateInput: input => this.treeDataProvider.validateGroupName(group, input),
         });
-        if (input === undefined) {
+        if (input === undefined || !this.treeDataProvider.renameGroup(group, input)) {
           return;
         }
 
-        this.treeDataProvider.renameGroup(group, input.trim());
         await this.updateSavedGroupName(group);
       }),
     );

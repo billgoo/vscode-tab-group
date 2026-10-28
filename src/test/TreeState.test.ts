@@ -52,6 +52,54 @@ describe('TreeState grouping', () => {
   });
 });
 
+describe('TreeState group names', () => {
+  test.each(['first-group', ' first-group '])(
+    'rejects another group name %j without changing the existing name',
+    input => {
+      const firstGroup = createGroup('first-group');
+      const secondGroup = createGroup('second-group');
+      const treeState = new TreeState();
+      treeState.setState([firstGroup, secondGroup]);
+
+      expect(treeState.renameGroup(secondGroup, input)).toBe(false);
+      expect(firstGroup.label).toBe('first-group');
+      expect(secondGroup.label).toBe('second-group');
+    },
+  );
+
+  test('allows keeping the current group name', () => {
+    const group = createGroup('group');
+    const treeState = new TreeState();
+    treeState.setState([group]);
+
+    expect(treeState.renameGroup(group, ' group ')).toBe(true);
+    expect(group.label).toBe('group');
+  });
+
+  test('accepts a distinct name and trims surrounding whitespace', () => {
+    const firstGroup = createGroup('first-group');
+    const secondGroup = createGroup('second-group');
+    const treeState = new TreeState();
+    treeState.setState([firstGroup, secondGroup]);
+
+    expect(treeState.renameGroup(secondGroup, ' New name ')).toBe(true);
+    expect(firstGroup.label).toBe('first-group');
+    expect(secondGroup.label).toBe('New name');
+  });
+
+  test('preserves optional names for unnamed groups', () => {
+    const firstGroup = createGroup('first-group');
+    const secondGroup = createGroup('second-group');
+    const treeState = new TreeState();
+    treeState.setState([firstGroup, secondGroup]);
+
+    expect(treeState.renameGroup(firstGroup, '')).toBe(true);
+    expect(treeState.renameGroup(secondGroup, ' ')).toBe(true);
+    expect(firstGroup.label).toBe('');
+    expect(secondGroup.label).toBe('');
+  });
+});
+
 describe('TreeState ungrouping', () => {
   test('dissolves a group while preserving tab order and other root items', () => {
     const group = createGroup('group');

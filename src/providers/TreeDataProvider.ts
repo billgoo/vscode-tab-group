@@ -146,6 +146,7 @@ export class TreeDataProvider
           ? vscode.TreeItemCollapsibleState.Collapsed
           : vscode.TreeItemCollapsibleState.Expanded,
       );
+      treeItem.id = element.id;
       treeItem.contextValue = this.getGroupContextValue(element);
       treeItem.iconPath = new vscode.ThemeIcon(
         'layout-sidebar-left',
@@ -259,12 +260,16 @@ export class TreeDataProvider
       if (isCreatingNewGroup && tabs[0].groupId !== null) {
         const group = this.treeState.getGroup(tabs[0].groupId);
         if (group) {
-          vscode.window.showInputBox({ placeHolder: 'Name this Group' }).then(input => {
-            if (input) {
-              this.treeState.renameGroup(group, input);
-              this.triggerStateChange();
-            }
-          });
+          vscode.window
+            .showInputBox({
+              placeHolder: 'Name this Group',
+              validateInput: input => this.validateGroupName(group, input),
+            })
+            .then(input => {
+              if (input !== undefined) {
+                this.renameGroup(group, input);
+              }
+            });
         }
       }
     }
@@ -349,9 +354,16 @@ export class TreeDataProvider
     this.triggerStateChange();
   }
 
-  public renameGroup(group: Group, input: string): void {
-    this.treeState.renameGroup(group, input);
+  public validateGroupName(group: Group, input: string): string | undefined {
+    return this.treeState.validateGroupName(group, input);
+  }
+
+  public renameGroup(group: Group, input: string): boolean {
+    if (!this.treeState.renameGroup(group, input)) {
+      return false;
+    }
     this.triggerStateChange();
+    return true;
   }
 
   public setGroupColor(group: Group, colorId: GroupColorId): void {

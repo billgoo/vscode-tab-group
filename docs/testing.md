@@ -61,6 +61,9 @@ In a test repository, verify that release-preparation commits do not publish pre
 - Drag another root tab onto the group and confirm it joins that group.
 - Drag a grouped tab onto the view background and confirm it returns to the root list.
 - Select a group, use the top-right **Change Group Color** action (or the group item action), choose a color, and confirm the colored group icon and color name update.
+- Name a group **1**, then try naming a new group **1** or entering the same name with surrounding spaces. Confirm the input reports **A group with this name already exists.** and requires a distinct name or cancellation.
+- Rename another group to **1** and confirm the same validation appears without changing either group or its saved snapshot. Keeping a group's own name should remain valid.
+- In List and Tree views, confirm distinctly named groups retain their own tabs and expand/collapse independently after reordering and reloading. Existing duplicate names from older workspace state are preserved until renamed to unique names.
 
 ### Tab And Group Actions
 

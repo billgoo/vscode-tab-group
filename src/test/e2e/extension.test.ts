@@ -101,6 +101,92 @@ suite('Tab Group extension', () => {
     }
   });
 
+  test('keeps legacy duplicate-name groups distinct across renames and refreshes', () => {
+    const provider = new TreeDataProvider();
+    const groups: Group[] = ['first-group', 'second-group'].map((id, index) => ({
+      type: TreeItemType.Group,
+      id,
+      label: '1',
+      colorId: 'charts.blue',
+      collapsed: index === 0,
+      children: [],
+    }));
+
+    try {
+      const items = groups.map(group => provider.getTreeItem(group));
+      assert.notStrictEqual(items[0], items[1]);
+      assert.deepStrictEqual(
+        items.map(item => item.id),
+        groups.map(group => group.id),
+      );
+      assert.deepStrictEqual(
+        items.map(item => item.label),
+        ['1', '1'],
+      );
+      assert.equal(items[0].collapsibleState, vscode.TreeItemCollapsibleState.Collapsed);
+      assert.equal(items[1].collapsibleState, vscode.TreeItemCollapsibleState.Expanded);
+
+      groups[0].label = 'Renamed';
+      assert.strictEqual(provider.getTreeItem(groups[0]), items[0]);
+      assert.equal(items[0].id, groups[0].id);
+      assert.equal(items[0].label, 'Renamed');
+
+      groups[0].label = groups[1].label;
+      provider.triggerRerender();
+      for (const group of groups.slice().reverse()) {
+        const item = provider.getTreeItem(group);
+        assert.equal(item.id, group.id);
+        assert.equal(item.label, group.label);
+        assert.equal(
+          item.collapsibleState,
+          group.collapsed
+            ? vscode.TreeItemCollapsibleState.Collapsed
+            : vscode.TreeItemCollapsibleState.Expanded,
+        );
+      }
+    } finally {
+      provider.dispose();
+    }
+  });
+
+  test('rejects duplicate group names without publishing state changes', () => {
+    const provider = new TreeDataProvider();
+    const groups: Group[] = ['1', '2'].map((label, index) => {
+      const id = `name-validation-group-${index}`;
+      return {
+        type: TreeItemType.Group,
+        id,
+        label,
+        colorId: 'charts.blue',
+        collapsed: false,
+        children: [{ type: TreeItemType.Tab, id: `name-validation-tab-${index}`, groupId: id }],
+      };
+    });
+    provider.setState(groups);
+    let changes = 0;
+    const listener = provider.onDidChangeState(() => changes++);
+
+    try {
+      const before = JSON.stringify(provider.getState());
+      assert.equal(
+        provider.validateGroupName(groups[1], ' 1 '),
+        'A group with this name already exists.',
+      );
+      assert.equal(provider.validateGroupName(groups[1], ' 2 '), undefined);
+      assert.equal(provider.renameGroup(groups[1], ' 1 '), false);
+      assert.equal(JSON.stringify(provider.getState()), before);
+      assert.equal(changes, 0);
+
+      assert.equal(provider.renameGroup(groups[1], ' 3 '), true);
+      assert.equal(groups[1].label, '3');
+      assert.equal(changes, 1);
+      assert.equal(provider.getTreeItem(groups[1]).id, groups[1].id);
+    } finally {
+      listener.dispose();
+      provider.dispose();
+    }
+  });
+
   test('exposes readable group command IDs and retains compatibility aliases', async () => {
     const extension = vscode.extensions.getExtension('jiapeiyao.tab-group')!;
     await extension.activate();
