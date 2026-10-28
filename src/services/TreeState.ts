@@ -78,6 +78,20 @@ export class TreeState {
     return Object.values(this.groupMap).map(group => group.colorId);
   }
 
+  private getDefaultGroupName(groupId?: string): string {
+    const usedNames = new Set(
+      this.root
+        .filter(isGroup)
+        .filter(group => group.id !== groupId)
+        .map(group => group.label.trim()),
+    );
+    let number = 1;
+    while (usedNames.has(`Group ${number}`)) {
+      number++;
+    }
+    return `Group ${number}`;
+  }
+
   public group(target: Tab | Group, tabs: Tab[]) {
     if (tabs.length === 0) {
       return;
@@ -99,7 +113,7 @@ export class TreeState {
       type: TreeItemType.Group,
       colorId: getNextColorId(this.getUsedColorIds()),
       id: randomUUID(),
-      label: '',
+      label: this.getDefaultGroupName(),
       children: [],
       collapsed: false,
     };
@@ -189,8 +203,23 @@ export class TreeState {
     return this.groupMap[groupId];
   }
 
-  public renameGroup(group: Group, input: string): void {
-    group.label = input;
+  public validateGroupName(group: Group, input: string): string | undefined {
+    const label = input.trim();
+    if (
+      label.length > 0 &&
+      this.root.some(item => isGroup(item) && item.id !== group.id && item.label.trim() === label)
+    ) {
+      return 'A group with this name already exists.';
+    }
+    return undefined;
+  }
+
+  public renameGroup(group: Group, input: string): boolean {
+    if (this.validateGroupName(group, input)) {
+      return false;
+    }
+    group.label = input.trim() || this.getDefaultGroupName(group.id);
+    return true;
   }
 
   public setGroupColor(groupId: string, colorId: GroupColorId): void {
