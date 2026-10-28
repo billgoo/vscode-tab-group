@@ -181,6 +181,13 @@ suite('Tab Group extension', () => {
       assert.equal(groups[1].label, '3');
       assert.equal(changes, 1);
       assert.equal(provider.getTreeItem(groups[1]).id, groups[1].id);
+
+      assert.equal(provider.renameGroup(groups[0], ''), true);
+      assert.equal(groups[0].label, 'Group 1');
+      assert.equal(provider.renameGroup(groups[1], ' '), true);
+      assert.equal(groups[1].label, 'Group 2');
+      assert.equal(changes, 3);
+      assert.equal(provider.getTreeItem(groups[1]).id, groups[1].id);
     } finally {
       listener.dispose();
       provider.dispose();

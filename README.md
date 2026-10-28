@@ -26,7 +26,9 @@ Organize editor tabs into persistent, named groups from the Tab Group activity-b
 
 ## Usage
 
-Open the **Tab Group** activity-bar view. Drag tabs directly to group them. When a new group is created, enter an optional name. Use the view title actions to enable **Manual Reorder** and to collapse, expand, or reset all groups.
+Open the **Tab Group** activity-bar view. Drag tabs directly to group them. Each new group gets the lowest unused default name, such as **Group 1**, prefilled in the naming prompt. Keep it or enter a unique name. Use the view title actions to enable **Manual Reorder** and to collapse, expand, or reset all groups.
+
+Empty or whitespace-only names generate a unique default. Cancelling the creation prompt keeps its default; cancelling a rename preserves the current name. Existing groups are never renumbered after deletion, sorting, or reload.
 
 Use the **...** menu in the Tabs view title to switch between **View as Tree** and **View as List**. Tree mode groups resource-backed tabs by workspace-relative directory inside the root and each named group. Resource-backed tabs outside the current workspace, and tabs without a usable resource path, remain direct leaves; external resource tabs show their full location in the tooltip. The selected view is persisted with the workspace. **Manual Reorder** is available only in List view, while the predefined URI sort actions remain available in both views.
 

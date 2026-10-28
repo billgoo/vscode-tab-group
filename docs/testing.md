@@ -56,7 +56,9 @@ In a test repository, verify that release-preparation commits do not publish pre
 
 ### Grouping
 
-- Drag a root tab onto another root tab and enter an optional group name.
+- Drag a root tab onto another root tab and confirm the naming prompt is prefilled with the lowest unused **Group N** name. Accept or cancel the prompt and confirm the generated name remains.
+- Submit an empty or whitespace-only name when creating or renaming a group and confirm a unique **Group N** default is used. Cancel a rename and confirm the existing name is unchanged.
+- With **Group 1** and **Group 3** already used, create another group and confirm its default is **Group 2**. Remove **Group 1** and confirm surviving groups keep their names after reordering and reloading.
 - Confirm each tab appears exactly once in the tree.
 - Drag another root tab onto the group and confirm it joins that group.
 - Drag a grouped tab onto the view background and confirm it returns to the root list.
@@ -103,7 +105,7 @@ In a test repository, verify that release-preparation commits do not publish pre
 ### Saved Tab Groups
 
 - Create a group containing at least two text files, then choose **Save Group...** from its context menu and confirm no name prompt appears.
-- Save an unnamed group and confirm the snapshot uses the live group's ID as its stable identity and displays **untitled**.
+- Save a legacy unnamed group and confirm the snapshot uses the live group's ID as its stable identity and displays **untitled**.
 - Rename the live group and confirm its saved snapshot title changes from **untitled** or the previous name to the new group name.
 - Expand the **Saved Groups** panel, which starts collapsed, and confirm the saved snapshot name and tab count appear.
 - Use the single Saved Groups panel toolbar toggle to expand all snapshots and collapse them again.

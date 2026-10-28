@@ -263,6 +263,7 @@ export class TreeDataProvider
           vscode.window
             .showInputBox({
               placeHolder: 'Name this Group',
+              value: group.label,
               validateInput: input => this.validateGroupName(group, input),
             })
             .then(input => {

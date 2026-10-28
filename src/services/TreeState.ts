@@ -78,6 +78,20 @@ export class TreeState {
     return Object.values(this.groupMap).map(group => group.colorId);
   }
 
+  private getDefaultGroupName(groupId?: string): string {
+    const usedNames = new Set(
+      this.root
+        .filter(isGroup)
+        .filter(group => group.id !== groupId)
+        .map(group => group.label.trim()),
+    );
+    let number = 1;
+    while (usedNames.has(`Group ${number}`)) {
+      number++;
+    }
+    return `Group ${number}`;
+  }
+
   public group(target: Tab | Group, tabs: Tab[]) {
     if (tabs.length === 0) {
       return;
@@ -99,7 +113,7 @@ export class TreeState {
       type: TreeItemType.Group,
       colorId: getNextColorId(this.getUsedColorIds()),
       id: randomUUID(),
-      label: '',
+      label: this.getDefaultGroupName(),
       children: [],
       collapsed: false,
     };
@@ -204,7 +218,7 @@ export class TreeState {
     if (this.validateGroupName(group, input)) {
       return false;
     }
-    group.label = input.trim();
+    group.label = input.trim() || this.getDefaultGroupName(group.id);
     return true;
   }
 
