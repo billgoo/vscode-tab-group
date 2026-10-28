@@ -50,15 +50,25 @@ GitHub evaluates the changed paths before starting preview and tagging workflows
 
 Use a long-lived `dev` branch as the integration target for feature work. Open pull requests against `dev`; the regular CI workflow validates pull requests. Pushes to `dev` matching the path filters start `.github/workflows/pre-release.yml`, which reruns lint, unit and extension-host tests, packages the extension as a Marketplace pre-release, publishes it, and creates a GitHub pre-release containing the VSIX. Other pushes do not start the preview workflow or consume a preview version. GitHub releases use a namespaced `pre-release/<version>` tag and a `<version> (Pre-release)` title, for example `pre-release/3.3.54` and `3.3.54 (Pre-release)`.
 
+Release-preparation commits beginning with `chore(release): prepare` followed by a space skip preview publication. This prevents a metadata-only preparation commit from creating the preview lane that would change a selected patch release into a minor promotion.
+
 VS Code Marketplace pre-release packages require plain `major.minor.patch` versions; SemVer suffixes such as `-beta.1` are not supported. The `--pre-release` publish flag marks the Marketplace package as a pre-release. Following VS Code's recommended version ordering, stable releases use an even minor number and pre-releases use the next odd minor number. The pre-release patch increments from existing `pre-release/<version>` tags in that odd-minor lane and starts at `.1` when there are no tags. For example, stable `3.2.1` starts previews at `3.3.1`; with the already-published `pre-release/3.3.4`, the next preview is `3.3.5`. Promotion prepares stable `3.4.0`, and previews after that stable release start at `3.5.1`. Preview numbering comes from fetched Git tags, not the workflow's total run number. The pre-release workflow derives its version from `main` and adds generated notes to the packaged `CHANGELOG.md`; it does not commit those preview changes.
 
 ## Automated Stable Promotion
 
-Open a pull request from `dev` to `main` when the changes are ready for stable promotion. For release-relevant changes, `.github/workflows/release-prep.yml` calculates the next even-minor stable version from `main` by advancing the minor number by two and setting the patch to `.0`, updates `package.json` and `package-lock.json`, and promotes the existing `Unreleased` changelog notes into a versioned section. If `Unreleased` has no bullet entries, it uses generated notes since the latest stable tag. The workflow opens or updates a `release-prep/<version>` pull request into `dev` and enables auto-merge; that PR still has to pass CI. Its merge updates the open `dev` to `main` pull request, whose checks rerun. Opening, reviewing, and merging the promotion PR remain human actions.
+Open a pull request from `dev` to `main` when the changes are ready for stable promotion. For release-relevant changes, `.github/workflows/release-prep.yml` selects a version from `main` and the fetched Git tags:
+
+- If `main` is `3.4.0` and neither `3.4.0` nor `v3.4.0` exists, reuse `3.4.0`. Missing-tag recovery takes priority even when newer preview tags exist.
+- If the `3.4.0` stable tag exists and no `pre-release/3.5.x` tag exists, prepare patch `3.4.1`.
+- If the stable tag exists and the next preview lane has a tag such as `pre-release/3.5.1`, prepare the next even-minor stable version, `3.6.0`.
+
+Only numeric tags in the same major and next odd-minor lane count as previews. Bare and `v`-prefixed stable tags are both recognized. The workflow updates `package.json` and `package-lock.json` and promotes `Unreleased` notes into a versioned section when preparation is needed. If `Unreleased` is empty, it uses generated notes with subsection headings so metadata validation can find the release's bullet entries. Complete metadata for the selected version is reused without another prep PR. Otherwise, the workflow opens or updates a `release-prep/<version>` pull request into `dev` and enables auto-merge; that PR still has to pass CI. Its merge updates the open `dev` to `main` pull request, whose checks rerun. Opening, reviewing, and merging the promotion PR remain human actions.
 
 Release helpers are loaded from the repository's trusted default branch, not the PR head or its target commit. This supports the first promotion before `main` contains those helpers; stable version metadata is still read from `main`.
 
 After a promotion PR with release-relevant changes is merged, `.github/workflows/tag-promoted-release.yml` validates the package and changelog metadata and pushes a matching stable version tag to the merged commit. The tag starts `.github/workflows/release.yml`, which builds the VSIX and creates the GitHub Release. Publishing to the Marketplace still waits for human approval in `marketplace-publish`.
+
+If the version is already on `main` but tag creation failed, run **Actions** -> **Tag Promoted Stable Release** -> **Run workflow**. This recovery path checks out the current `main` commit and uses its existing version and changelog without incrementing them. It does not force push or replace a tag that points to another commit. If the tag exists but publication failed, use the tagged-release recovery procedure below instead.
 
 One-time repository setup:
 
@@ -76,7 +86,7 @@ The PR from `dev` to `main` is the release-intent signal; release-prep is not op
 Run the focused helper test and the project checks locally:
 
 ```bash
-npm run test:unit -- --runInBand src/test/prepareRelease.test.ts
+npm run test:unit -- --runInBand src/test/prepareRelease.test.ts src/test/resolveReleasePrep.test.ts
 npm run lint
 npm run compile
 npm test

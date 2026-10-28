@@ -9,7 +9,7 @@ function normalizeGeneratedNotes(notes) {
   return notes
     .trim()
     .split('\n')
-    .map(line => line.replace(/^(\s*)\*\s+/, '$1- '))
+    .map(line => line.replace(/^#{1,2}[ \t]+/, '### ').replace(/^(\s*)\*\s+/, '$1- '))
     .join('\n')
     .trim();
 }
