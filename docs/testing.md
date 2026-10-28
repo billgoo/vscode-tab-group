@@ -42,6 +42,12 @@ Validate the native preview/tag path filters and the always-running preparation 
 
 In a test repository, verify that documentation-, test-, and CI-only pushes to `dev` do not start the preview workflow. A promotion PR containing only those changes must receive a successful `stable-release-prep` status without a release-prep PR or stable tag. Runtime or manifest changes must still follow the normal release gates. Keep preview/tag path patterns and the inline preparation file check consistent. Explicit stable tags remain publishable regardless of changed paths.
 
+## Release Version Checks
+
+Run `npm run test:unit -- --runInBand src/test/resolveReleasePrep.test.ts src/test/prepareRelease.test.ts` for tag-based version selection and generated-note validation. Cover an untagged stable version being reused, a tagged stable version advancing one patch without next-lane previews, and a published next-lane preview advancing to the next even minor. Older, unrelated, or malformed preview tags must not cause a minor jump.
+
+In a test repository, verify that release-preparation commits do not publish previews. Use **Tag Promoted Stable Release** -> **Run workflow** to recover a missing tag from the current `main` commit without changing its version; existing tags pointing elsewhere must be rejected.
+
 ## Manual Acceptance
 
 1. Open the repository in VS Code and start **Run Extension** with `F5`.

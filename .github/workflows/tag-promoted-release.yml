@@ -11,6 +11,7 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - 'tsconfig.json'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -21,9 +22,10 @@ concurrency:
 jobs:
   tag:
     if: >-
-      github.event.pull_request.merged == true &&
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true &&
       github.event.pull_request.head.ref == 'dev' &&
-      github.event.pull_request.head.repo.full_name == github.repository
+      github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     steps:
       - name: Validate release app configuration
@@ -44,25 +46,26 @@ jobs:
           permission-contents: write
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          ref: ${{ github.event.pull_request.merge_commit_sha || 'main' }}
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
       - name: Validate release metadata and push stable tag
         env:
-          RELEASE_COMMIT: ${{ github.event.pull_request.merge_commit_sha }}
+          RELEASE_COMMIT: ${{ github.event.pull_request.merge_commit_sha || 'origin/main' }}
         run: |
           git fetch origin --tags
+          release_commit="$(git rev-parse "${RELEASE_COMMIT}^{commit}")"
           release_version="$(node -p "require('./package.json').version")"
           node scripts/release-metadata.js "${release_version}" --stable
 
-          if [[ "$(git rev-parse HEAD)" != "${RELEASE_COMMIT}" ]]; then
-            echo "Checked out commit does not match the merged PR commit." >&2
+          if [[ "$(git rev-parse HEAD)" != "${release_commit}" ]]; then
+            echo "Checked out commit does not match the selected release commit." >&2
             exit 1
           fi
 
           if git rev-parse --quiet --verify "refs/tags/${release_version}" >/dev/null; then
             tag_commit="$(git rev-parse "${release_version}^{commit}")"
-            if [[ "${tag_commit}" == "${RELEASE_COMMIT}" ]]; then
+            if [[ "${tag_commit}" == "${release_commit}" ]]; then
               echo "Tag ${release_version} already points to the merged commit."
               exit 0
             fi

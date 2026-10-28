@@ -1,5 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 import { prepareChangelog } from '../../.github/scripts/prepare-release';
+import { hasNonEmptyChangelogSection } from '../../scripts/release-metadata';
 
 describe('prepareChangelog', () => {
   it('promotes curated unreleased notes and preserves older versions', () => {
@@ -36,11 +37,15 @@ describe('prepareChangelog', () => {
 
   it('uses generated notes when Unreleased is empty', () => {
     const changelog = '# Change Log\n\n## Unreleased\n\n## 3.2.1\n\n- Previous release.\n';
-    const generatedNotes = "## What's Changed\n* Add a new capability (#42)\n";
+    const generatedNotes =
+      "## What's Changed\n* Add a new capability (#42)\n\n## New Contributors\n* Welcome a contributor.\n";
+    const prepared = prepareChangelog(changelog, '3.4.0', generatedNotes);
 
-    expect(prepareChangelog(changelog, '3.4.0', generatedNotes)).toContain(
-      '- Add a new capability (#42)',
-    );
+    expect(prepared).toContain('- Add a new capability (#42)');
+    expect(prepared).toContain("### What's Changed");
+    expect(prepared).toContain('### New Contributors');
+    expect(hasNonEmptyChangelogSection(prepared, '3.4.0')).toBe(true);
+    expect(hasNonEmptyChangelogSection(prepared, '3.2.1')).toBe(true);
   });
 
   it('rejects duplicate versions and empty generated notes', () => {
