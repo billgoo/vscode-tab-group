@@ -140,6 +140,52 @@ suite('Tab Group extension', () => {
     );
   });
 
+  test('exposes tab and group actions in both hover and context menus', () => {
+    const extension = vscode.extensions.getExtension('jiapeiyao.tab-group')!;
+    const menus = extension.packageJSON.contributes.menus['view/item/context'] as Array<{
+      command: string;
+      when: string;
+      group: string;
+    }>;
+    const liveViews = 'view =~ /^(tabsTreeView|recentTabsTreeView)$/';
+    const groupWhen = `${liveViews} && viewItem =~ /^group-sort-/`;
+    const actions = [
+      {
+        command: 'tabsTreeView.tab.removeFromGroup',
+        when: `${liveViews} && viewItem == 'grouped-tab'`,
+        groups: ['inline@0', '1_manage@0'],
+      },
+      {
+        command: 'tabsTreeView.tab.close',
+        when: `${liveViews} && viewItem =~ /^(tab|grouped-tab)$/`,
+        groups: ['inline@1', '2_close@0'],
+      },
+      {
+        command: 'tabsTreeView.group.rename',
+        when: groupWhen,
+        groups: ['inline@0', '1_manage@0'],
+      },
+      {
+        command: 'tabsTreeView.group.ungroup',
+        when: groupWhen,
+        groups: ['inline@4', '1_manage@1'],
+      },
+      {
+        command: 'tabsTreeView.group.close',
+        when: groupWhen,
+        groups: ['inline@5', '2_close@0'],
+      },
+    ];
+
+    for (const { command, when, groups } of actions) {
+      assert.deepStrictEqual(
+        menus.filter(menu => menu.command === command),
+        groups.map(group => ({ command, when, group })),
+        `${command} should have matching inline and context-menu contributions`,
+      );
+    }
+  });
+
   test('adds saved groups and files to chat without reopening or modifying them', async () => {
     await vscode.extensions.getExtension('jiapeiyao.tab-group')!.activate();
     const firstUri = vscode.Uri.file(join(tmpdir(), 'tab-group-chat-saved.md'));
@@ -461,7 +507,8 @@ suite('Tab Group extension', () => {
       itemContextMenus.some(
         menu =>
           menu.command === 'tabsTreeView.tab.close' &&
-          menu.when === 'view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem =~ /tab/' &&
+          menu.when ===
+            'view =~ /^(tabsTreeView|recentTabsTreeView)$/ && viewItem =~ /^(tab|grouped-tab)$/' &&
           menu.group === 'inline@1',
       ),
     );

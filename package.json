@@ -254,18 +254,33 @@
         },
         {
           "command": "tabsTreeView.tab.removeFromGroup",
-          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem == 'grouped-tab'",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)$/ && viewItem == 'grouped-tab'",
           "group": "inline@0"
+        },
+        {
+          "command": "tabsTreeView.tab.removeFromGroup",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)$/ && viewItem == 'grouped-tab'",
+          "group": "1_manage@0"
         },
         {
           "command": "tabsTreeView.tab.close",
-          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem =~ /tab/",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)$/ && viewItem =~ /^(tab|grouped-tab)$/",
           "group": "inline@1"
         },
         {
+          "command": "tabsTreeView.tab.close",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)$/ && viewItem =~ /^(tab|grouped-tab)$/",
+          "group": "2_close@0"
+        },
+        {
           "command": "tabsTreeView.group.rename",
-          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem =~ /^group-sort-/",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)$/ && viewItem =~ /^group-sort-/",
           "group": "inline@0"
+        },
+        {
+          "command": "tabsTreeView.group.rename",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)$/ && viewItem =~ /^group-sort-/",
+          "group": "1_manage@0"
         },
         {
           "command": "tabsTreeView.group.changeColor",
@@ -289,13 +304,23 @@
         },
         {
           "command": "tabsTreeView.group.ungroup",
-          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem =~ /^group-sort-/",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)$/ && viewItem =~ /^group-sort-/",
           "group": "inline@4"
         },
         {
+          "command": "tabsTreeView.group.ungroup",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)$/ && viewItem =~ /^group-sort-/",
+          "group": "1_manage@1"
+        },
+        {
           "command": "tabsTreeView.group.close",
-          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem =~ /^group-sort-/",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)$/ && viewItem =~ /^group-sort-/",
           "group": "inline@5"
+        },
+        {
+          "command": "tabsTreeView.group.close",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)$/ && viewItem =~ /^group-sort-/",
+          "group": "2_close@0"
         },
         {
           "command": "tabsTreeView.savedGroup.restore",
