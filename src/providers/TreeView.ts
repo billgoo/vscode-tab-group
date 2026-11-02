@@ -5,7 +5,17 @@ import { SavedGroupsStore } from '../services/SavedGroupsStore';
 import { RecentTabs } from '../services/RecentTabs';
 import { ExclusiveHandle, ExclusiveHandlePriority } from '../utils/event';
 import { asPromise } from '../utils/async';
-import { Group, isGroup, isTab, Tab, TreeElement, TreeItemType, ViewMode } from '../models/types';
+import {
+  Folder,
+  Group,
+  isFolder,
+  isGroup,
+  isTab,
+  Tab,
+  TreeElement,
+  TreeItemType,
+  ViewMode,
+} from '../models/types';
 import { SavedGroup, SavedTab } from '../models/SavedGroup';
 import { getNativeTabs, TreeDataProvider } from './TreeDataProvider';
 import { RecentTabsTreeDataProvider } from './RecentTabsTreeDataProvider';
@@ -261,6 +271,14 @@ export class TabsView extends Disposable {
       vscode.commands.registerCommand('tabsTreeView.group.save', async (group?: Group) => {
         if (group) {
           await this.saveGroup(group);
+        }
+      }),
+    );
+
+    this._register(
+      vscode.commands.registerCommand('tabsTreeView.folder.save', async (folder?: Folder) => {
+        if (folder) {
+          await this.saveFolder(folder);
         }
       }),
     );
@@ -578,8 +596,41 @@ export class TabsView extends Disposable {
   }
 
   private async saveGroup(group: Group): Promise<void> {
+    await this.saveTabsAsGroup(group, group.children);
+  }
+
+  private async saveFolder(folder: Folder): Promise<void> {
+    const tabs = this.collectFolderTabs(folder);
+    if (tabs.length === 0) {
+      void vscode.window.showWarningMessage('Cannot save a folder that contains no tabs.');
+      return;
+    }
+
+    await this.saveTabsAsGroup(
+      { id: `saved-folder:${folder.id}`, label: folder.label, colorId: '', collapsed: false },
+      tabs,
+    );
+  }
+
+  private collectFolderTabs(folder: Folder): Tab[] {
+    const tabs: Tab[] = [];
+    for (const child of folder.children) {
+      if (isTab(child)) {
+        tabs.push(child);
+      } else if (isFolder(child)) {
+        tabs.push(...this.collectFolderTabs(child));
+      }
+    }
+
+    return tabs;
+  }
+
+  private async saveTabsAsGroup(
+    source: Pick<Group, 'id' | 'label' | 'colorId' | 'collapsed'>,
+    groupTabs: readonly Tab[],
+  ): Promise<void> {
     const nativeTabs: vscode.Tab[] = [];
-    for (const tab of group.children) {
+    for (const tab of groupTabs) {
       const nativeTab = getNativeTabs(tab)[0];
       if (!nativeTab) {
         void vscode.window.showWarningMessage(
@@ -612,11 +663,11 @@ export class TabsView extends Disposable {
     let successMessage = '';
     const saved = await this.persistSavedGroups(
       savedGroups => {
-        const result = upsertSavedGroupSnapshot(savedGroups, group, tabs);
+        const result = upsertSavedGroupSnapshot(savedGroups, source, tabs);
         successMessage = `${result.updated ? 'Updated' : 'Saved'} tab group "${result.savedGroup.name}".${skippedTabsMessage}`;
         return result.savedGroups;
       },
-      `Could not save tab group "${getSavedGroupName(group.label)}".`,
+      `Could not save tab group "${getSavedGroupName(source.label)}".`,
     );
     if (saved) {
       void vscode.window.showInformationMessage(successMessage);
