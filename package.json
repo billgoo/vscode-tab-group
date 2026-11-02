@@ -310,11 +310,6 @@
         {
           "command": "tabsTreeView.folder.save",
           "when": "view == tabsTreeView && viewItem == 'file-folder'",
-          "group": "1_manage@3"
-        },
-        {
-          "command": "tabsTreeView.folder.save",
-          "when": "view == tabsTreeView && viewItem == 'file-folder'",
           "group": "inline@3"
         },
         {
