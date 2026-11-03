@@ -131,6 +131,11 @@
         "icon": "$(save)"
       },
       {
+        "command": "tabsTreeView.folder.save",
+        "title": "Save Folder as Tab Group...",
+        "icon": "$(save)"
+      },
+      {
         "command": "tabsTreeView.savedGroup.restore",
         "title": "Restore Saved Group...",
         "icon": "$(folder-opened)"
@@ -303,6 +308,11 @@
           "group": "inline@3"
         },
         {
+          "command": "tabsTreeView.folder.save",
+          "when": "view == tabsTreeView && viewItem == 'file-folder'",
+          "group": "inline@3"
+        },
+        {
           "command": "tabsTreeView.group.ungroup",
           "when": "view =~ /^(tabsTreeView|recentTabsTreeView)$/ && viewItem =~ /^group-sort-/",
           "group": "inline@4"
@@ -438,6 +448,10 @@
         },
         {
           "command": "tabsTreeView.group.save",
+          "when": "false"
+        },
+        {
+          "command": "tabsTreeView.folder.save",
           "when": "false"
         },
         {
