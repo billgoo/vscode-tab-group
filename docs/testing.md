@@ -38,15 +38,15 @@ Use `--skip-e2e` only when a local VS Code runtime is unavailable. CI and tag-ba
 
 ## Release File Checks
 
-Validate the native preview/tag path filters and the always-running preparation workflow with `actionlint .github/workflows/pre-release.yml .github/workflows/release-prep.yml .github/workflows/tag-promoted-release.yml`.
+Validate the native preview/tag path filters, preparation, and merge workflows with `actionlint .github/workflows/pre-release.yml .github/workflows/release-prep.yml .github/workflows/merge-release-prep.yml .github/workflows/tag-promoted-release.yml`.
 
 In a test repository, verify that documentation-, test-, and CI-only pushes to `dev` do not start the preview workflow. A promotion PR containing only those changes must receive a successful `stable-release-prep` status without a release-prep PR or stable tag. Runtime or manifest changes must still follow the normal release gates. Keep preview/tag path patterns and the inline preparation file check consistent. Explicit stable tags remain publishable regardless of changed paths.
 
 ## Release Version Checks
 
-Run `npm run test:unit -- --runInBand src/test/resolveReleasePrep.test.ts src/test/prepareRelease.test.ts src/test/releasePrepWorkflow.test.ts` for tag-based version selection, generated-note validation, and the preparation checkout with and without an existing prep branch. Cover an untagged stable version being reused, a tagged stable version advancing one patch without next-lane previews, and a published next-lane preview advancing to the next even minor. Older, unrelated, or malformed preview tags must not cause a minor jump.
+Run `npm run test:unit -- --runInBand src/test/resolveReleasePrep.test.ts src/test/prepareRelease.test.ts src/test/releasePrepWorkflow.test.ts src/test/mergeReleasePrep.test.ts` for version selection, notes, preparation checkout, and merge eligibility. Cover an untagged stable version being reused, a tagged stable version advancing one patch without next-lane previews, and a published next-lane preview advancing to the next even minor. Older, unrelated, or malformed preview tags must not cause a minor jump.
 
-In a test repository, verify that a promotion creates a prep PR when its branch is absent and updates it when the branch already exists. Verify that release-preparation commits do not publish previews. Use **Tag Promoted Stable Release** -> **Run workflow** to recover a missing tag from the current `main` commit without changing its version; existing tags pointing elsewhere must be rejected.
+In a test repository with the separate review and required-check rulesets, verify that a promotion creates a prep PR when its branch is absent and updates it when the branch already exists. Verify that the release app merges the prep PR only after CI passes, without approval, while ordinary PRs still require approval. Failed, stale, forked, non-bot, and unexpected-file PRs must not merge. Verify that release-preparation commits do not publish previews. Use **Tag Promoted Stable Release** -> **Run workflow** to recover a missing tag from the current `main` commit without changing its version; existing tags pointing elsewhere must be rejected.
 
 ## Manual Acceptance
 
