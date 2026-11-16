@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 3.6.0
+
 - Fix release preparation when the release-prep branch does not yet exist.
 - Select stable versions from release tags: retry untagged versions, otherwise increment the patch or promote the next published preview lane.
 - Keep generated release-note headings inside their versioned changelog section.
