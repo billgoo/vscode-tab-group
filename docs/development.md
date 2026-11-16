@@ -62,7 +62,7 @@ Open a pull request from `dev` to `main` when the changes are ready for stable p
 - If the `3.4.0` stable tag exists and no `pre-release/3.5.x` tag exists, prepare patch `3.4.1`.
 - If the stable tag exists and the next preview lane has a tag such as `pre-release/3.5.1`, prepare the next even-minor stable version, `3.6.0`.
 
-Only numeric tags in the same major and next odd-minor lane count as previews. Bare and `v`-prefixed stable tags are both recognized. The workflow updates `package.json` and `package-lock.json` and promotes `Unreleased` notes into a versioned section when preparation is needed. If `Unreleased` is empty, it uses generated notes with subsection headings so metadata validation can find the release's bullet entries. Complete metadata for the selected version is reused without another prep PR. Otherwise, the workflow opens or updates a `release-prep/<version>` pull request into `dev` and enables auto-merge; that PR still has to pass CI. Its merge updates the open `dev` to `main` pull request, whose checks rerun. Opening, reviewing, and merging the promotion PR remain human actions.
+Only numeric tags in the same major and next odd-minor lane count as previews. Bare and `v`-prefixed stable tags are both recognized. The workflow updates `package.json` and `package-lock.json` and promotes `Unreleased` notes into a versioned section when preparation is needed. If `Unreleased` is empty, it uses generated notes with subsection headings so metadata validation can find the release's bullet entries. Complete metadata for the selected version is reused without another prep PR. Otherwise, the workflow prepares changes on a checkout of `dev`, then opens or updates a `release-prep/<version>` pull request into `dev` and enables auto-merge; that PR still has to pass CI. Its merge updates the open `dev` to `main` pull request, whose checks rerun. Opening, reviewing, and merging the promotion PR remain human actions.
 
 Release helpers are loaded from the repository's trusted default branch, not the PR head or its target commit. This supports the first promotion before `main` contains those helpers; stable version metadata is still read from `main`.
 
@@ -86,7 +86,7 @@ The PR from `dev` to `main` is the release-intent signal; release-prep is not op
 Run the focused helper test and the project checks locally:
 
 ```bash
-npm run test:unit -- --runInBand src/test/prepareRelease.test.ts src/test/resolveReleasePrep.test.ts
+npm run test:unit -- --runInBand src/test/prepareRelease.test.ts src/test/resolveReleasePrep.test.ts src/test/releasePrepWorkflow.test.ts
 npm run lint
 npm run compile
 npm test
