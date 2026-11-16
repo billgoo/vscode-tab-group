@@ -75,6 +75,7 @@ npm run test:e2e
 Use **Run Extension** in VS Code to launch an Extension Development Host. See [docs/testing.md](docs/testing.md) for automated and manual testing, and [docs/development.md](docs/development.md) for packaging, CI, and Marketplace releases.
 
 Automatic stable and preview releases skip documentation-, test-, and CI-only changes; regular CI still runs.
+Release-prep PRs can be merged by the release app after CI without bypassing the separate `dev` checks.
 
 ## Contributing and Support
 
