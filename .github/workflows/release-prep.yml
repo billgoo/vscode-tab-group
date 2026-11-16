@@ -108,7 +108,7 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           RELEASE_VERSION: ${{ steps.metadata.outputs.version }}
         run: |
-          git checkout -B "release-prep/${RELEASE_VERSION}" origin/dev
+          git checkout -B dev origin/dev
           current_version="$(node -p "require('./package.json').version")"
           if [[ "${current_version}" != "${RELEASE_VERSION}" ]]; then
             npm version "${RELEASE_VERSION}" --no-git-tag-version --ignore-scripts
@@ -131,7 +131,6 @@ jobs:
           node "$RUNNER_TEMP/release-metadata.js" "${RELEASE_VERSION}" --stable
       - name: Create or update release-prep PR
         if: steps.metadata.outputs.should_prepare == 'true'
-        id: create-pr
         uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ steps.app-token.outputs.token }}
@@ -144,12 +143,6 @@ jobs:
             This updates the stable package version and promotes the current Unreleased changelog notes. CI must pass before this PR is merged.
           commit-message: 'chore(release): prepare ${{ steps.metadata.outputs.version }}'
           delete-branch: false
-      - name: Enable auto-merge for release-prep PR
-        if: steps.create-pr.outputs.pull-request-number != ''
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          PULL_REQUEST_NUMBER: ${{ steps.create-pr.outputs.pull-request-number }}
-        run: gh pr merge "${PULL_REQUEST_NUMBER}" --auto --squash --repo "${GITHUB_REPOSITORY}"
       - name: Mark promotion metadata ready
         if: steps.metadata.outputs.should_prepare == 'false'
         env:

@@ -33,6 +33,7 @@ describe('TreeState grouping', () => {
 
     expect(state).toHaveLength(2);
     expect(isGroup(state[0])).toBe(true);
+    expect((state[0] as Group).label).toBe('Group 1');
     expect((state[0] as Group).children).toEqual([b, a]);
     expect(isTab(state[1])).toBe(true);
   });
@@ -49,6 +50,105 @@ describe('TreeState grouping', () => {
     expect(state).toHaveLength(1);
     expect(isGroup(state[0])).toBe(true);
     expect((state[0] as Group).children).toEqual([c, a, b]);
+  });
+});
+
+describe('TreeState group names', () => {
+  test.each(['first-group', ' first-group '])(
+    'rejects another group name %j without changing the existing name',
+    input => {
+      const firstGroup = createGroup('first-group');
+      const secondGroup = createGroup('second-group');
+      const treeState = new TreeState();
+      treeState.setState([firstGroup, secondGroup]);
+
+      expect(treeState.renameGroup(secondGroup, input)).toBe(false);
+      expect(firstGroup.label).toBe('first-group');
+      expect(secondGroup.label).toBe('second-group');
+    },
+  );
+
+  test('allows keeping the current group name', () => {
+    const group = createGroup('group');
+    const treeState = new TreeState();
+    treeState.setState([group]);
+
+    expect(treeState.renameGroup(group, ' group ')).toBe(true);
+    expect(group.label).toBe('group');
+  });
+
+  test('accepts a distinct name and trims surrounding whitespace', () => {
+    const firstGroup = createGroup('first-group');
+    const secondGroup = createGroup('second-group');
+    const treeState = new TreeState();
+    treeState.setState([firstGroup, secondGroup]);
+
+    expect(treeState.renameGroup(secondGroup, ' New name ')).toBe(true);
+    expect(firstGroup.label).toBe('first-group');
+    expect(secondGroup.label).toBe('New name');
+  });
+
+  test('generates unique defaults for empty and whitespace-only names', () => {
+    const firstGroup = createGroup('first-group');
+    const secondGroup = createGroup('second-group');
+    const treeState = new TreeState();
+    treeState.setState([firstGroup, secondGroup]);
+
+    expect(treeState.renameGroup(firstGroup, '')).toBe(true);
+    expect(treeState.renameGroup(secondGroup, ' ')).toBe(true);
+    expect(firstGroup.label).toBe('Group 1');
+    expect(secondGroup.label).toBe('Group 2');
+  });
+
+  test('uses the lowest available default without renaming existing groups', () => {
+    const firstGroup = createGroup('first-group');
+    const thirdGroup = createGroup('third-group');
+    firstGroup.label = 'Group 1';
+    thirdGroup.label = ' Group 3 ';
+    const firstTab = createTab('first-tab');
+    const secondTab = createTab('second-tab');
+    const treeState = new TreeState();
+    treeState.setState([firstGroup, thirdGroup, firstTab, secondTab]);
+
+    treeState.group(firstTab, [secondTab]);
+
+    expect(treeState.getGroup(firstTab.groupId!)?.label).toBe('Group 2');
+    expect(firstGroup.label).toBe('Group 1');
+    expect(thirdGroup.label).toBe(' Group 3 ');
+  });
+
+  test('excludes the renamed group when choosing its default name', () => {
+    const firstGroup = createGroup('first-group');
+    const secondGroup = createGroup('second-group');
+    firstGroup.label = 'Group 1';
+    secondGroup.label = 'Group 2';
+    const treeState = new TreeState();
+    treeState.setState([firstGroup, secondGroup]);
+
+    expect(treeState.renameGroup(firstGroup, '')).toBe(true);
+    expect(firstGroup.label).toBe('Group 1');
+    expect(secondGroup.label).toBe('Group 2');
+  });
+
+  test('keeps surviving default names after ungrouping and state reload', () => {
+    const tabs = ['first', 'second', 'third', 'fourth'].map(createTab);
+    const treeState = new TreeState();
+    treeState.setState(tabs.slice());
+    treeState.group(tabs[0], [tabs[1]]);
+    treeState.group(tabs[2], [tabs[3]]);
+    const firstGroup = treeState.getGroup(tabs[0].groupId!)!;
+    const secondGroup = treeState.getGroup(tabs[2].groupId!)!;
+
+    treeState.ungroup(firstGroup);
+    const restoredState = new TreeState();
+    restoredState.setState(JSON.parse(JSON.stringify(treeState.getState())));
+
+    expect(restoredState.getGroup(secondGroup.id)?.label).toBe('Group 2');
+    const firstTab = restoredState.getTab(tabs[0].id)!;
+    const secondTab = restoredState.getTab(tabs[1].id)!;
+    restoredState.group(firstTab, [secondTab]);
+    expect(restoredState.getGroup(firstTab.groupId!)?.label).toBe('Group 1');
+    expect(restoredState.getGroup(secondGroup.id)?.label).toBe('Group 2');
   });
 });
 

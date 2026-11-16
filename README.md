@@ -20,13 +20,16 @@ Organize editor tabs into persistent, named groups from the Tab Group activity-b
 - Collapse and expand all live groups, or toggle all saved snapshots in the Saved Groups panel.
 - Preserve group membership, order, names, colors, and collapsed state in workspace state.
 - Save named group snapshots, shown in a collapsed Saved Groups panel, and restore their supported tabs after they are closed.
+- Save any folder shown in the Tabs tree as a snapshot directly, without creating a live group first.
 - Show an unsaved-file decoration for text editors.
 - Track text, text-diff, custom-editor, notebook, notebook-diff, and input-less system editor tabs.
 - Show ungrouped tabs in a Recent Tabs view ordered by most recently viewed.
 
 ## Usage
 
-Open the **Tab Group** activity-bar view. Drag tabs directly to group them. When a new group is created, enter an optional name. Use the view title actions to enable **Manual Reorder** and to collapse, expand, or reset all groups.
+Open the **Tab Group** activity-bar view. Drag tabs directly to group them. Each new group gets the lowest unused default name, such as **Group 1**, prefilled in the naming prompt. Keep it or enter a unique name. Use the view title actions to enable **Manual Reorder** and to collapse, expand, or reset all groups.
+
+Empty or whitespace-only names generate a unique default. Cancelling the creation prompt keeps its default; cancelling a rename preserves the current name. Existing groups are never renumbered after deletion, sorting, or reload.
 
 Use the **...** menu in the Tabs view title to switch between **View as Tree** and **View as List**. Tree mode groups resource-backed tabs by workspace-relative directory inside the root and each named group. Resource-backed tabs outside the current workspace, and tabs without a usable resource path, remain direct leaves; external resource tabs show their full location in the tooltip. The selected view is persisted with the workspace. **Manual Reorder** is available only in List view, while the predefined URI sort actions remain available in both views.
 
@@ -37,6 +40,8 @@ Use the **...** menu in the Tabs view title to switch between **View as Tree** a
 Dropping an item onto another inserts it immediately before the target. With **Manual Reorder** enabled, tabs and groups can only be reordered within their current parent, so reordering never changes group membership. The view title shows **Tabs (Reordering)** until you select **Done**. The view-title sort control orders root tabs by File URI, every group's tabs by File URI, and root groups by name. A group sort control orders only that group's tabs by File URI. Each control switches to the opposite direction after it is used. Group controls toggle independently, while a root sort resets every group control to its next direction. Root tabs and groups reorder only among their existing root positions. Sorting changes the Tabs tree only; it does not reorder VS Code's editor tabs. The **Recent Tabs** view lists ungrouped tabs by most recent activation; drag a tab from it onto a group in the **Tabs** view to organize it.
 
 ![Saved Groups panel](docs/assets/saved-groups.gif)
+
+Hover a folder in the **Tabs** tree and use the save action on the row to snapshot every open tab below that folder, including nested subfolders, in one step. The snapshot uses the folder's stable identity, so saving the same folder again updates its existing snapshot instead of adding a duplicate.
 
 Use **Save Group...** from a group context menu to create or update a snapshot without entering a name. The snapshot uses the live group's ID as its stable identity and its group label as the display name, showing **untitled** when the group has no name. Renaming a live group automatically updates the title of its saved snapshot. Saving the same live group again updates its existing snapshot. Expand the **Saved Groups** panel to see snapshots and their tab counts, then expand a snapshot to inspect its saved files. Duplicate file names show the shortest distinguishing parent path. Use the panel toolbar to sort snapshots by name, expand or collapse all snapshots, restore all snapshots, or delete all snapshots. Saved snapshot order is persisted, and when snapshots share a tab, **Restore All Saved Groups** gives that tab to the first snapshot shown in the panel. Use a snapshot's folder action to restore it or its trash action to remove it from saved workspace storage. **Restore Saved Group...** is also available from the Command Palette.
 
@@ -70,6 +75,7 @@ npm run test:e2e
 Use **Run Extension** in VS Code to launch an Extension Development Host. See [docs/testing.md](docs/testing.md) for automated and manual testing, and [docs/development.md](docs/development.md) for packaging, CI, and Marketplace releases.
 
 Automatic stable and preview releases skip documentation-, test-, and CI-only changes; regular CI still runs.
+Release-prep PRs can be merged by the release app after CI without bypassing the separate `dev` checks.
 
 ## Contributing and Support
 

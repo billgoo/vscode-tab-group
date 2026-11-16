@@ -3,7 +3,7 @@
   "displayName": "Tab Group",
   "description": "Organize VS Code editor tabs into persistent, named groups.",
   "publisher": "jiapeiyao",
-  "version": "3.4.0",
+  "version": "3.6.0",
   "license": "MIT",
   "homepage": "https://github.com/billgoo/vscode-tab-group#readme",
   "galleryBanner": {
@@ -131,6 +131,11 @@
         "icon": "$(save)"
       },
       {
+        "command": "tabsTreeView.folder.save",
+        "title": "Save Folder as Tab Group...",
+        "icon": "$(save)"
+      },
+      {
         "command": "tabsTreeView.savedGroup.restore",
         "title": "Restore Saved Group...",
         "icon": "$(folder-opened)"
@@ -254,18 +259,33 @@
         },
         {
           "command": "tabsTreeView.tab.removeFromGroup",
-          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem == 'grouped-tab'",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)$/ && viewItem == 'grouped-tab'",
           "group": "inline@0"
+        },
+        {
+          "command": "tabsTreeView.tab.removeFromGroup",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)$/ && viewItem == 'grouped-tab'",
+          "group": "1_manage@0"
         },
         {
           "command": "tabsTreeView.tab.close",
-          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem =~ /tab/",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)$/ && viewItem =~ /^(tab|grouped-tab)$/",
           "group": "inline@1"
         },
         {
+          "command": "tabsTreeView.tab.close",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)$/ && viewItem =~ /^(tab|grouped-tab)$/",
+          "group": "2_close@0"
+        },
+        {
           "command": "tabsTreeView.group.rename",
-          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem =~ /^group-sort-/",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)$/ && viewItem =~ /^group-sort-/",
           "group": "inline@0"
+        },
+        {
+          "command": "tabsTreeView.group.rename",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)$/ && viewItem =~ /^group-sort-/",
+          "group": "1_manage@0"
         },
         {
           "command": "tabsTreeView.group.changeColor",
@@ -288,14 +308,29 @@
           "group": "inline@3"
         },
         {
+          "command": "tabsTreeView.folder.save",
+          "when": "view == tabsTreeView && viewItem == 'file-folder'",
+          "group": "inline@3"
+        },
+        {
           "command": "tabsTreeView.group.ungroup",
-          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem =~ /^group-sort-/",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)$/ && viewItem =~ /^group-sort-/",
           "group": "inline@4"
         },
         {
+          "command": "tabsTreeView.group.ungroup",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)$/ && viewItem =~ /^group-sort-/",
+          "group": "1_manage@1"
+        },
+        {
           "command": "tabsTreeView.group.close",
-          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)/ && viewItem =~ /^group-sort-/",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)$/ && viewItem =~ /^group-sort-/",
           "group": "inline@5"
+        },
+        {
+          "command": "tabsTreeView.group.close",
+          "when": "view =~ /^(tabsTreeView|recentTabsTreeView)$/ && viewItem =~ /^group-sort-/",
+          "group": "2_close@0"
         },
         {
           "command": "tabsTreeView.savedGroup.restore",
@@ -413,6 +448,10 @@
         },
         {
           "command": "tabsTreeView.group.save",
+          "when": "false"
+        },
+        {
+          "command": "tabsTreeView.folder.save",
           "when": "false"
         },
         {

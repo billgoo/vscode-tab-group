@@ -38,15 +38,15 @@ Use `--skip-e2e` only when a local VS Code runtime is unavailable. CI and tag-ba
 
 ## Release File Checks
 
-Validate the native preview/tag path filters and the always-running preparation workflow with `actionlint .github/workflows/pre-release.yml .github/workflows/release-prep.yml .github/workflows/tag-promoted-release.yml`.
+Validate the native preview/tag path filters, preparation, and merge workflows with `actionlint .github/workflows/pre-release.yml .github/workflows/release-prep.yml .github/workflows/merge-release-prep.yml .github/workflows/tag-promoted-release.yml`.
 
 In a test repository, verify that documentation-, test-, and CI-only pushes to `dev` do not start the preview workflow. A promotion PR containing only those changes must receive a successful `stable-release-prep` status without a release-prep PR or stable tag. Runtime or manifest changes must still follow the normal release gates. Keep preview/tag path patterns and the inline preparation file check consistent. Explicit stable tags remain publishable regardless of changed paths.
 
 ## Release Version Checks
 
-Run `npm run test:unit -- --runInBand src/test/resolveReleasePrep.test.ts src/test/prepareRelease.test.ts` for tag-based version selection and generated-note validation. Cover an untagged stable version being reused, a tagged stable version advancing one patch without next-lane previews, and a published next-lane preview advancing to the next even minor. Older, unrelated, or malformed preview tags must not cause a minor jump.
+Run `npm run test:unit -- --runInBand src/test/resolveReleasePrep.test.ts src/test/prepareRelease.test.ts src/test/releasePrepWorkflow.test.ts src/test/mergeReleasePrep.test.ts` for version selection, notes, preparation checkout, and merge eligibility. Cover an untagged stable version being reused, a tagged stable version advancing one patch without next-lane previews, and a published next-lane preview advancing to the next even minor. Older, unrelated, or malformed preview tags must not cause a minor jump.
 
-In a test repository, verify that release-preparation commits do not publish previews. Use **Tag Promoted Stable Release** -> **Run workflow** to recover a missing tag from the current `main` commit without changing its version; existing tags pointing elsewhere must be rejected.
+In a test repository with the separate review and required-check rulesets, verify that a promotion creates a prep PR when its branch is absent and updates it when the branch already exists. Verify that the release app merges the prep PR only after CI passes, without approval, while ordinary PRs still require approval. Failed, stale, forked, non-bot, and unexpected-file PRs must not merge. Verify that release-preparation commits do not publish previews. Use **Tag Promoted Stable Release** -> **Run workflow** to recover a missing tag from the current `main` commit without changing its version; existing tags pointing elsewhere must be rejected.
 
 ## Manual Acceptance
 
@@ -56,11 +56,24 @@ In a test repository, verify that release-preparation commits do not publish pre
 
 ### Grouping
 
-- Drag a root tab onto another root tab and enter an optional group name.
+- Drag a root tab onto another root tab and confirm the naming prompt is prefilled with the lowest unused **Group N** name. Accept or cancel the prompt and confirm the generated name remains.
+- Submit an empty or whitespace-only name when creating or renaming a group and confirm a unique **Group N** default is used. Cancel a rename and confirm the existing name is unchanged.
+- With **Group 1** and **Group 3** already used, create another group and confirm its default is **Group 2**. Remove **Group 1** and confirm surviving groups keep their names after reordering and reloading.
 - Confirm each tab appears exactly once in the tree.
 - Drag another root tab onto the group and confirm it joins that group.
 - Drag a grouped tab onto the view background and confirm it returns to the root list.
 - Select a group, use the top-right **Change Group Color** action (or the group item action), choose a color, and confirm the colored group icon and color name update.
+- Name a group **1**, then try naming a new group **1** or entering the same name with surrounding spaces. Confirm the input reports **A group with this name already exists.** and requires a distinct name or cancellation.
+- Rename another group to **1** and confirm the same validation appears without changing either group or its saved snapshot. Keeping a group's own name should remain valid.
+- In List and Tree views, confirm distinctly named groups retain their own tabs and expand/collapse independently after reordering and reloading. Existing duplicate names from older workspace state are preserved until renamed to unique names.
+
+### Tab And Group Actions
+
+- In both List and Tree views, right-click a grouped tab and confirm **Remove from Group** and **Close** appear. An ungrouped tab should offer **Close**, but not **Remove from Group**. Repeat using the keyboard context menu and confirm the existing hover buttons remain available.
+- Choose **Remove from Group** and confirm the tab returns to the root without closing its editor. Choose **Close** and confirm only that tab closes.
+- Right-click a live group and confirm **Rename Group**, **Ungroup**, and **Close Grouped Tabs** appear. Rename the group, then use **Ungroup** and confirm its tabs remain open at the root.
+- Create another group and use **Close Grouped Tabs**; confirm unrelated tabs remain open. Check the group menu before and after sorting its tabs so both sort directions retain these actions.
+- In **Recent Tabs**, confirm **Close** is available on right-click and hover. Confirm live-tab and live-group actions do not appear on directory rows or saved snapshots.
 
 ### Sorting And Toolbar
 
@@ -92,7 +105,7 @@ In a test repository, verify that release-preparation commits do not publish pre
 ### Saved Tab Groups
 
 - Create a group containing at least two text files, then choose **Save Group...** from its context menu and confirm no name prompt appears.
-- Save an unnamed group and confirm the snapshot uses the live group's ID as its stable identity and displays **untitled**.
+- Save a legacy unnamed group and confirm the snapshot uses the live group's ID as its stable identity and displays **untitled**.
 - Rename the live group and confirm its saved snapshot title changes from **untitled** or the previous name to the new group name.
 - Expand the **Saved Groups** panel, which starts collapsed, and confirm the saved snapshot name and tab count appear.
 - Use the single Saved Groups panel toolbar toggle to expand all snapshots and collapse them again.

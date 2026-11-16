@@ -62,7 +62,9 @@ Open a pull request from `dev` to `main` when the changes are ready for stable p
 - If the `3.4.0` stable tag exists and no `pre-release/3.5.x` tag exists, prepare patch `3.4.1`.
 - If the stable tag exists and the next preview lane has a tag such as `pre-release/3.5.1`, prepare the next even-minor stable version, `3.6.0`.
 
-Only numeric tags in the same major and next odd-minor lane count as previews. Bare and `v`-prefixed stable tags are both recognized. The workflow updates `package.json` and `package-lock.json` and promotes `Unreleased` notes into a versioned section when preparation is needed. If `Unreleased` is empty, it uses generated notes with subsection headings so metadata validation can find the release's bullet entries. Complete metadata for the selected version is reused without another prep PR. Otherwise, the workflow opens or updates a `release-prep/<version>` pull request into `dev` and enables auto-merge; that PR still has to pass CI. Its merge updates the open `dev` to `main` pull request, whose checks rerun. Opening, reviewing, and merging the promotion PR remain human actions.
+Only numeric tags in the same major and next odd-minor lane count as previews. Bare and `v`-prefixed stable tags are both recognized. The workflow updates `package.json` and `package-lock.json` and promotes `Unreleased` notes into a versioned section when preparation is needed. If `Unreleased` is empty, it uses generated notes with subsection headings so metadata validation can find the release's bullet entries. Complete metadata for the selected version is reused without another prep PR. Otherwise, the workflow prepares changes on a checkout of `dev`, then opens or updates a `release-prep/<version>` pull request into `dev`.
+
+After **Validate Extension** succeeds for the prep PR, `.github/workflows/merge-release-prep.yml` checks the current PR and the tested head SHA before using the release app to squash-merge it directly. It accepts only the `billgoo-tab-group-release[bot]` author, a same-repository numeric release-prep branch targeting `dev`, and modifications to the changelog and package manifests. Manifest contents may change only in their version fields, which must match the branch version. The merge request includes the tested SHA, and GitHub's separate required-check ruleset must still pass and require an up-to-date branch. A failed or outdated CI run does not merge. Its merge updates the open `dev` to `main` pull request, whose checks rerun. Opening, reviewing, and merging the promotion PR remain human actions.
 
 Release helpers are loaded from the repository's trusted default branch, not the PR head or its target commit. This supports the first promotion before `main` contains those helpers; stable version metadata is still read from `main`.
 
@@ -74,28 +76,29 @@ One-time repository setup:
 
 - Install a GitHub App on this repository with **Contents: read and write** and **Pull requests: read and write**. The App creates the release-prep PR and pushes the stable tag so the resulting GitHub events start their workflows.
 - Under **Settings** -> **Secrets and variables** -> **Actions**, add the repository variable `RELEASE_APP_CLIENT_ID` using the App's **Client ID**, not its numeric App ID. Store the App's PEM private key as the repository secret `RELEASE_APP_PRIVATE_KEY`. The workflows use the v3 action's `client-id` input and no longer read `RELEASE_APP_ID`. Environment-only secrets are unavailable to these jobs because they do not declare an environment. Missing values fail early with setup guidance, without printing the key.
-- Enable **Allow auto-merge** in repository settings.
-- Split the branch rules so `dev` requires a pull request and the passing, up-to-date `ubuntu-latest`, `macos-latest`, and `windows-latest` checks, but requires no approving review. Keep deletion and force-push protection. This lets the release-prep PR auto-merge without a bypass.
+- Configure separate rulesets for `dev`: **Dev checks** requires a pull request and the passing, up-to-date `ubuntu-latest`, `macos-latest`, and `windows-latest` checks, with deletion and force-push protection; **Dev reviews** requires an approval. Add `billgoo-tab-group-release` to the bypass list of **Dev reviews** with **For pull requests only**, but do not grant it a bypass for **Dev checks**. Normal PRs still require approval and CI. The app bypass applies when it merges, not only to PRs it authored; restrict access to the app private key and to updates of `release-prep/*` branches.
 - Keep `main` protected by a pull request, one approval, the same required checks, and the additional `stable-release-prep` status check. Enable stale-approval dismissal and resolved review conversations so the release-prep commit must be reviewed. Repository administrators retain their configured bypass.
 - Keep `marketplace-prerelease` restricted to `dev` with `VSCE_PAT` and no required reviewers. Keep `marketplace-publish` approval-gated.
 
 The PR from `dev` to `main` is the release-intent signal; release-prep is not opened for every feature PR merged into `dev`. If that promotion PR is closed without merging, its release-prep PR should also be closed or abandoned before starting a different promotion.
+
+The merge workflow and helper must exist on the repository's default branch before the CI completion event; it never executes the prep PR's code with the app token. To retry a prep PR after installing the workflow or fixing a transient merge failure, rerun **Validate Extension** for its current head. Inspect the merge workflow logs if it rejects a PR or GitHub blocks the merge.
 
 ### Testing the Automation
 
 Run the focused helper test and the project checks locally:
 
 ```bash
-npm run test:unit -- --runInBand src/test/prepareRelease.test.ts src/test/resolveReleasePrep.test.ts
+npm run test:unit -- --runInBand src/test/prepareRelease.test.ts src/test/resolveReleasePrep.test.ts src/test/releasePrepWorkflow.test.ts src/test/mergeReleasePrep.test.ts
 npm run lint
 npm run compile
 npm test
-actionlint .github/workflows/pre-release.yml .github/workflows/release-prep.yml .github/workflows/tag-promoted-release.yml
+actionlint .github/workflows/pre-release.yml .github/workflows/release-prep.yml .github/workflows/merge-release-prep.yml .github/workflows/tag-promoted-release.yml
 ```
 
 Older `actionlint` versions may incorrectly require `app-id` or reject `client-id`; check the current v3 action metadata rather than restoring the deprecated input.
 
-End-to-end testing requires the GitHub App, auto-merge, and ruleset settings above. Use a dedicated test repository or non-production Marketplace credentials: merging the prep PR into `dev` triggers the Marketplace pre-release workflow.
+End-to-end testing requires the GitHub App and ruleset settings above. Use a dedicated test repository or non-production Marketplace credentials; release-preparation commits are configured to skip preview publication.
 
 ## Dependency Updates
 
