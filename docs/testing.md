@@ -44,9 +44,9 @@ In a test repository, verify that documentation-, test-, and CI-only pushes to `
 
 ## Release Version Checks
 
-Run `npm run test:unit -- --runInBand src/test/resolveReleasePrep.test.ts src/test/prepareRelease.test.ts` for tag-based version selection and generated-note validation. Cover an untagged stable version being reused, a tagged stable version advancing one patch without next-lane previews, and a published next-lane preview advancing to the next even minor. Older, unrelated, or malformed preview tags must not cause a minor jump.
+Run `npm run test:unit -- --runInBand src/test/resolveReleasePrep.test.ts src/test/prepareRelease.test.ts src/test/releasePrepWorkflow.test.ts` for tag-based version selection, generated-note validation, and the preparation checkout with and without an existing prep branch. Cover an untagged stable version being reused, a tagged stable version advancing one patch without next-lane previews, and a published next-lane preview advancing to the next even minor. Older, unrelated, or malformed preview tags must not cause a minor jump.
 
-In a test repository, verify that release-preparation commits do not publish previews. Use **Tag Promoted Stable Release** -> **Run workflow** to recover a missing tag from the current `main` commit without changing its version; existing tags pointing elsewhere must be rejected.
+In a test repository, verify that a promotion creates a prep PR when its branch is absent and updates it when the branch already exists. Verify that release-preparation commits do not publish previews. Use **Tag Promoted Stable Release** -> **Run workflow** to recover a missing tag from the current `main` commit without changing its version; existing tags pointing elsewhere must be rejected.
 
 ## Manual Acceptance
 

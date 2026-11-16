@@ -108,7 +108,7 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           RELEASE_VERSION: ${{ steps.metadata.outputs.version }}
         run: |
-          git checkout -B "release-prep/${RELEASE_VERSION}" origin/dev
+          git checkout -B dev origin/dev
           current_version="$(node -p "require('./package.json').version")"
           if [[ "${current_version}" != "${RELEASE_VERSION}" ]]; then
             npm version "${RELEASE_VERSION}" --no-git-tag-version --ignore-scripts
